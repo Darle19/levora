@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\HasLocalizedDescription;
+use App\Traits\HasLocalizedName;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CruiseRoute extends Model
 {
+    use HasLocalizedName, HasLocalizedDescription;
+
     protected $fillable = [
         'name',
         'name_en',
@@ -70,15 +74,4 @@ class CruiseRoute extends Model
         return $this->belongsTo(Currency::class);
     }
 
-    public function getNameAttribute(): string
-    {
-        $locale = app()->getLocale();
-        return $this->{"name_$locale"} ?? $this->name_en ?? $this->attributes['name'];
-    }
-
-    public function getDescriptionAttribute(): ?string
-    {
-        $locale = app()->getLocale();
-        return $this->{"description_$locale"} ?? $this->description_en ?? $this->attributes['description'] ?? null;
-    }
 }

@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class StopSalesTable
@@ -14,13 +15,16 @@ class StopSalesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['hotel']))
             ->columns([
                 TextColumn::make('hotel.name')
                     ->searchable(),
-                TextColumn::make('date_from')
+                TextColumn::make('start_date')
+                    ->label('From')
                     ->date()
                     ->sortable(),
-                TextColumn::make('date_to')
+                TextColumn::make('end_date')
+                    ->label('To')
                     ->date()
                     ->sortable(),
                 IconColumn::make('is_active')

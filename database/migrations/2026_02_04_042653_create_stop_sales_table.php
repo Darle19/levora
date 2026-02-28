@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('stop_sales', function (Blueprint $table) {
             $table->id();
             $table->foreignId('hotel_id')->constrained()->onDelete('cascade');
-            $table->date('date_from');
-            $table->date('date_to');
+            $table->date('start_date');
+            $table->date('end_date');
             $table->text('reason')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class BookingController extends Controller
@@ -65,7 +66,12 @@ class BookingController extends Controller
         // Validate the request
         $validated = $request->validate([
             'tour_id' => 'required|exists:tours,id',
-            'room_type_id' => 'nullable|exists:room_types,id',
+            'room_type_id' => [
+                'nullable',
+                Rule::exists('tour_prices', 'room_type_id')
+                    ->where('tour_id', $request->input('tour_id'))
+                    ->where('is_active', true),
+            ],
             'contact_name' => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',
             'contact_phone' => 'required|string|max:20',
@@ -98,8 +104,9 @@ class BookingController extends Controller
         }
 
         if ($tour->hotel_id && StopSale::where('hotel_id', $tour->hotel_id)
-                ->where('date_from', '<=', today())
-                ->where('date_to', '>=', today())
+                ->where('start_date', '<=', today())
+                ->where('end_date', '>=', today())
+                ->where('is_active', true)
                 ->exists()) {
             return back()->withInput()->with('error', 'This tour is currently on stop sale.');
         }

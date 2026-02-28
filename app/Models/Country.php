@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasLocalizedName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Country extends Model
 {
-    use HasFactory;
+    use HasFactory, HasLocalizedName;
 
     protected $fillable = [
         'name',
@@ -38,9 +39,4 @@ class Country extends Model
         return $this->hasMany(Resort::class);
     }
 
-    public function getNameAttribute(): string
-    {
-        $locale = app()->getLocale();
-        return $this->{"name_$locale"} ?? $this->name_en ?? $this->attributes['name'];
-    }
 }

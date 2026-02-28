@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasLocalizedName;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Port extends Model
 {
+    use HasLocalizedName;
+
     protected $fillable = [
         'name',
         'name_en',
@@ -35,9 +38,4 @@ class Port extends Model
         return $this->belongsTo(Country::class);
     }
 
-    public function getNameAttribute(): string
-    {
-        $locale = app()->getLocale();
-        return $this->{"name_$locale"} ?? $this->name_en ?? $this->attributes['name'];
-    }
 }

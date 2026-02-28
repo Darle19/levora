@@ -14,7 +14,9 @@ use App\Observers\PaymentObserver;
 use App\Observers\TourObserver;
 use App\Policies\BookingPolicy;
 use App\Policies\OrderPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -39,5 +41,9 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Booking::class, BookingPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
+
+        RateLimiter::for('login', function ($request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }

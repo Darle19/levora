@@ -15,7 +15,7 @@ class ClaimController extends Controller
     public function index(): View
     {
         $claims = Order::where('agency_id', Auth::user()->agency_id)
-            ->with(['user', 'bookings'])
+            ->with(['user', 'bookings', 'currency'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -29,7 +29,7 @@ class ClaimController extends Controller
     {
         $this->authorize('view', $order);
 
-        $order->load(['user', 'bookings.tourists', 'bookings.documents.tourist', 'payments']);
+        $order->load(['user', 'bookings.tourists', 'bookings.documents.tourist', 'bookings.currency', 'payments.currency', 'currency']);
 
         $paymentPercentage = $order->getPaymentPercentage();
 

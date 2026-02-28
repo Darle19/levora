@@ -6,6 +6,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class OrdersTable
@@ -13,6 +14,9 @@ class OrdersTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'agency', 'user', 'currency',
+            ]))
             ->columns([
                 TextColumn::make('agency.name')
                     ->searchable(),
@@ -33,7 +37,8 @@ class OrdersTable
                 TextColumn::make('total_price')
                     ->money()
                     ->sortable(),
-                TextColumn::make('currency.id')
+                TextColumn::make('currency.code')
+                    ->label('Currency')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

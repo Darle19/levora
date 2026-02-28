@@ -31,7 +31,8 @@
       "Bash(find resources/views -name \"*.blade.php\" -exec grep -l \"insurance\\\\|payment\" {} ;)",
       "Bash(php -r ':*)",
       "Bash(php \"C:/Users/user/AppData/Local/Programs/Herd/resources/app/composer/composer.phar\" require barryvdh/laravel-dompdf)",
-      "Bash(php \"/c/Users/user/.config/herd/bin/composer.phar\" require barryvdh/laravel-dompdf)"
+      "Bash(php \"/c/Users/user/.config/herd/bin/composer.phar\" require barryvdh/laravel-dompdf)",
+      "Bash(wc -l c:\\\\Users\\\\user\\\\Herd\\\\malaktour\\\\resources\\\\views\\\\*.blade.php)"
     ]
   }
 }

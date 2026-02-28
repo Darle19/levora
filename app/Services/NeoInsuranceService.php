@@ -7,6 +7,7 @@ use App\Models\Tourist;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class NeoInsuranceService
 {
@@ -16,9 +17,9 @@ class NeoInsuranceService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('services.neoinsurance.base_url', ''), '/');
-        $this->username = config('services.neoinsurance.username', '');
-        $this->password = config('services.neoinsurance.password', '');
+        $this->baseUrl = rtrim(config('services.neoinsurance.base_url') ?? '', '/');
+        $this->username = config('services.neoinsurance.username') ?? '';
+        $this->password = config('services.neoinsurance.password') ?? '';
     }
 
     public function getInsuranceOptions(): ?array
@@ -35,7 +36,7 @@ class NeoInsuranceService
 
                 Log::error('NeoInsurance get-data failed', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => Str::limit($response->body(), 200),
                 ]);
             } catch (\Exception $e) {
                 Log::error('NeoInsurance get-data exception', ['message' => $e->getMessage()]);
@@ -59,7 +60,7 @@ class NeoInsuranceService
 
                 Log::error('NeoInsurance get-country failed', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => Str::limit($response->body(), 200),
                 ]);
             } catch (\Exception $e) {
                 Log::error('NeoInsurance get-country exception', ['message' => $e->getMessage()]);
@@ -84,7 +85,7 @@ class NeoInsuranceService
 
             Log::error('NeoInsurance calculator failed', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'body' => Str::limit($response->body(), 200),
             ]);
         } catch (\Exception $e) {
             Log::error('NeoInsurance calculator exception', ['message' => $e->getMessage()]);
@@ -140,7 +141,7 @@ class NeoInsuranceService
 
             Log::error('NeoInsurance save failed', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'body' => Str::limit($response->body(), 200),
                 'tourist_id' => $tourist->id,
             ]);
         } catch (\Exception $e) {

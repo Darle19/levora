@@ -17,9 +17,9 @@ class StopSaleForm
                 Select::make('hotel_id')
                     ->relationship('hotel', 'name')
                     ->required(),
-                DatePicker::make('date_from')
+                DatePicker::make('start_date')
                     ->required(),
-                DatePicker::make('date_to')
+                DatePicker::make('end_date')
                     ->required(),
                 Textarea::make('reason')
                     ->columnSpanFull(),

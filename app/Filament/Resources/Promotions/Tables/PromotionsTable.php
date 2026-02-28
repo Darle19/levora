@@ -8,6 +8,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class PromotionsTable
@@ -15,6 +16,9 @@ class PromotionsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'currency',
+            ]))
             ->columns([
                 TextColumn::make('title')
                     ->searchable(),
@@ -24,7 +28,8 @@ class PromotionsTable
                 TextColumn::make('discount_amount')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('currency.id')
+                TextColumn::make('currency.code')
+                    ->label('Currency')
                     ->searchable(),
                 TextColumn::make('date_from')
                     ->date()

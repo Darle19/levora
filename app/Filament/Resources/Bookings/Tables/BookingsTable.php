@@ -6,6 +6,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class BookingsTable
@@ -13,8 +14,12 @@ class BookingsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'order', 'currency',
+            ]))
             ->columns([
-                TextColumn::make('order.id')
+                TextColumn::make('order.order_number')
+                    ->label('Order')
                     ->searchable(),
                 TextColumn::make('bookable_type')
                     ->searchable(),
@@ -26,7 +31,8 @@ class BookingsTable
                 TextColumn::make('price')
                     ->money()
                     ->sortable(),
-                TextColumn::make('currency.id')
+                TextColumn::make('currency.code')
+                    ->label('Currency')
                     ->searchable(),
                 TextColumn::make('date')
                     ->date()

@@ -6,6 +6,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class CurrencyRatesTable
@@ -13,10 +14,15 @@ class CurrencyRatesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'fromCurrency', 'toCurrency',
+            ]))
             ->columns([
-                TextColumn::make('fromCurrency.id')
+                TextColumn::make('fromCurrency.code')
+                    ->label('From')
                     ->searchable(),
-                TextColumn::make('toCurrency.id')
+                TextColumn::make('toCurrency.code')
+                    ->label('To')
                     ->searchable(),
                 TextColumn::make('rate')
                     ->numeric()

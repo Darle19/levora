@@ -13,6 +13,12 @@ class DocumentController extends Controller
 
         $this->authorize('view', $order);
 
+        // Validate file path to prevent path traversal
+        $expectedPrefix = "documents/{$order->id}/";
+        if (!str_starts_with($document->file_path, $expectedPrefix)) {
+            abort(403);
+        }
+
         if (!$order->isFullyPaid()) {
             abort(403, __('messages.doc_locked_message'));
         }

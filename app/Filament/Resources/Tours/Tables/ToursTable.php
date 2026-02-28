@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class ToursTable
@@ -14,20 +15,31 @@ class ToursTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'tourType', 'programType', 'country', 'resort', 'hotel',
+                'transportType', 'departureCity', 'currency', 'mealType',
+            ]))
             ->columns([
-                TextColumn::make('tourType.id')
+                TextColumn::make('tourType.name_en')
+                    ->label('Tour Type')
                     ->searchable(),
-                TextColumn::make('programType.id')
+                TextColumn::make('programType.name_en')
+                    ->label('Program')
                     ->searchable(),
-                TextColumn::make('country.id')
+                TextColumn::make('country.name_en')
+                    ->label('Country')
                     ->searchable(),
-                TextColumn::make('resort.id')
+                TextColumn::make('resort.name_en')
+                    ->label('Resort')
                     ->searchable(),
                 TextColumn::make('hotel.name')
+                    ->label('Hotel')
                     ->searchable(),
-                TextColumn::make('transportType.id')
+                TextColumn::make('transportType.name_en')
+                    ->label('Transport')
                     ->searchable(),
-                TextColumn::make('departureCity.id')
+                TextColumn::make('departureCity.name_en')
+                    ->label('Departure')
                     ->searchable(),
                 TextColumn::make('nights')
                     ->numeric()
@@ -35,7 +47,8 @@ class ToursTable
                 TextColumn::make('price')
                     ->money()
                     ->sortable(),
-                TextColumn::make('currency.id')
+                TextColumn::make('currency.code')
+                    ->label('Currency')
                     ->searchable(),
                 TextColumn::make('date_from')
                     ->date()
@@ -49,7 +62,8 @@ class ToursTable
                 TextColumn::make('children')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('mealType.id')
+                TextColumn::make('mealType.code')
+                    ->label('Meal')
                     ->searchable(),
                 IconColumn::make('is_available')
                     ->boolean(),

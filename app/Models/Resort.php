@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Traits\HasLocalizedDescription;
+use App\Traits\HasLocalizedName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Resort extends Model
 {
-    use HasFactory;
+    use HasFactory, HasLocalizedName, HasLocalizedDescription;
 
     protected $fillable = [
         'name',
@@ -48,15 +50,4 @@ class Resort extends Model
         return $this->hasMany(Hotel::class);
     }
 
-    public function getNameAttribute(): string
-    {
-        $locale = app()->getLocale();
-        return $this->{"name_$locale"} ?? $this->name_en ?? $this->attributes['name'];
-    }
-
-    public function getDescriptionAttribute(): ?string
-    {
-        $locale = app()->getLocale();
-        return $this->{"description_$locale"} ?? $this->description_en ?? $this->attributes['description'] ?? null;
-    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasLocalizedName;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RoomType extends Model
 {
-    use HasFactory;
+    use HasFactory, HasLocalizedName;
 
     protected $fillable = [
         'name_en',
@@ -28,12 +29,6 @@ class RoomType extends Model
             'max_adults' => 'integer',
             'max_children' => 'integer',
         ];
-    }
-
-    public function getNameAttribute(): string
-    {
-        $locale = app()->getLocale();
-        return $this->{"name_$locale"} ?? $this->name_en;
     }
 
     public function tourPrices(): HasMany

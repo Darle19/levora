@@ -22,7 +22,7 @@ class AgencyController extends Controller
      */
     public function employees(): View
     {
-        $agency = Auth::user()->agency;
+        $agency = Auth::user()->load('agency.users')->agency;
         $employees = $agency->users;
         return view('agency.employees', compact('agency', 'employees'));
     }

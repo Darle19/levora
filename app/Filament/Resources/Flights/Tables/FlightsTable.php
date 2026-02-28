@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class FlightsTable
@@ -14,12 +15,17 @@ class FlightsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'airline', 'fromAirport', 'toAirport', 'currency',
+            ]))
             ->columns([
                 TextColumn::make('airline.name')
                     ->searchable(),
-                TextColumn::make('fromAirport.id')
+                TextColumn::make('fromAirport.code')
+                    ->label('From')
                     ->searchable(),
-                TextColumn::make('toAirport.id')
+                TextColumn::make('toAirport.code')
+                    ->label('To')
                     ->searchable(),
                 TextColumn::make('flight_number')
                     ->searchable(),
@@ -32,7 +38,8 @@ class FlightsTable
                 TextColumn::make('price_adult')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('currency.id')
+                TextColumn::make('currency.code')
+                    ->label('Currency')
                     ->searchable(),
                 TextColumn::make('available_seats')
                     ->numeric()

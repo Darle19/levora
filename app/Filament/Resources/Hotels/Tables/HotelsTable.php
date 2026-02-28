@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
 class HotelsTable
@@ -14,15 +15,19 @@ class HotelsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'resort', 'category',
+            ]))
             ->columns([
                 TextColumn::make('name')
                     ->searchable(),
                 TextColumn::make('address')
                     ->searchable(),
-                TextColumn::make('resort.id')
+                TextColumn::make('resort.name_en')
+                    ->label('Resort')
                     ->searchable(),
-                TextColumn::make('hotel_category_id')
-                    ->numeric()
+                TextColumn::make('category.name')
+                    ->label('Category')
                     ->sortable(),
                 TextColumn::make('rating')
                     ->numeric()

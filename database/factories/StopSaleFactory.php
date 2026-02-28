@@ -14,8 +14,8 @@ class StopSaleFactory extends Factory
     {
         return [
             'hotel_id' => Hotel::factory(),
-            'date_from' => now()->subDays(5),
-            'date_to' => now()->addDays(30),
+            'start_date' => now()->subDays(5),
+            'end_date' => now()->addDays(30),
             'reason' => 'Renovation',
             'is_active' => true,
         ];

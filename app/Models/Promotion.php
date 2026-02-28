@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\HasLocalizedDescription;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Promotion extends Model
 {
+    use HasLocalizedDescription;
+
     protected $fillable = [
         'title',
         'title_en',
@@ -52,9 +55,4 @@ class Promotion extends Model
         return $this->{"title_$locale"} ?? $this->title_en ?? $this->attributes['title'];
     }
 
-    public function getDescriptionAttribute(): ?string
-    {
-        $locale = app()->getLocale();
-        return $this->{"description_$locale"} ?? $this->description_en ?? $this->attributes['description'] ?? null;
-    }
 }

@@ -126,8 +126,9 @@ test('rejects booking for unavailable tour via POST', function () {
 test('rejects booking for tour with active stop sale', function () {
     StopSale::factory()->create([
         'hotel_id' => $this->tour->hotel_id,
-        'date_from' => now()->subDays(5),
-        'date_to' => now()->addDays(30),
+        'start_date' => now()->subDays(5),
+        'end_date' => now()->addDays(30),
+        'is_active' => true,
     ]);
 
     $data = validBookingData($this->tour);
