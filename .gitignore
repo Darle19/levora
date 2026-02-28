@@ -22,3 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/.claude
+/.cursor
+/.aider*
+/.copilot
+/.github/copilot
+.claude_memory
+.ai
