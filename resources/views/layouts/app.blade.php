@@ -80,67 +80,6 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden md:flex items-center space-x-1">
-                    <!-- Search Dropdown (public) -->
-                    <div class="dropdown relative">
-                        <button class="nav-link flex items-center px-4 py-2 text-sm font-medium text-slate-700 hover:text-green-700 transition">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                            {{ __('messages.nav.search') }}
-                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div class="dropdown-menu absolute left-0 mt-2 w-64 rounded-2xl shadow-xl bg-white border border-slate-100 py-2 z-50">
-                            <a href="{{ route('search.tours') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <span class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </span>
-                                <div>
-                                    <div class="font-medium">{{ __('messages.nav.tours') }}</div>
-                                    <div class="text-xs text-slate-500">{{ __('messages.footer.package_tours') }}</div>
-                                </div>
-                            </a>
-                            <a href="{{ route('search.hotels') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <span class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                </span>
-                                <div>
-                                    <div class="font-medium">{{ __('messages.nav.hotels') }}</div>
-                                    <div class="text-xs text-slate-500">{{ __('messages.search.accommodation') }}</div>
-                                </div>
-                            </a>
-                            <a href="{{ route('search.tickets') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <span class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
-                                </span>
-                                <div>
-                                    <div class="font-medium">{{ __('messages.nav.tickets') }}</div>
-                                    <div class="text-xs text-slate-500">{{ __('messages.footer.flight_tickets') }}</div>
-                                </div>
-                            </a>
-                            <div class="border-t border-slate-100 my-2"></div>
-                            <a href="{{ route('search.excursions') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <span class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                </span>
-                                <div>
-                                    <div class="font-medium">{{ __('messages.nav.excursions') }}</div>
-                                    <div class="text-xs text-slate-500">{{ __('messages.nav.excursions') }}</div>
-                                </div>
-                            </a>
-                            <a href="{{ route('search.cruises') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <span class="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center mr-3">
-                                    <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                </span>
-                                <div>
-                                    <div class="font-medium">{{ __('messages.nav.cruises') }}</div>
-                                    <div class="text-xs text-slate-500">{{ __('messages.nav.cruises') }}</div>
-                                </div>
-                            </a>
-                        </div>
-                    </div>
-
                     @auth
                     <!-- Claims -->
                     <a href="{{ route('claims.index') }}" class="nav-link flex items-center px-4 py-2 text-sm font-medium text-slate-700 hover:text-green-700 transition">
@@ -238,9 +177,6 @@
         <!-- Mobile Menu -->
         <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white">
             <div class="px-4 py-4 space-y-2">
-                <a href="{{ route('search.tours') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.tours') }}</a>
-                <a href="{{ route('search.hotels') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.hotels') }}</a>
-                <a href="{{ route('search.tickets') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.tickets') }}</a>
                 @auth
                 <a href="{{ route('claims.index') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.claims') }}</a>
                 <a href="{{ route('dashboard') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.dashboard') }}</a>
