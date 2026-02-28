@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__laravel-boost__application-info",
+      "Bash(composer require:*)",
+      "Bash(\"C:\\\\Users\\\\user\\\\.config\\\\herd\\\\bin\\\\composer.bat\" require spatie/laravel-permission intervention/image-laravel --with-all-dependencies)",
+      "Bash(php artisan:*)",
+      "mcp__laravel-boost__database-schema",
+      "mcp__laravel-boost__database-query",
+      "mcp__laravel-boost__browser-logs",
+      "mcp__laravel-boost__get-absolute-url",
+      "WebFetch(domain:malaktour.test)",
+      "Bash(curl:*)",
+      "mcp__laravel-boost__tinker",
+      "Bash(npm run build:*)",
+      "Bash(php -l:*)",
+      "Bash(powershell -Command:*)",
+      "mcp__laravel-boost__list-routes",
+      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\user\\\\Herd\\\\malaktour && composer require filament/filament:\\\\\"^3.2\\\\\" 2>&1\":*)",
+      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\user\\\\Herd\\\\malaktour && C:\\\\Users\\\\user\\\\.config\\\\herd\\\\bin\\\\composer.bat require filament/filament:^3.2 2>&1\")",
+      "Bash(powershell.exe -Command \"Set-Location ''c:\\\\Users\\\\user\\\\Herd\\\\malaktour''; composer require filament/filament:''^3.2'' 2>&1\")",
+      "Bash(powershell.exe -Command:*)",
+      "mcp__laravel-boost__search-docs",
+      "Bash(findstr:*)",
+      "mcp__laravel-boost__last-error",
+      "WebFetch(domain:online.aquatravelplus.com)",
+      "Bash(find /c/Users/user/Herd/malaktour/database/migrations -type f -name \"*.php\" -exec grep -l \"index\\\\|unique\" {} ;)",
+      "Bash(grep -n \"Exception\\\\|catch\\\\|try\\\\|Log::\" /c/Users/user/Herd/malaktour/app/Http/Controllers/*.php /c/Users/user/Herd/malaktour/app/Http/Controllers/**/*.php)",
+      "Bash(grep -n \"exception\\\\|catch\\\\|throw\" /c/Users/user/Herd/malaktour/app/Services/*.php -i)",
+      "Bash(xargs grep -l \"pdf\\\\|voucher\\\\|ticket\\\\|document\\\\|insurance\")",
+      "Bash(find resources/views -name \"*.blade.php\" -exec grep -l \"insurance\\\\|payment\" {} ;)",
+      "Bash(php -r ':*)",
+      "Bash(php \"C:/Users/user/AppData/Local/Programs/Herd/resources/app/composer/composer.phar\" require barryvdh/laravel-dompdf)",
+      "Bash(php \"/c/Users/user/.config/herd/bin/composer.phar\" require barryvdh/laravel-dompdf)"
+    ]
+  }
+}
