@@ -50,6 +50,34 @@
 <div class="st">
     <div style="max-width:1100px; margin:0 auto; padding:40px 10px 10px 10px;">
 
+        {{-- Banner Slider --}}
+        @if($banners->count())
+        <div class="banner-slider" style="margin-bottom:15px; position:relative; overflow:hidden; border-radius:8px; box-shadow:0 2px 8px hsl(0 0% 88%);">
+            <div class="banner-slider-track" style="display:flex; transition:transform 0.5s ease;">
+                @foreach($banners as $banner)
+                <div class="banner-slide" style="min-width:100%; flex-shrink:0;">
+                    @if($banner->link)
+                    <a href="{{ $banner->link }}" target="_blank">
+                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:400px; object-fit:cover; display:block;">
+                    </a>
+                    @else
+                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:400px; object-fit:cover; display:block;">
+                    @endif
+                </div>
+                @endforeach
+            </div>
+            @if($banners->count() > 1)
+            <button type="button" class="banner-prev" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.4); color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">&#10094;</button>
+            <button type="button" class="banner-next" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.4); color:#fff; border:none; border-radius:50%; width:36px; height:36px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">&#10095;</button>
+            <div class="banner-dots" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px;">
+                @foreach($banners as $i => $b)
+                <span class="banner-dot{{ $i === 0 ? ' active' : '' }}" data-index="{{ $i }}" style="width:10px; height:10px; border-radius:50%; background:{{ $i === 0 ? '#fff' : 'rgba(255,255,255,0.5)' }}; cursor:pointer;"></span>
+                @endforeach
+            </div>
+            @endif
+        </div>
+        @endif
+
         {{-- Search Mode Tabs --}}
         <div class="searchmodes">
             <div class="searchmode searchmode-active">{{ __('messages.nav.tours') }}</div>
@@ -544,6 +572,33 @@
             });
         });
     }
+
+    // Banner Slider
+    (function() {
+        const slider = document.querySelector('.banner-slider');
+        if (!slider) return;
+        const track = slider.querySelector('.banner-slider-track');
+        const slides = slider.querySelectorAll('.banner-slide');
+        const dots = slider.querySelectorAll('.banner-dot');
+        if (slides.length < 2) return;
+
+        let current = 0, timer;
+
+        function goTo(i) {
+            current = (i + slides.length) % slides.length;
+            track.style.transform = `translateX(-${current * 100}%)`;
+            dots.forEach((d, j) => d.style.background = j === current ? '#fff' : 'rgba(255,255,255,0.5)');
+        }
+
+        function autoPlay() { timer = setInterval(() => goTo(current + 1), 5000); }
+        function resetTimer() { clearInterval(timer); autoPlay(); }
+
+        slider.querySelector('.banner-prev').addEventListener('click', () => { goTo(current - 1); resetTimer(); });
+        slider.querySelector('.banner-next').addEventListener('click', () => { goTo(current + 1); resetTimer(); });
+        dots.forEach(d => d.addEventListener('click', () => { goTo(+d.dataset.index); resetTimer(); }));
+
+        autoPlay();
+    })();
 </script>
 @endpush
 @endsection
