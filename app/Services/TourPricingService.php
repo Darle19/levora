@@ -147,6 +147,7 @@ class TourPricingService
 
         // Flight portion (sum all linked flights × pax by age)
         $flightTotal = 0;
+        $flightPerAdult = 0;
         foreach ($tour->flights as $flight) {
             $adultPrice = $this->currencyConverter->convert(
                 (float) $flight->price_adult, $flight->currency_id, $targetCurrencyId
@@ -161,6 +162,7 @@ class TourPricingService
             $flightTotal += ($adultPrice * $adults)
                 + ($childPrice * $children)
                 + ($infantPrice * $infants);
+            $flightPerAdult += $adultPrice;
         }
 
         $baseCost = $hotelTotal + $flightTotal;
@@ -168,6 +170,7 @@ class TourPricingService
         $markupAmount = round($baseCost * $markup / 100, 2);
         $total = round($baseCost + $markupAmount, 2);
 
+        // [Bug #5] Use per-adult flight price (not total), and include markup
         return [
             'hotel_total' => round($hotelTotal, 2),
             'flight_total' => round($flightTotal, 2),
@@ -175,7 +178,7 @@ class TourPricingService
             'markup_percent' => $markup,
             'markup_amount' => $markupAmount,
             'total' => $total,
-            'per_adult' => round($hotelAdult + $this->getFlightPrice($tour, $targetCurrencyId), 2),
+            'per_adult' => round(($hotelAdult + $flightPerAdult) * (1 + $markup / 100), 2),
         ];
     }
 

@@ -5,7 +5,10 @@ namespace App\Filament\Resources\Hotels;
 use App\Filament\Resources\Hotels\Pages\CreateHotel;
 use App\Filament\Resources\Hotels\Pages\EditHotel;
 use App\Filament\Resources\Hotels\Pages\ListHotels;
+use App\Filament\Resources\Hotels\RelationManagers\GroupOffersRelationManager;
 use App\Filament\Resources\Hotels\RelationManagers\RoomTypesRelationManager;
+use App\Filament\Resources\Hotels\RelationManagers\SeasonalPricesRelationManager;
+use App\Filament\Resources\Hotels\RelationManagers\TransfersRelationManager;
 use App\Filament\Resources\Hotels\Schemas\HotelForm;
 use App\Filament\Resources\Hotels\Tables\HotelsTable;
 use App\Models\Hotel;
@@ -40,6 +43,9 @@ class HotelResource extends Resource
     {
         return [
             RoomTypesRelationManager::class,
+            SeasonalPricesRelationManager::class,
+            TransfersRelationManager::class,
+            GroupOffersRelationManager::class,
         ];
     }
 

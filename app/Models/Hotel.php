@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Hotel extends Model
 {
@@ -83,4 +84,18 @@ class Hotel extends Model
         return $this->belongsTo(Currency::class);
     }
 
+    public function seasonalPrices(): HasMany
+    {
+        return $this->hasMany(HotelSeasonalPrice::class);
+    }
+
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(HotelTransfer::class);
+    }
+
+    public function groupOffers(): HasMany
+    {
+        return $this->hasMany(HotelGroupOffer::class);
+    }
 }
