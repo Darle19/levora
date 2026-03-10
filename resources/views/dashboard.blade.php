@@ -131,15 +131,6 @@
                     <span class="text-sm font-medium text-slate-700">{{ __('messages.nav.excursions') }}</span>
                 </a>
 
-                <a href="{{ route('search.cruises') }}" class="bg-white rounded-2xl p-5 border border-slate-200 text-center card-hover group">
-                    <div class="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
-                        <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <span class="text-sm font-medium text-slate-700">{{ __('messages.nav.cruises') }}</span>
-                </a>
-
                 <a href="{{ route('claims.index') }}" class="bg-white rounded-2xl p-5 border border-slate-200 text-center card-hover group">
                     <div class="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
                         <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -8,7 +8,6 @@ return [
         'hotels' => 'Hotels',
         'tickets' => 'Tickets',
         'excursions' => 'Excursions',
-        'cruises' => 'Cruises',
         'claims' => 'Claims',
         'agency' => 'Agency',
         'profile' => 'Profile',

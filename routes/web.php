@@ -9,7 +9,6 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\Search\CrossingTourSearchController;
-use App\Http\Controllers\Search\CruiseSearchController;
 use App\Http\Controllers\Search\ExcursionSearchController;
 use App\Http\Controllers\Search\HotelSearchController;
 use App\Http\Controllers\Search\TicketSearchController;
@@ -31,7 +30,6 @@ Route::prefix('search')->name('search.')->group(function () {
     Route::post('/tickets', [TicketSearchController::class, 'search'])->name('tickets.search');
     Route::get('/excursions', [ExcursionSearchController::class, 'index'])->name('excursions');
     Route::get('/crossing-tours', [CrossingTourSearchController::class, 'index'])->name('crossing-tours');
-    Route::get('/cruises', [CruiseSearchController::class, 'index'])->name('cruises');
 });
 
 // Tour details (public)

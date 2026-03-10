@@ -8,7 +8,6 @@ return [
         'hotels' => 'Отели',
         'tickets' => 'Билеты',
         'excursions' => 'Экскурсии',
-        'cruises' => 'Круизы',
         'claims' => 'Заявки',
         'agency' => 'Агентство',
         'profile' => 'Профиль',

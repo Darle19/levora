@@ -50,7 +50,6 @@
             <div class="searchmode searchmode-inactive"><a href="{{ route('search.hotels') }}">{{ __('messages.nav.hotels') }}</a></div>
             <div class="searchmode searchmode-inactive"><a href="{{ route('search.tickets') }}">{{ __('messages.nav.tickets') }}</a></div>
             <div class="searchmode searchmode-inactive"><a href="{{ route('search.excursions') }}">{{ __('messages.nav.excursions') }}</a></div>
-            <div class="searchmode searchmode-inactive"><a href="{{ route('search.cruises') }}">{{ __('messages.nav.cruises') }}</a></div>
         </div>
 
         {{-- Main content: sidebar + results --}}
