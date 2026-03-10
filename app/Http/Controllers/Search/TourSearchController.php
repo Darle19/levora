@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Search;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TourSearchRequest;
+use App\Models\Banner;
 use App\Models\Tour;
 use App\Services\TourSearchService;
 use Illuminate\Http\JsonResponse;
@@ -21,8 +22,9 @@ class TourSearchController extends Controller
     public function index(): View
     {
         $filters = $this->searchService->getFilterOptions();
+        $banners = Banner::active()->ordered()->get();
 
-        return view('search.tours.index', $filters);
+        return view('search.tours.index', array_merge($filters, ['banners' => $banners]));
     }
 
     /**
