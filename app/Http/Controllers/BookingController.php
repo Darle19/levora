@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\AdditionalService;
 use App\Models\Booking;
+use App\Models\Flight;
 use App\Models\Order;
+use App\Models\RoomType;
 use App\Models\StopSale;
 use App\Models\Tour;
+use App\Models\TourPrice;
 use App\Models\Tourist;
+use App\Services\CurrencyConverter;
 use App\Services\TourPricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -95,22 +99,6 @@ class BookingController extends Controller
             'additional_services.*' => 'exists:additional_services,id',
         ]);
 
-        // Load the tour
-        $tour = Tour::with(['currency', 'tourPrices', 'flights'])->findOrFail($validated['tour_id']);
-
-        // Guard: tour must be available, in the future, and not stopped
-        if (!$tour->is_available || $tour->date_from < today()) {
-            return back()->withInput()->with('error', 'This tour is no longer available for booking.');
-        }
-
-        if ($tour->hotel_id && StopSale::where('hotel_id', $tour->hotel_id)
-                ->where('start_date', '<=', today())
-                ->where('end_date', '>=', today())
-                ->where('is_active', true)
-                ->exists()) {
-            return back()->withInput()->with('error', 'This tour is currently on stop sale.');
-        }
-
         // Count tourists by age category
         $numberOfTourists = count($validated['tourists']);
         $adults = 0;
@@ -124,20 +112,132 @@ class BookingController extends Controller
             };
         }
 
-        // Calculate total price using room type if available
         $roomTypeId = $validated['room_type_id'] ?? null;
-        $pricingService = app(TourPricingService::class);
-
-        if ($roomTypeId && $tour->tourPrices->where('room_type_id', $roomTypeId)->where('is_active', true)->isNotEmpty()) {
-            $priceBreakdown = $pricingService->calculateBookingPrice($tour, $roomTypeId, $adults, $children, $infants);
-            $totalPrice = $priceBreakdown ? $priceBreakdown['total'] : $tour->price * $numberOfTourists;
-        } else {
-            $totalPrice = $tour->price * $numberOfTourists;
-            $roomTypeId = null;
-        }
 
         try {
             DB::beginTransaction();
+
+            // [Bug #3] Pessimistic lock to prevent race conditions on concurrent bookings
+            $tour = Tour::with(['currency', 'tourPrices', 'flights', 'additionalServices'])
+                ->lockForUpdate()
+                ->findOrFail($validated['tour_id']);
+
+            // Guard: tour must be available and in the future
+            if (!$tour->is_available || $tour->date_from < today()) {
+                DB::rollBack();
+                return back()->withInput()->with('error', 'This tour is no longer available for booking.');
+            }
+
+            // [Bug #4] Check stop sale against tour departure date, not today
+            if ($tour->hotel_id && StopSale::where('hotel_id', $tour->hotel_id)
+                    ->where('start_date', '<=', $tour->date_from)
+                    ->where('end_date', '>=', $tour->date_from)
+                    ->where('is_active', true)
+                    ->exists()) {
+                DB::rollBack();
+                return back()->withInput()->with('error', 'This tour is on stop sale for the departure period.');
+            }
+
+            // [Bug #6] Validate tourist count against tour capacity
+            $paxWithoutInfants = $adults + $children;
+            if ($tour->adults && $adults > $tour->adults) {
+                DB::rollBack();
+                return back()->withInput()->with('error', "This tour allows a maximum of {$tour->adults} adults.");
+            }
+            if ($tour->children !== null && $children > $tour->children) {
+                DB::rollBack();
+                return back()->withInput()->with('error', "This tour allows a maximum of {$tour->children} children.");
+            }
+
+            // [Bug #7] Validate room type capacity
+            if ($roomTypeId) {
+                $roomType = RoomType::find($roomTypeId);
+                if ($roomType) {
+                    if ($adults > $roomType->max_adults) {
+                        DB::rollBack();
+                        return back()->withInput()->with('error', "The selected room type supports a maximum of {$roomType->max_adults} adults.");
+                    }
+                    if ($children > $roomType->max_children) {
+                        DB::rollBack();
+                        return back()->withInput()->with('error', "The selected room type supports a maximum of {$roomType->max_children} children.");
+                    }
+                }
+            }
+
+            // [Bug #1] Check and decrement tour price availability
+            if ($roomTypeId) {
+                $tourPrice = TourPrice::where('tour_id', $tour->id)
+                    ->where('room_type_id', $roomTypeId)
+                    ->where('is_active', true)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$tourPrice || $tourPrice->availability < 1) {
+                    DB::rollBack();
+                    return back()->withInput()->with('error', 'The selected room type is no longer available.');
+                }
+
+                $tourPrice->decrement('availability');
+            }
+
+            // [Bug #2] Check and decrement flight seat availability
+            foreach ($tour->flights as $flight) {
+                $lockedFlight = Flight::lockForUpdate()->find($flight->id);
+                if ($lockedFlight->available_seats !== null && $lockedFlight->available_seats < $paxWithoutInfants) {
+                    DB::rollBack();
+                    return back()->withInput()->with('error', "Not enough seats available on flight {$lockedFlight->flight_number}.");
+                }
+                if ($lockedFlight->available_seats !== null) {
+                    $lockedFlight->decrement('available_seats', $paxWithoutInfants);
+                }
+            }
+
+            // Calculate total price using room type if available
+            $pricingService = app(TourPricingService::class);
+
+            if ($roomTypeId && $tour->tourPrices->where('room_type_id', $roomTypeId)->where('is_active', true)->isNotEmpty()) {
+                $priceBreakdown = $pricingService->calculateBookingPrice($tour, $roomTypeId, $adults, $children, $infants);
+                $totalPrice = $priceBreakdown ? $priceBreakdown['total'] : $tour->price * $numberOfTourists;
+            } else {
+                $totalPrice = $tour->price * $numberOfTourists;
+                $roomTypeId = null;
+            }
+
+            // [Bug #8 & #9] Calculate additional services with currency conversion and markup
+            $currencyConverter = app(CurrencyConverter::class);
+            $markupPercent = $tour->getEffectiveMarkupPercent();
+            $servicesTotalPrice = 0;
+            $selectedServiceIds = array_unique($validated['additional_services'] ?? []);
+            $serviceAttachments = [];
+
+            if (!empty($selectedServiceIds)) {
+                $services = AdditionalService::with('currency')->whereIn('id', $selectedServiceIds)->get();
+                foreach ($services as $service) {
+                    $tourService = $tour->additionalServices->firstWhere('id', $service->id);
+                    $rawPrice = $tourService?->pivot->price_override ?? $service->price;
+
+                    // Convert service price to tour currency
+                    $convertedPrice = $currencyConverter->convert(
+                        (float) $rawPrice,
+                        $service->currency_id,
+                        $tour->currency_id,
+                    );
+
+                    // Apply markup consistently with tour pricing
+                    $markedUpPrice = round($convertedPrice * (1 + $markupPercent / 100), 2);
+
+                    $quantity = $service->is_per_person ? $numberOfTourists : 1;
+                    $lineTotal = round($markedUpPrice * $quantity, 2);
+
+                    $serviceAttachments[$service->id] = [
+                        'price' => $lineTotal,
+                        'quantity' => $quantity,
+                    ];
+                    $servicesTotalPrice += $lineTotal;
+                }
+            }
+
+            $totalPrice += $servicesTotalPrice;
 
             // Generate unique order number (ULID is monotonic and collision-proof)
             $orderNumber = 'ORD-' . Str::ulid();
@@ -152,9 +252,6 @@ class BookingController extends Controller
                 'currency_id' => $tour->currency_id,
                 'notes' => $validated['notes'] ?? null,
             ]);
-
-            // Generate unique booking number
-            $bookingNumber = 'BK-' . Str::ulid();
 
             // Create Booking (polymorphic for Tour)
             $booking = Booking::create([
@@ -195,23 +292,9 @@ class BookingController extends Controller
                 ]);
             }
 
-            // Attach selected additional services
-            $selectedServiceIds = array_unique($validated['additional_services'] ?? []);
-            if (!empty($selectedServiceIds)) {
-                $services = AdditionalService::whereIn('id', $selectedServiceIds)->get();
-                foreach ($services as $service) {
-                    $tourService = $tour->additionalServices()->where('additional_service_id', $service->id)->first();
-                    $price = $tourService?->pivot->price_override ?? $service->price;
-                    $quantity = $service->is_per_person ? $numberOfTourists : 1;
-                    $booking->additionalServices()->attach($service->id, [
-                        'price' => $price * $quantity,
-                        'quantity' => $quantity,
-                    ]);
-                    $totalPrice += $price * $quantity;
-                }
-                // Update booking and order with service costs
-                $booking->update(['price' => $totalPrice]);
-                $order->update(['total_price' => $totalPrice]);
+            // Attach additional services
+            if (!empty($serviceAttachments)) {
+                $booking->additionalServices()->attach($serviceAttachments);
             }
 
             DB::commit();
