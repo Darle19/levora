@@ -57,6 +57,12 @@ class BookingController extends Controller
             'tourPrices.currency',
         ]);
 
+        // Block booking form if any linked flight is sold out
+        $soldOutFlight = $tour->flights->first(fn($f) => $f->available_seats !== null && $f->available_seats < 1);
+        if ($soldOutFlight) {
+            abort(404);
+        }
+
         $countries = \App\Models\Country::where('is_active', 1)->orderBy('name_en')->get();
 
         return view('bookings.create', compact('tour', 'countries'));
