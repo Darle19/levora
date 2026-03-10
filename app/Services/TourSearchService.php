@@ -22,7 +22,10 @@ class TourSearchService
     {
         return Cache::remember('tour_filter_options', 1800, fn() => [
             'countries' => Country::where('is_active', true)->orderBy('order')->get(),
-            'cities' => City::where('is_active', true)->orderBy('order')->get(),
+            'cities' => City::where('is_active', true)
+                ->whereIn('id', Tour::distinct()->pluck('departure_city_id'))
+                ->orderBy('order')
+                ->get(),
             'tourTypes' => TourType::where('is_active', true)->get(),
             'programTypes' => ProgramType::where('is_active', true)->get(),
             'transportTypes' => TransportType::where('is_active', true)->get(),
