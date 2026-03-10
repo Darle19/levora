@@ -50,10 +50,6 @@ class TourPackagesSeeder extends Seeder
         $istanbulCityId = 2;
         $parisCityId = 6;
 
-        // Additional departure cities
-        $samarkandCityId = DB::table('cities')->where('name_en', 'Samarkand')->value('id');
-        $bukharaCityId = DB::table('cities')->where('name_en', 'Bukhara')->value('id');
-
         // ─── NEW AIRPORTS ───
         $dpsId = DB::table('airports')->insertGetId([
             'name_en' => 'Ngurah Rai International Airport', 'name_ru' => 'Аэропорт Нгурах-Рай', 'name_uz' => 'Ngurah Rai xalqaro aeroporti',
@@ -72,8 +68,6 @@ class TourPackagesSeeder extends Seeder
         $tasId = 1; // Tashkent TAS
         $istId = 2; // Istanbul IST
         $cdgId = 4; // Paris CDG
-        $skdId = DB::table('airports')->where('code', 'SKD')->value('id'); // Samarkand
-        $bhkId = DB::table('airports')->where('code', 'BHK')->value('id'); // Bukhara
 
         // ─── NEW AIRLINES ───
         $centrumAirId = DB::table('airlines')->insertGetId([
@@ -415,7 +409,6 @@ class TourPackagesSeeder extends Seeder
         };
 
         // Flight storage: [depDate => ['outbound' => id, 'return' => id, ...]]
-        // Tashkent departure flights
         $turkeyFlights = [];
         $bakuFlightsFromIst = [];
         $bakuFlightsReturn = [];
@@ -423,17 +416,6 @@ class TourPackagesSeeder extends Seeder
         $batumiFlights = [];
         $parisFlightsTK = [];
         $parisFlightsHY = [];
-
-        // Samarkand departure flights
-        $skdTurkeyFlights = [];
-        $skdBaliFlights = [];
-        $skdBatumiFlights = [];
-        $skdParisFlightsTK = [];
-        $skdParisFlightsHY = [];
-
-        // Bukhara departure flights
-        $bhkTurkeyFlights = [];
-        $bhkBatumiFlights = [];
 
         $flightCounter = ['C2' => 100, 'ID' => 200, 'TK' => 300, 'HY' => 400];
 
@@ -481,53 +463,6 @@ class TourPackagesSeeder extends Seeder
             $fNum = 'HY' . $flightCounter['HY']++;
             $retId = $insertFlight($uzAirsId, $cdgId, $tasId, $fNum, $returnDate7, '16:00', '02:00', now()->parse($returnDate7)->addDay()->format('Y-m-d'), 380.00, 285.00, 200);
             $parisFlightsHY[$depDate] = ['return' => $retId];
-
-            // ── SAMARKAND DEPARTURES ──
-
-            // 5. Samarkand → Istanbul (Centrum Air)
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $outId = $insertFlight($centrumAirId, $skdId, $istId, $fNum, $depDate, '09:30', '13:00', $depDate, 270.00, 195.00, 150);
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $retId = $insertFlight($centrumAirId, $istId, $skdId, $fNum, $returnDate10, '15:00', '20:30', $returnDate10, 270.00, 195.00, 150);
-            $skdTurkeyFlights[$depDate] = ['outbound' => $outId, 'return' => $retId];
-
-            // 6. Samarkand → Bali (Batik Air)
-            $fNum = 'ID' . $flightCounter['ID']++;
-            $outId = $insertFlight($batikAirId, $skdId, $dpsId, $fNum, $depDate, '23:00', '13:00', now()->parse($depDate)->addDay()->format('Y-m-d'), 480.00, 360.00, 180);
-            $fNum = 'ID' . $flightCounter['ID']++;
-            $retId = $insertFlight($batikAirId, $dpsId, $skdId, $fNum, $returnDate10, '15:00', '23:00', $returnDate10, 480.00, 360.00, 180);
-            $skdBaliFlights[$depDate] = ['outbound' => $outId, 'return' => $retId];
-
-            // 7. Samarkand → Batumi (Centrum)
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $outId = $insertFlight($centrumAirId, $skdId, $busId, $fNum, $depDate, '10:00', '12:30', $depDate, 220.00, 165.00, 120);
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $retId = $insertFlight($centrumAirId, $busId, $skdId, $fNum, $returnDate7, '14:00', '16:30', $returnDate7, 220.00, 165.00, 120);
-            $skdBatumiFlights[$depDate] = ['outbound' => $outId, 'return' => $retId];
-
-            // 8. Samarkand → Paris (Turkish via IST)
-            $fNum = 'TK' . $flightCounter['TK']++;
-            $outId = $insertFlight($turkishId, $skdId, $cdgId, $fNum, $depDate, '07:00', '15:30', $depDate, 420.00, 315.00, 180);
-            $skdParisFlightsTK[$depDate] = ['outbound' => $outId];
-            $fNum = 'HY' . $flightCounter['HY']++;
-            $retId = $insertFlight($uzAirsId, $cdgId, $skdId, $fNum, $returnDate7, '17:00', '03:00', now()->parse($returnDate7)->addDay()->format('Y-m-d'), 400.00, 300.00, 180);
-            $skdParisFlightsHY[$depDate] = ['return' => $retId];
-
-            // ── BUKHARA DEPARTURES ──
-
-            // 9. Bukhara → Istanbul (Centrum Air)
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $outId = $insertFlight($centrumAirId, $bhkId, $istId, $fNum, $depDate, '10:30', '14:00', $depDate, 280.00, 200.00, 120);
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $retId = $insertFlight($centrumAirId, $istId, $bhkId, $fNum, $returnDate10, '16:00', '21:30', $returnDate10, 280.00, 200.00, 120);
-            $bhkTurkeyFlights[$depDate] = ['outbound' => $outId, 'return' => $retId];
-
-            // 10. Bukhara → Batumi (Centrum)
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $outId = $insertFlight($centrumAirId, $bhkId, $busId, $fNum, $depDate, '11:00', '13:30', $depDate, 230.00, 170.00, 100);
-            $fNum = 'C2' . $flightCounter['C2']++;
-            $retId = $insertFlight($centrumAirId, $busId, $bhkId, $fNum, $returnDate7, '15:00', '17:30', $returnDate7, 230.00, 170.00, 100);
-            $bhkBatumiFlights[$depDate] = ['outbound' => $outId, 'return' => $retId];
         }
 
         // ─── TOURS ───
@@ -739,193 +674,7 @@ class TourPackagesSeeder extends Seeder
             }
         }
 
-        // ═══════════════════════════════════════════════
-        // TOUR PACKAGE 5: Samarkand departures - Istanbul
-        // ═══════════════════════════════════════════════
-        foreach ($departureDates as $idx => $depDate) {
-            $returnDate = now()->parse($depDate)->addDays(10)->format('Y-m-d');
-
-            foreach ($istanbulHotels as $hotelId) {
-                $flightCost = 270 + 270;
-                $createTour([
-                    'tour_type_id' => $tourTypeCombined,
-                    'program_type_id' => $programStandard,
-                    'country_id' => $turkeyId,
-                    'resort_id' => $sultanahmetId,
-                    'hotel_id' => $hotelId,
-                    'transport_type_id' => $airplaneId,
-                    'departure_city_id' => $samarkandCityId,
-                    'nights' => 10,
-                    'currency_id' => $usdId,
-                    'date_from' => $depDate,
-                    'date_to' => $returnDate,
-                    'meal_type_id' => $mealBB,
-                    'is_hot' => $idx < 2 ? 1 : 0,
-                    'hotel_price' => $getHotelPrice($hotelId),
-                    'flight_cost' => $flightCost,
-                ], [
-                    ['id' => $skdTurkeyFlights[$depDate]['outbound'], 'direction' => 'outbound'],
-                    ['id' => $skdTurkeyFlights[$depDate]['return'], 'direction' => 'return'],
-                ]);
-            }
-        }
-
-        // ═══════════════════════════════════════════════
-        // TOUR PACKAGE 6: Samarkand departures - Bali
-        // ═══════════════════════════════════════════════
-        foreach ($departureDates as $idx => $depDate) {
-            $returnDate = now()->parse($depDate)->addDays(10)->format('Y-m-d');
-
-            foreach ($baliHotels as $hotel) {
-                $flightCost = 480 + 480;
-                $createTour([
-                    'tour_type_id' => $tourTypeBeach,
-                    'program_type_id' => $programStandard,
-                    'country_id' => $indonesiaId,
-                    'resort_id' => $hotel['resort_id'],
-                    'hotel_id' => $hotel['id'],
-                    'transport_type_id' => $airplaneId,
-                    'departure_city_id' => $samarkandCityId,
-                    'nights' => 10,
-                    'currency_id' => $usdId,
-                    'date_from' => $depDate,
-                    'date_to' => $returnDate,
-                    'meal_type_id' => $mealBB,
-                    'is_hot' => $idx < 2 ? 1 : 0,
-                    'hotel_price' => $getHotelPrice($hotel['id']),
-                    'flight_cost' => $flightCost,
-                ], [
-                    ['id' => $skdBaliFlights[$depDate]['outbound'], 'direction' => 'outbound'],
-                    ['id' => $skdBaliFlights[$depDate]['return'], 'direction' => 'return'],
-                ]);
-            }
-        }
-
-        // ═══════════════════════════════════════════════
-        // TOUR PACKAGE 7: Samarkand departures - Batumi
-        // ═══════════════════════════════════════════════
-        foreach ($departureDates as $idx => $depDate) {
-            $returnDate = now()->parse($depDate)->addDays(7)->format('Y-m-d');
-
-            foreach ($batumiHotels as $hotel) {
-                $flightCost = 220 + 220;
-                $createTour([
-                    'tour_type_id' => $tourTypeBeach,
-                    'program_type_id' => $programStandard,
-                    'country_id' => $georgiaId,
-                    'resort_id' => $hotel['resort_id'],
-                    'hotel_id' => $hotel['id'],
-                    'transport_type_id' => $airplaneId,
-                    'departure_city_id' => $samarkandCityId,
-                    'nights' => 7,
-                    'currency_id' => $usdId,
-                    'date_from' => $depDate,
-                    'date_to' => $returnDate,
-                    'meal_type_id' => $mealHB,
-                    'is_hot' => $idx < 2 ? 1 : 0,
-                    'hotel_price' => $getHotelPrice($hotel['id']),
-                    'flight_cost' => $flightCost,
-                ], [
-                    ['id' => $skdBatumiFlights[$depDate]['outbound'], 'direction' => 'outbound'],
-                    ['id' => $skdBatumiFlights[$depDate]['return'], 'direction' => 'return'],
-                ]);
-            }
-        }
-
-        // ═══════════════════════════════════════════════
-        // TOUR PACKAGE 8: Samarkand departures - Paris
-        // ═══════════════════════════════════════════════
-        foreach ($departureDates as $idx => $depDate) {
-            $returnDate = now()->parse($depDate)->addDays(7)->format('Y-m-d');
-
-            foreach ($parisHotels as $hotel) {
-                $flightCost = 420 + 400;
-                $createTour([
-                    'tour_type_id' => $tourTypeExcursion,
-                    'program_type_id' => $programStandard,
-                    'country_id' => $franceId,
-                    'resort_id' => $hotel['resort_id'],
-                    'hotel_id' => $hotel['id'],
-                    'transport_type_id' => $airplaneId,
-                    'departure_city_id' => $samarkandCityId,
-                    'nights' => 7,
-                    'currency_id' => $usdId,
-                    'date_from' => $depDate,
-                    'date_to' => $returnDate,
-                    'meal_type_id' => $mealBB,
-                    'is_hot' => $idx < 2 ? 1 : 0,
-                    'hotel_price' => $getHotelPrice($hotel['id']),
-                    'flight_cost' => $flightCost,
-                ], [
-                    ['id' => $skdParisFlightsTK[$depDate]['outbound'], 'direction' => 'outbound'],
-                    ['id' => $skdParisFlightsHY[$depDate]['return'], 'direction' => 'return'],
-                ]);
-            }
-        }
-
-        // ═══════════════════════════════════════════════
-        // TOUR PACKAGE 9: Bukhara departures - Istanbul
-        // ═══════════════════════════════════════════════
-        foreach ($departureDates as $idx => $depDate) {
-            $returnDate = now()->parse($depDate)->addDays(10)->format('Y-m-d');
-
-            foreach ($istanbulHotels as $hotelId) {
-                $flightCost = 280 + 280;
-                $createTour([
-                    'tour_type_id' => $tourTypeCombined,
-                    'program_type_id' => $programStandard,
-                    'country_id' => $turkeyId,
-                    'resort_id' => $sultanahmetId,
-                    'hotel_id' => $hotelId,
-                    'transport_type_id' => $airplaneId,
-                    'departure_city_id' => $bukharaCityId,
-                    'nights' => 10,
-                    'currency_id' => $usdId,
-                    'date_from' => $depDate,
-                    'date_to' => $returnDate,
-                    'meal_type_id' => $mealBB,
-                    'is_hot' => $idx < 2 ? 1 : 0,
-                    'hotel_price' => $getHotelPrice($hotelId),
-                    'flight_cost' => $flightCost,
-                ], [
-                    ['id' => $bhkTurkeyFlights[$depDate]['outbound'], 'direction' => 'outbound'],
-                    ['id' => $bhkTurkeyFlights[$depDate]['return'], 'direction' => 'return'],
-                ]);
-            }
-        }
-
-        // ═══════════════════════════════════════════════
-        // TOUR PACKAGE 10: Bukhara departures - Batumi
-        // ═══════════════════════════════════════════════
-        foreach ($departureDates as $idx => $depDate) {
-            $returnDate = now()->parse($depDate)->addDays(7)->format('Y-m-d');
-
-            foreach ($batumiHotels as $hotel) {
-                $flightCost = 230 + 230;
-                $createTour([
-                    'tour_type_id' => $tourTypeBeach,
-                    'program_type_id' => $programStandard,
-                    'country_id' => $georgiaId,
-                    'resort_id' => $hotel['resort_id'],
-                    'hotel_id' => $hotel['id'],
-                    'transport_type_id' => $airplaneId,
-                    'departure_city_id' => $bukharaCityId,
-                    'nights' => 7,
-                    'currency_id' => $usdId,
-                    'date_from' => $depDate,
-                    'date_to' => $returnDate,
-                    'meal_type_id' => $mealHB,
-                    'is_hot' => $idx < 2 ? 1 : 0,
-                    'hotel_price' => $getHotelPrice($hotel['id']),
-                    'flight_cost' => $flightCost,
-                ], [
-                    ['id' => $bhkBatumiFlights[$depDate]['outbound'], 'direction' => 'outbound'],
-                    ['id' => $bhkBatumiFlights[$depDate]['return'], 'direction' => 'return'],
-                ]);
-            }
-        }
-
-        $this->command->info('Created ' . count($tourIds) . ' tours across 10 packages (3 departure cities).');
+        $this->command->info('Created ' . count($tourIds) . ' tours across 4 packages.');
         $this->command->info('Hotels: Istanbul=' . count($istanbulHotels) . ', Baku=' . count($bakuHotels) . ', Bali=' . count($baliHotels) . ', Batumi=' . count($batumiHotels) . ', Paris=' . count($parisHotels));
     }
 }

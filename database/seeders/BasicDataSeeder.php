@@ -53,8 +53,6 @@ class BasicDataSeeder extends Seeder
         $dubai = \App\Models\City::create(['country_id' => $uae->id, 'name_en' => 'Dubai', 'name_ru' => 'Дубай', 'name_uz' => 'Dubay', 'is_active' => true]);
         $cairo = \App\Models\City::create(['country_id' => $egypt->id, 'name_en' => 'Cairo', 'name_ru' => 'Каир', 'name_uz' => 'Qohira', 'is_active' => true]);
         $bangkok = \App\Models\City::create(['country_id' => $thailand->id, 'name_en' => 'Bangkok', 'name_ru' => 'Бангкок', 'name_uz' => 'Bangkok', 'is_active' => true]);
-        $samarkand = \App\Models\City::create(['country_id' => $uzbekistan->id, 'name_en' => 'Samarkand', 'name_ru' => 'Самарканд', 'name_uz' => 'Samarqand', 'is_active' => true]);
-        $bukhara = \App\Models\City::create(['country_id' => $uzbekistan->id, 'name_en' => 'Bukhara', 'name_ru' => 'Бухара', 'name_uz' => 'Buxoro', 'is_active' => true]);
 
         // Resorts
         $antalya = \App\Models\Resort::create(['country_id' => $turkey->id, 'name_en' => 'Antalya', 'name_ru' => 'Анталия', 'name_uz' => 'Antalya', 'is_active' => true]);
@@ -66,8 +64,6 @@ class BasicDataSeeder extends Seeder
         \App\Models\Airport::create(['city_id' => $tashkent->id, 'name_en' => 'Tashkent International Airport', 'name_ru' => 'Международный аэропорт Ташкента', 'name_uz' => 'Toshkent xalqaro aeroporti', 'code' => 'TAS', 'is_active' => true]);
         \App\Models\Airport::create(['city_id' => $istanbul->id, 'name_en' => 'Istanbul Airport', 'name_ru' => 'Аэропорт Стамбул', 'name_uz' => 'Istanbul aeroporti', 'code' => 'IST', 'is_active' => true]);
         \App\Models\Airport::create(['city_id' => $dubai->id, 'name_en' => 'Dubai International Airport', 'name_ru' => 'Международный аэропорт Дубая', 'name_uz' => 'Dubay xalqaro aeroporti', 'code' => 'DXB', 'is_active' => true]);
-        \App\Models\Airport::create(['city_id' => $samarkand->id, 'name_en' => 'Samarkand International Airport', 'name_ru' => 'Международный аэропорт Самарканда', 'name_uz' => 'Samarqand xalqaro aeroporti', 'code' => 'SKD', 'is_active' => true]);
-        \App\Models\Airport::create(['city_id' => $bukhara->id, 'name_en' => 'Bukhara International Airport', 'name_ru' => 'Международный аэропорт Бухары', 'name_uz' => 'Buxoro xalqaro aeroporti', 'code' => 'BHK', 'is_active' => true]);
 
         // Hotel Categories
         $cat5 = \App\Models\HotelCategory::create(['name' => '5 stars', 'stars' => 5, 'is_active' => true]);
@@ -102,10 +98,8 @@ class BasicDataSeeder extends Seeder
         $uz_airways = \App\Models\Airline::create(['name' => 'Uzbekistan Airways', 'code' => 'HY', 'is_active' => true]);
         $turkish_airlines = \App\Models\Airline::create(['name' => 'Turkish Airlines', 'code' => 'TK', 'is_active' => true]);
 
-        // Sample Tours - distributed across departure cities
-        $departureCities = [$tashkent, $samarkand, $bukhara];
+        // Sample Tours
         for ($i = 1; $i <= 10; $i++) {
-            $departureCity = $departureCities[$i % count($departureCities)];
             \App\Models\Tour::create([
                 'tour_type_id' => $beach->id,
                 'program_type_id' => $standard->id,
@@ -113,7 +107,7 @@ class BasicDataSeeder extends Seeder
                 'resort_id' => $antalya->id,
                 'hotel_id' => $hotel1->id,
                 'transport_type_id' => $plane->id,
-                'departure_city_id' => $departureCity->id,
+                'departure_city_id' => $tashkent->id,
                 'nights' => 7,
                 'price' => 1200 + ($i * 100),
                 'currency_id' => $usd->id,

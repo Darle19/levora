@@ -38,10 +38,6 @@ class AddHotelsFixFlightsSeeder extends Seeder
         $istanbulCityId = 2;
         $bakuCityId = DB::table('cities')->where('name_en', 'Baku')->value('id');
         $tashkentCityId = 1;
-        $samarkandCityId = DB::table('cities')->where('name_en', 'Samarkand')->value('id');
-        $bukharaCityId = DB::table('cities')->where('name_en', 'Bukhara')->value('id');
-        $skdAirportId = DB::table('airports')->where('code', 'SKD')->value('id');
-        $bhkAirportId = DB::table('airports')->where('code', 'BHK')->value('id');
 
         // ═══════════════════════════════════════════════
         // STEP 1: FIX FLIGHTS - All must be TAS→X or X→TAS
@@ -213,19 +209,14 @@ class AddHotelsFixFlightsSeeder extends Seeder
 
         $tourCount = 0;
 
-        // Get existing flight lookup by departure_date
+        // Get existing flight lookup: TAS→IST and IST→TAS by departure_date
         $tasIstByDate = [];
         $istTasByDate = [];
         $tasGydByDate = [];
         $gydTasByDate = [];
-        $skdIstByDate = [];
-        $istSkdByDate = [];
-        $skdGydByDate = [];
-        $gydSkdByDate = [];
-        $bhkIstByDate = [];
-        $istBhkByDate = [];
 
         $flights = DB::table('flights')
+            ->where('airline_id', $centrumAirId)
             ->get(['id', 'from_airport_id', 'to_airport_id', 'departure_date']);
 
         foreach ($flights as $f) {
@@ -238,14 +229,6 @@ class AddHotelsFixFlightsSeeder extends Seeder
                 $tasGydByDate[$key] = $f->id;
             } elseif ($f->from_airport_id == $gydAirportId && $f->to_airport_id == $tasAirportId) {
                 $gydTasByDate[$key] = $f->id;
-            } elseif ($skdAirportId && $f->from_airport_id == $skdAirportId && $f->to_airport_id == $istAirportId) {
-                $skdIstByDate[$key] = $f->id;
-            } elseif ($skdAirportId && $f->from_airport_id == $istAirportId && $f->to_airport_id == $skdAirportId) {
-                $istSkdByDate[$key] = $f->id;
-            } elseif ($bhkAirportId && $f->from_airport_id == $bhkAirportId && $f->to_airport_id == $istAirportId) {
-                $bhkIstByDate[$key] = $f->id;
-            } elseif ($bhkAirportId && $f->from_airport_id == $istAirportId && $f->to_airport_id == $bhkAirportId) {
-                $istBhkByDate[$key] = $f->id;
             }
         }
 
@@ -305,96 +288,6 @@ class AddHotelsFixFlightsSeeder extends Seeder
                 }
             }
 
-            // Samarkand → Istanbul Fatih & Beyoglu hotels
-            if ($samarkandCityId) {
-                foreach ($allNewIstanbulHotels as $group) {
-                    foreach ($group['ids'] as $hotelId) {
-                        $hotelPrice = $getHotelPrice($hotelId);
-                        $flightCost = 270 + 270;
-                        $finalPrice = round(($hotelPrice * 10 + $flightCost) * (1 + $markup / 100), 2);
-
-                        $tourId = DB::table('tours')->insertGetId([
-                            'tour_type_id' => $tourTypeCombined,
-                            'program_type_id' => $programStandard,
-                            'country_id' => $turkeyId,
-                            'resort_id' => $group['resort_id'],
-                            'hotel_id' => $hotelId,
-                            'transport_type_id' => $airplaneId,
-                            'departure_city_id' => $samarkandCityId,
-                            'nights' => 10,
-                            'price' => $finalPrice,
-                            'currency_id' => $usdId,
-                            'date_from' => $depDate,
-                            'date_to' => $returnDate10,
-                            'adults' => 2, 'children' => 0,
-                            'meal_type_id' => $mealBB,
-                            'is_available' => 1, 'is_hot' => $idx < 3 ? 1 : 0,
-                            'instant_confirmation' => 0, 'no_stop_sale' => 1,
-                            'child_bed_separate' => 0, 'comfortable_seats' => 0,
-                            'markup_percent' => null,
-                            'created_at' => $now, 'updated_at' => $now,
-                        ]);
-
-                        if (isset($skdIstByDate[$depDate])) {
-                            DB::table('tour_flight')->insert([
-                                'tour_id' => $tourId, 'flight_id' => $skdIstByDate[$depDate], 'direction' => 'outbound',
-                            ]);
-                        }
-                        if (isset($istSkdByDate[$returnDate10])) {
-                            DB::table('tour_flight')->insert([
-                                'tour_id' => $tourId, 'flight_id' => $istSkdByDate[$returnDate10], 'direction' => 'return',
-                            ]);
-                        }
-                        $tourCount++;
-                    }
-                }
-            }
-
-            // Bukhara → Istanbul Fatih & Beyoglu hotels
-            if ($bukharaCityId) {
-                foreach ($allNewIstanbulHotels as $group) {
-                    foreach ($group['ids'] as $hotelId) {
-                        $hotelPrice = $getHotelPrice($hotelId);
-                        $flightCost = 280 + 280;
-                        $finalPrice = round(($hotelPrice * 10 + $flightCost) * (1 + $markup / 100), 2);
-
-                        $tourId = DB::table('tours')->insertGetId([
-                            'tour_type_id' => $tourTypeCombined,
-                            'program_type_id' => $programStandard,
-                            'country_id' => $turkeyId,
-                            'resort_id' => $group['resort_id'],
-                            'hotel_id' => $hotelId,
-                            'transport_type_id' => $airplaneId,
-                            'departure_city_id' => $bukharaCityId,
-                            'nights' => 10,
-                            'price' => $finalPrice,
-                            'currency_id' => $usdId,
-                            'date_from' => $depDate,
-                            'date_to' => $returnDate10,
-                            'adults' => 2, 'children' => 0,
-                            'meal_type_id' => $mealBB,
-                            'is_available' => 1, 'is_hot' => $idx < 3 ? 1 : 0,
-                            'instant_confirmation' => 0, 'no_stop_sale' => 1,
-                            'child_bed_separate' => 0, 'comfortable_seats' => 0,
-                            'markup_percent' => null,
-                            'created_at' => $now, 'updated_at' => $now,
-                        ]);
-
-                        if (isset($bhkIstByDate[$depDate])) {
-                            DB::table('tour_flight')->insert([
-                                'tour_id' => $tourId, 'flight_id' => $bhkIstByDate[$depDate], 'direction' => 'outbound',
-                            ]);
-                        }
-                        if (isset($istBhkByDate[$returnDate10])) {
-                            DB::table('tour_flight')->insert([
-                                'tour_id' => $tourId, 'flight_id' => $istBhkByDate[$returnDate10], 'direction' => 'return',
-                            ]);
-                        }
-                        $tourCount++;
-                    }
-                }
-            }
-
             // Baku new hotels → Combined tours
             foreach ($allNewBakuHotels as $hotelId) {
                 $hotelPrice = $getHotelPrice($hotelId);
@@ -451,16 +344,15 @@ class AddHotelsFixFlightsSeeder extends Seeder
         $totalTours = DB::table('tours')->count();
         $totalFlights = DB::table('flights')->count();
 
-        // Verify: all flights involve a departure city airport (TAS, SKD, or BHK)
-        $departureCityAirportIds = array_filter([$tasAirportId, $skdAirportId, $bhkAirportId]);
-        $nonDepartureFlights = DB::table('flights')
-            ->whereNotIn('from_airport_id', $departureCityAirportIds)
-            ->whereNotIn('to_airport_id', $departureCityAirportIds)
+        // Verify: no flights exist that don't involve TAS
+        $nonTasFlights = DB::table('flights')
+            ->where('from_airport_id', '!=', $tasAirportId)
+            ->where('to_airport_id', '!=', $tasAirportId)
             ->count();
 
         $this->command->info("Total hotels: {$totalHotels}");
         $this->command->info("Total tours: {$totalTours}");
         $this->command->info("Total flights: {$totalFlights}");
-        $this->command->info("Flights NOT involving departure cities: {$nonDepartureFlights} (should be 0)");
+        $this->command->info("Flights NOT involving TAS: {$nonTasFlights} (should be 0)");
     }
 }
