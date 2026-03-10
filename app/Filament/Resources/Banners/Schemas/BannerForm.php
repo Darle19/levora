@@ -17,6 +17,7 @@ class BannerForm
                     ->maxLength(255),
                 FileUpload::make('image')
                     ->image()
+                    ->disk('public')
                     ->directory('banners')
                     ->imageResizeMode('cover')
                     ->imageResizeTargetWidth('1100')
