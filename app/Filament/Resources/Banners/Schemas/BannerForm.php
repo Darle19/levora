@@ -18,6 +18,9 @@ class BannerForm
                 FileUpload::make('image')
                     ->image()
                     ->directory('banners')
+                    ->imageResizeMode('cover')
+                    ->imageResizeTargetWidth('1100')
+                    ->imageResizeTargetHeight('400')
                     ->required(),
                 TextInput::make('link')
                     ->url()
