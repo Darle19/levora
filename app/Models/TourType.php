@@ -14,7 +14,7 @@ class TourType extends Model
     protected $fillable = [
         'name',
         'name_en',
-        'name_ar',
+        'name_uz',
         'name_ru',
         'code',
         'is_active',
