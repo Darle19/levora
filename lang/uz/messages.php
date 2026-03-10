@@ -8,7 +8,6 @@ return [
         'hotels' => 'Mehmonxonalar',
         'tickets' => 'Chipta',
         'excursions' => 'Ekskursiyalar',
-        'cruises' => 'Kruizlar',
         'claims' => 'Arizalar',
         'agency' => 'Agentlik',
         'profile' => 'Profil',
