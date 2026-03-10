@@ -24,6 +24,9 @@ class Flight extends Model
         'price_adult',
         'price_child',
         'price_infant',
+        'hard_block_price',
+        'soft_block_price',
+        'soft_block_release_days',
         'available_seats',
         'class_type',
         'is_active',
@@ -38,6 +41,9 @@ class Flight extends Model
             'price_adult' => 'decimal:2',
             'price_child' => 'decimal:2',
             'price_infant' => 'decimal:2',
+            'hard_block_price' => 'decimal:2',
+            'soft_block_price' => 'decimal:2',
+            'soft_block_release_days' => 'integer',
             'available_seats' => 'integer',
         ];
     }
