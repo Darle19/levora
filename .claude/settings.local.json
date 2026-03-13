@@ -33,7 +33,8 @@
       "Bash(php \"C:/Users/user/AppData/Local/Programs/Herd/resources/app/composer/composer.phar\" require barryvdh/laravel-dompdf)",
       "Bash(php \"/c/Users/user/.config/herd/bin/composer.phar\" require barryvdh/laravel-dompdf)",
       "Bash(wc -l c:\\\\Users\\\\user\\\\Herd\\\\malaktour\\\\resources\\\\views\\\\*.blade.php)",
-      "Bash(php -r \":*)"
+      "Bash(php -r \":*)",
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_ed25519_darle19 -o IdentitiesOnly=yes\" git push origin main)"
     ]
   }
 }

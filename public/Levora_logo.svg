@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .cls-1 {
+        font-family: Montalban-Bold, Montalban;
+        font-size: 153.0489px;
+        font-weight: 700;
+      }
+
+      .cls-1, .cls-2, .cls-3 {
+        fill: #fff;
+      }
+
+      .cls-4 {
+        letter-spacing: .34699em;
+      }
+
+      .cls-5 {
+        letter-spacing: .357em;
+      }
+
+      .cls-6 {
+        letter-spacing: .34701em;
+      }
+
+      .cls-7 {
+        letter-spacing: .03271em;
+      }
+
+      .cls-8 {
+        letter-spacing: -.03662em;
+      }
+
+      .cls-9 {
+        letter-spacing: .35701em;
+      }
+
+      .cls-10 {
+        letter-spacing: -.02002em;
+      }
+
+      .cls-2, .cls-11 {
+        stroke-width: 0px;
+      }
+
+      .cls-3 {
+        font-family: Montserrat-SemiBold, Montserrat;
+        font-size: 58.77784px;
+        font-weight: 600;
+      }
+
+      .cls-11 {
+        fill: #156b39;
+      }
+
+      .cls-12 {
+        letter-spacing: .322em;
+      }
+    </style>
+  </defs>
+  <rect class="cls-11" width="1080" height="1080"/>
+  <g>
+    <text class="cls-3" transform="translate(155.71265 639.33813)"><tspan class="cls-6" x="0" y="0">T</tspan><tspan class="cls-5" x="55.78027" y="0">OURO</tspan><tspan class="cls-4" x="328.03711" y="0">P</tspan><tspan class="cls-9" x="391.10547" y="0">ER</tspan><tspan class="cls-12" x="515.41992" y="0">A</tspan><tspan class="cls-6" x="578.37109" y="0">T</tspan><tspan class="cls-5" x="634.15137" y="0">OR</tspan></text>
+    <g>
+      <text class="cls-1" transform="translate(135.48071 559.35474)"><tspan class="cls-10" x="0" y="0">L</tspan><tspan x="105.2959" y="0" xml:space="preserve">E  </tspan><tspan class="cls-7" x="385.53711" y="0">O</tspan><tspan class="cls-8" x="528.7959" y="0">R</tspan><tspan x="661.44336" y="0">A</tspan></text>
+      <g>
+        <polygon class="cls-2" points="411.09427 427.48131 368.18247 427.48131 434.86995 561.14518 455.8245 517.74054 411.09427 427.48131"/>
+        <path class="cls-2" d="m502.15374,425.08509s-60.70697,6.38744-39.94218,79.87685c0,0,59.91332-15.97992,39.94218-79.87685Zm-31.99001,67.6916c.49127-.80883,16.33508-26.93303,27.49987-58.91552-.13601.99024-4.88314,32.87446-27.49987,58.91552Z"/>
+      </g>
+    </g>
+  </g>
+</svg>

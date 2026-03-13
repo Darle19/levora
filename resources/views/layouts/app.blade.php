@@ -74,7 +74,7 @@
                 <!-- Logo -->
                 <div class="flex items-center">
                     <a href="{{ route('home') }}" class="flex items-center">
-                        <img src="{{ asset('logo-sm.png') }}" alt="Levora" class="h-10 w-auto">
+                        <img src="{{ asset('Levora_logo.svg') }}" alt="Levora" class="h-10 w-auto">
                     </a>
                 </div>
 
@@ -197,7 +197,7 @@
                 <!-- Brand -->
                 <div class="md:col-span-1">
                     <div class="flex items-center mb-4">
-                        <img src="{{ asset('logo-sm.png') }}" alt="Levora" class="h-10 w-auto brightness-0 invert">
+                        <img src="{{ asset('Levora_logo.svg') }}" alt="Levora" class="h-10 w-auto brightness-0 invert">
                     </div>
                     <p class="text-slate-400 text-sm leading-relaxed">{{ __('messages.footer.description') }}</p>
                 </div>

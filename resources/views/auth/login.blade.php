@@ -9,7 +9,7 @@
         <div class="absolute -top-32 -right-32 w-96 h-96 bg-white/10 rounded-full"></div>
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-white z-10 px-8">
             <div class="mx-auto mb-8">
-                <img src="{{ asset('logo-md.png') }}" alt="Levora" class="h-20 w-auto mx-auto brightness-0 invert">
+                <img src="{{ asset('Levora_logo.svg') }}" alt="Levora" class="h-20 w-auto mx-auto brightness-0 invert">
             </div>
             <h1 class="text-4xl font-bold mb-4">Welcome to Levora</h1>
             <p class="text-xl text-white/80 max-w-md">Your gateway to unforgettable travel experiences. Discover the world with us.</p>
@@ -35,7 +35,7 @@
         <div class="w-full max-w-md">
             <!-- Mobile Logo -->
             <div class="lg:hidden text-center mb-8">
-                <img src="{{ asset('logo-md.png') }}" alt="Levora" class="h-16 w-auto mx-auto mb-4">
+                <img src="{{ asset('Levora_logo.svg') }}" alt="Levora" class="h-16 w-auto mx-auto mb-4">
             </div>
 
             <div class="text-center lg:text-left mb-8">
