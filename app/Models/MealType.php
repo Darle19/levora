@@ -15,12 +15,12 @@ class MealType extends Model
     protected $fillable = [
         'name',
         'name_en',
-        'name_ar',
+        'name_uz',
         'name_ru',
         'code',
         'description',
         'description_en',
-        'description_ar',
+        'description_uz',
         'description_ru',
         'is_active',
     ];

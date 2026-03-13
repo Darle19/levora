@@ -14,10 +14,10 @@ class CurrencyRateForm
         return $schema
             ->components([
                 Select::make('from_currency_id')
-                    ->relationship('fromCurrency', 'id')
+                    ->relationship('fromCurrency', 'code')
                     ->required(),
                 Select::make('to_currency_id')
-                    ->relationship('toCurrency', 'id')
+                    ->relationship('toCurrency', 'code')
                     ->required(),
                 TextInput::make('rate')
                     ->required()

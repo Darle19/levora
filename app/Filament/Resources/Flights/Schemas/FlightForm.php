@@ -19,10 +19,12 @@ class FlightForm
                     ->relationship('airline', 'name')
                     ->required(),
                 Select::make('from_airport_id')
-                    ->relationship('fromAirport', 'id')
+                    ->relationship('fromAirport', 'code')
+                    ->searchable()
                     ->required(),
                 Select::make('to_airport_id')
-                    ->relationship('toAirport', 'id')
+                    ->relationship('toAirport', 'code')
+                    ->searchable()
                     ->required(),
                 TextInput::make('flight_number')
                     ->required(),
@@ -34,7 +36,7 @@ class FlightForm
                     ->required()
                     ->numeric(),
                 Select::make('currency_id')
-                    ->relationship('currency', 'id')
+                    ->relationship('currency', 'code')
                     ->required(),
                 TextInput::make('available_seats')
                     ->required()

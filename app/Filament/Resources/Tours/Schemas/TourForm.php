@@ -23,30 +23,36 @@ class TourForm
                 Section::make('Tour Details')
                     ->schema([
                         Select::make('tour_type_id')
-                            ->relationship('tourType', 'id')
+                            ->relationship('tourType', 'name_en')
+                            ->searchable()
                             ->required(),
                         Select::make('program_type_id')
-                            ->relationship('programType', 'id')
+                            ->relationship('programType', 'name_en')
+                            ->searchable()
                             ->required(),
                         Select::make('country_id')
-                            ->relationship('country', 'id')
+                            ->relationship('country', 'name_en')
+                            ->searchable()
                             ->required(),
                         Select::make('resort_id')
-                            ->relationship('resort', 'id'),
+                            ->relationship('resort', 'name_en')
+                            ->searchable(),
                         Select::make('hotel_id')
                             ->relationship('hotel', 'name')
                             ->helperText('Hotel must have a price set for auto-pricing to work'),
                         Select::make('transport_type_id')
-                            ->relationship('transportType', 'id')
+                            ->relationship('transportType', 'name_en')
+                            ->searchable()
                             ->required(),
                         Select::make('departure_city_id')
-                            ->relationship('departureCity', 'id')
+                            ->relationship('departureCity', 'name_en')
+                            ->searchable()
                             ->required(),
                         TextInput::make('nights')
                             ->required()
                             ->numeric(),
                         Select::make('currency_id')
-                            ->relationship('currency', 'id')
+                            ->relationship('currency', 'code')
                             ->required(),
                         DatePicker::make('date_from')
                             ->required(),
@@ -61,7 +67,8 @@ class TourForm
                             ->numeric()
                             ->default(0),
                         Select::make('meal_type_id')
-                            ->relationship('mealType', 'id'),
+                            ->relationship('mealType', 'name_en')
+                            ->searchable(),
                     ])
                     ->columns(2),
 

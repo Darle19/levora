@@ -15,9 +15,11 @@ class TourPriceForm
             ->components([
                 Select::make('tour_id')
                     ->relationship('tour', 'id')
+                    ->searchable()
                     ->required(),
                 Select::make('room_type_id')
-                    ->relationship('roomType', 'id')
+                    ->relationship('roomType', 'name_en')
+                    ->searchable()
                     ->required(),
                 TextInput::make('price_adult')
                     ->required()
@@ -27,7 +29,7 @@ class TourPriceForm
                 TextInput::make('price_infant')
                     ->numeric(),
                 Select::make('currency_id')
-                    ->relationship('currency', 'id')
+                    ->relationship('currency', 'code')
                     ->required(),
                 TextInput::make('availability')
                     ->required()

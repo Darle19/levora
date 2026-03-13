@@ -26,7 +26,7 @@ class PromotionForm
                 TextInput::make('discount_amount')
                     ->numeric(),
                 Select::make('currency_id')
-                    ->relationship('currency', 'id'),
+                    ->relationship('currency', 'code'),
                 DatePicker::make('date_from')
                     ->required(),
                 DatePicker::make('date_to')

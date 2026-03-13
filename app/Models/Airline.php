@@ -14,7 +14,7 @@ class Airline extends Model
     protected $fillable = [
         'name',
         'name_en',
-        'name_ar',
+        'name_uz',
         'name_ru',
         'code',
         'iata_code',

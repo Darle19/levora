@@ -11,12 +11,15 @@ class HotelGroupOffer extends Model
         'hotel_id',
         'title',
         'check_in_dates',
+        'date_from',
+        'date_to',
         'nights',
         'pax_count',
         'rooms_count',
+        'rooms_booked',
         'room_configuration',
         'nationality',
-        'rate_per_night',
+        'rate_tiers',
         'currency_id',
         'meal_type_id',
         'cancellation_policy',
@@ -28,9 +31,16 @@ class HotelGroupOffer extends Model
     {
         return [
             'check_in_dates' => 'array',
-            'rate_per_night' => 'decimal:2',
+            'date_from' => 'date',
+            'date_to' => 'date',
+            'rate_tiers' => 'array',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function getRoomsAvailableAttribute(): int
+    {
+        return $this->rooms_count - $this->rooms_booked;
     }
 
     public function hotel(): BelongsTo

@@ -14,7 +14,7 @@ class Airport extends Model
     protected $fillable = [
         'name',
         'name_en',
-        'name_ar',
+        'name_uz',
         'name_ru',
         'city_id',
         'code',

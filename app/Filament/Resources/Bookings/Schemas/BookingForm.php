@@ -14,7 +14,8 @@ class BookingForm
         return $schema
             ->components([
                 Select::make('order_id')
-                    ->relationship('order', 'id')
+                    ->relationship('order', 'order_number')
+                    ->searchable()
                     ->required(),
                 TextInput::make('bookable_type')
                     ->required(),
@@ -29,7 +30,7 @@ class BookingForm
                     ->numeric()
                     ->prefix('$'),
                 Select::make('currency_id')
-                    ->relationship('currency', 'id')
+                    ->relationship('currency', 'code')
                     ->required(),
                 DatePicker::make('date')
                     ->required(),

@@ -21,12 +21,13 @@ class HotelForm
                     ->columnSpanFull(),
                 TextInput::make('address'),
                 Select::make('resort_id')
-                    ->relationship('resort', 'id')
+                    ->relationship('resort', 'name_en')
+                    ->searchable()
                     ->required(),
-                TextInput::make('hotel_category_id')
-                    ->tel()
-                    ->required()
-                    ->numeric(),
+                Select::make('hotel_category_id')
+                    ->relationship('category', 'name_en')
+                    ->searchable()
+                    ->required(),
                 TextInput::make('rating')
                     ->numeric(),
                 Textarea::make('images')

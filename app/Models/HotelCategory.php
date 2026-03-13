@@ -14,7 +14,7 @@ class HotelCategory extends Model
     protected $fillable = [
         'name',
         'name_en',
-        'name_ar',
+        'name_uz',
         'name_ru',
         'stars',
         'is_active',

@@ -20,10 +20,10 @@ class ResortForm
                 TextInput::make('name_uz')
                     ->required(),
                 Select::make('country_id')
-                    ->relationship('country', 'id')
+                    ->relationship('country', 'name_en')
                     ->required(),
                 Select::make('city_id')
-                    ->relationship('city', 'id'),
+                    ->relationship('city', 'name_en'),
                 Toggle::make('is_active')
                     ->required(),
                 TextInput::make('order')

@@ -20,7 +20,8 @@ class CityForm
                 TextInput::make('name_uz')
                     ->required(),
                 Select::make('country_id')
-                    ->relationship('country', 'id')
+                    ->relationship('country', 'name_en')
+                    ->searchable()
                     ->required(),
                 Toggle::make('is_active')
                     ->required(),

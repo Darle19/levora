@@ -29,7 +29,7 @@ class OrderForm
                     ->numeric()
                     ->prefix('$'),
                 Select::make('currency_id')
-                    ->relationship('currency', 'id')
+                    ->relationship('currency', 'code')
                     ->required(),
                 Textarea::make('notes')
                     ->columnSpanFull(),
