@@ -15,7 +15,6 @@ class BookingForm
             ->components([
                 Select::make('order_id')
                     ->relationship('order', 'order_number')
-                    ->searchable()
                     ->required(),
                 TextInput::make('bookable_type')
                     ->required(),

@@ -23,7 +23,6 @@ class AirportForm
                     ->required(),
                 Select::make('city_id')
                     ->relationship('city', 'name_en')
-                    ->searchable()
                     ->required(),
                 Toggle::make('is_active')
                     ->required(),

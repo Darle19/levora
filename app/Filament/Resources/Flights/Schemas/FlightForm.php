@@ -20,11 +20,9 @@ class FlightForm
                     ->required(),
                 Select::make('from_airport_id')
                     ->relationship('fromAirport', 'code')
-                    ->searchable()
                     ->required(),
                 Select::make('to_airport_id')
                     ->relationship('toAirport', 'code')
-                    ->searchable()
                     ->required(),
                 TextInput::make('flight_number')
                     ->required(),

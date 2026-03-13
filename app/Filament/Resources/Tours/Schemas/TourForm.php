@@ -24,29 +24,23 @@ class TourForm
                     ->schema([
                         Select::make('tour_type_id')
                             ->relationship('tourType', 'name_en')
-                            ->searchable()
                             ->required(),
                         Select::make('program_type_id')
                             ->relationship('programType', 'name_en')
-                            ->searchable()
                             ->required(),
                         Select::make('country_id')
                             ->relationship('country', 'name_en')
-                            ->searchable()
                             ->required(),
                         Select::make('resort_id')
-                            ->relationship('resort', 'name_en')
-                            ->searchable(),
+                            ->relationship('resort', 'name_en'),
                         Select::make('hotel_id')
                             ->relationship('hotel', 'name')
                             ->helperText('Hotel must have a price set for auto-pricing to work'),
                         Select::make('transport_type_id')
                             ->relationship('transportType', 'name_en')
-                            ->searchable()
                             ->required(),
                         Select::make('departure_city_id')
                             ->relationship('departureCity', 'name_en')
-                            ->searchable()
                             ->required(),
                         TextInput::make('nights')
                             ->required()
@@ -67,8 +61,7 @@ class TourForm
                             ->numeric()
                             ->default(0),
                         Select::make('meal_type_id')
-                            ->relationship('mealType', 'name_en')
-                            ->searchable(),
+                            ->relationship('mealType', 'name_en'),
                     ])
                     ->columns(2),
 

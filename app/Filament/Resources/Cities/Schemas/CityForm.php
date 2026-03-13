@@ -21,7 +21,6 @@ class CityForm
                     ->required(),
                 Select::make('country_id')
                     ->relationship('country', 'name_en')
-                    ->searchable()
                     ->required(),
                 Toggle::make('is_active')
                     ->required(),

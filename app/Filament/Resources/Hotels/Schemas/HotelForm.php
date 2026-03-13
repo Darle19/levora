@@ -22,11 +22,9 @@ class HotelForm
                 TextInput::make('address'),
                 Select::make('resort_id')
                     ->relationship('resort', 'name_en')
-                    ->searchable()
                     ->required(),
                 Select::make('hotel_category_id')
-                    ->relationship('category', 'name_en')
-                    ->searchable()
+                    ->relationship('category', 'name')
                     ->required(),
                 TextInput::make('rating')
                     ->numeric(),
