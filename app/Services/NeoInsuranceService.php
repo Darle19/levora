@@ -15,15 +15,37 @@ class NeoInsuranceService
     private string $username;
     private string $password;
 
+    private bool $configured;
+
     public function __construct()
     {
         $this->baseUrl = rtrim(config('services.neoinsurance.base_url') ?? '', '/');
         $this->username = config('services.neoinsurance.username') ?? '';
         $this->password = config('services.neoinsurance.password') ?? '';
+        $this->configured = $this->baseUrl !== '' && $this->username !== '' && $this->password !== '';
+
+        if (! $this->configured) {
+            Log::warning('NeoInsurance service is not configured — API calls will be skipped.');
+        }
+    }
+
+    private function ensureConfigured(): bool
+    {
+        if (! $this->configured) {
+            Log::warning('NeoInsurance API call skipped: missing base_url, username, or password.');
+
+            return false;
+        }
+
+        return true;
     }
 
     public function getInsuranceOptions(): ?array
     {
+        if (! $this->ensureConfigured()) {
+            return null;
+        }
+
         return Cache::remember('neoinsurance_options', 86400, function () {
             try {
                 $response = Http::withBasicAuth($this->username, $this->password)
@@ -96,6 +118,10 @@ class NeoInsuranceService
 
     public function createPolicy(Tourist $tourist, Booking $booking): ?array
     {
+        if (! $this->ensureConfigured()) {
+            return null;
+        }
+
         $tour = $booking->bookable;
 
         if (!$tour) {

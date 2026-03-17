@@ -76,7 +76,8 @@ class Hotel extends Model
     {
         return $this->belongsToMany(RoomType::class, 'hotel_room_type')
             ->withPivot('price_per_night', 'is_active')
-            ->withTimestamps();
+            ->withTimestamps()
+            ->withCasts(['price_per_night' => 'decimal:2', 'is_active' => 'boolean']);
     }
 
     public function currency(): BelongsTo

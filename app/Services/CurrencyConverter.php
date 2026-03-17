@@ -7,11 +7,16 @@ use Illuminate\Support\Facades\Log;
 
 class CurrencyConverter
 {
-    /** @var array<string, float|null> In-memory rate cache to avoid repeated DB queries within a request */
+    /** @var array<string, string|null> In-memory rate cache to avoid repeated DB queries within a request */
     private static array $ratesCache = [];
 
-    public function convert(float $amount, ?int $fromCurrencyId, ?int $toCurrencyId): float
+    /**
+     * Convert an amount between currencies using bcmath for precision.
+     */
+    public function convert(float|string $amount, ?int $fromCurrencyId, ?int $toCurrencyId): string
     {
+        $amount = (string) $amount;
+
         if (! $fromCurrencyId || ! $toCurrencyId || $fromCurrencyId === $toCurrencyId) {
             return $amount;
         }
@@ -26,13 +31,14 @@ class CurrencyConverter
 
         if ($rate === null) {
             Log::warning("No currency rate found: {$fromCurrencyId} -> {$toCurrencyId}");
+
             return $amount;
         }
 
-        return round($amount * $rate, 2);
+        return bcmul($amount, $rate, 2);
     }
 
-    private function resolveRate(int $fromCurrencyId, int $toCurrencyId): ?float
+    private function resolveRate(int $fromCurrencyId, int $toCurrencyId): ?string
     {
         // Try direct rate
         $rate = CurrencyRate::where('from_currency_id', $fromCurrencyId)
@@ -41,7 +47,7 @@ class CurrencyConverter
             ->value('rate');
 
         if ($rate) {
-            return (float) $rate;
+            return (string) $rate;
         }
 
         // Try inverse rate
@@ -50,8 +56,8 @@ class CurrencyConverter
             ->orderByDesc('date')
             ->value('rate');
 
-        if ($inverseRate && $inverseRate > 0) {
-            return 1 / (float) $inverseRate;
+        if ($inverseRate && (float) $inverseRate > 0) {
+            return bcdiv('1', (string) $inverseRate, 6);
         }
 
         return null;

@@ -132,7 +132,8 @@ class Tour extends Model
     {
         return $this->belongsToMany(AdditionalService::class, 'tour_additional_service')
             ->withPivot('price_override', 'is_included')
-            ->withTimestamps();
+            ->withTimestamps()
+            ->withCasts(['price_override' => 'decimal:2', 'is_included' => 'boolean']);
     }
 
     public function getEffectiveMarkupPercent(): float

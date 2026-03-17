@@ -49,7 +49,7 @@ test('calculates price correctly with hotel + flight + markup', function () {
     $result = $this->service->recalculate($tour);
 
     // base = 200 + 300 = 500, markup 15% => 500 * 1.15 = 575.00
-    expect($result)->toBe(575.00);
+    expect($result)->toBe('575.00');
     expect($tour->fresh()->price)->toBe('575.00');
 });
 
@@ -110,7 +110,7 @@ test('applies per-tour markup override over global setting', function () {
     $result = $this->service->recalculate($tour);
 
     // base = 100, markup 25% => 100 * 1.25 = 125.00
-    expect($result)->toBe(125.00);
+    expect($result)->toBe('125.00');
     expect($tour->getEffectiveMarkupPercent())->toBe(25.00);
 });
 
@@ -136,7 +136,7 @@ test('uses global markup when tour has no per-tour override', function () {
     $result = $this->service->recalculate($tour);
 
     // base = 100, global markup 20% => 100 * 1.20 = 120.00
-    expect($result)->toBe(120.00);
+    expect($result)->toBe('120.00');
     expect($tour->getEffectiveMarkupPercent())->toBe(20.00);
 });
 
@@ -168,7 +168,7 @@ test('handles hotel with different currency than tour (needs CurrencyRate)', fun
 
     // hotel converted: 100 * 1.10 = 110.00 USD
     // base = 110.00, markup 10% => 110 * 1.10 = 121.00
-    expect($result)->toBe(121.00);
+    expect($result)->toBe('121.00');
 });
 
 test('recalculateForHotel updates all linked tours', function () {
@@ -268,6 +268,6 @@ test('handles tour with no flights (hotel-only pricing)', function () {
     $result = $this->service->recalculate($tour);
 
     // base = 250, markup 10% => 250 * 1.10 = 275.00
-    expect($result)->toBe(275.00);
+    expect($result)->toBe('275.00');
     expect($tour->fresh()->price)->toBe('275.00');
 });

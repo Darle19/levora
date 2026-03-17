@@ -23,7 +23,7 @@ test('converts using direct rate', function () {
 
     $result = $this->converter->convert(100.00, $usd->id, $eur->id);
 
-    expect($result)->toBe(85.00);
+    expect($result)->toBe('85.00');
 });
 
 test('converts using inverse rate when no direct rate exists', function () {
@@ -41,7 +41,7 @@ test('converts using inverse rate when no direct rate exists', function () {
     // Converting USD -> EUR, should use 1/1.25 = 0.8
     $result = $this->converter->convert(100.00, $usd->id, $eur->id);
 
-    expect($result)->toBe(80.00);
+    expect($result)->toBe('80.00');
 });
 
 test('returns original amount when same currency IDs', function () {
@@ -49,7 +49,7 @@ test('returns original amount when same currency IDs', function () {
 
     $result = $this->converter->convert(123.45, $usd->id, $usd->id);
 
-    expect($result)->toBe(123.45);
+    expect($result)->toBe('123.45');
 });
 
 test('returns original amount when from currency is null', function () {
@@ -57,7 +57,7 @@ test('returns original amount when from currency is null', function () {
 
     $result = $this->converter->convert(99.99, null, $usd->id);
 
-    expect($result)->toBe(99.99);
+    expect($result)->toBe('99.99');
 });
 
 test('returns original amount when to currency is null', function () {
@@ -65,7 +65,7 @@ test('returns original amount when to currency is null', function () {
 
     $result = $this->converter->convert(99.99, $usd->id, null);
 
-    expect($result)->toBe(99.99);
+    expect($result)->toBe('99.99');
 });
 
 test('returns original amount and logs warning when no rate found', function () {
@@ -80,5 +80,5 @@ test('returns original amount and logs warning when no rate found', function () 
 
     $result = $this->converter->convert(100.00, $usd->id, $eur->id);
 
-    expect($result)->toBe(100.00);
+    expect($result)->toBe('100');
 });

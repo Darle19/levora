@@ -66,6 +66,7 @@ class Booking extends Model
     {
         return $this->belongsToMany(AdditionalService::class, 'booking_additional_service')
             ->withPivot('price', 'quantity')
-            ->withTimestamps();
+            ->withTimestamps()
+            ->withCasts(['price' => 'decimal:2', 'quantity' => 'integer']);
     }
 }
