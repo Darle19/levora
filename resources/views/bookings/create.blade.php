@@ -83,6 +83,22 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @if($tour->stays->isNotEmpty())
+                        @foreach($tour->stays as $stay)
+                        <tr>
+                            <td style="font-weight:600;">
+                                {{ strtoupper($stay->hotel->name ?? 'N/A') }}
+                                {{ $stay->hotel?->category ? $stay->hotel->category->name : '' }}
+                                — {{ $stay->city->name_en ?? '' }}
+                                @if($loop->first) ({{ strtoupper($tour->departureCity->name_en ?? 'TAS') }}) @endif
+                            </td>
+                            <td>@if($loop->first)<span class="spo-code">LVR{{ $tour->id }}</span>@endif</td>
+                            <td>{{ $tour->country->{'name_' . app()->getLocale()} ?? $tour->country->name_en ?? '' }}</td>
+                            <td>{{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '' }}—{{ $tour->date_to ? $tour->date_to->format('d.m.Y') : '' }}</td>
+                            <td style="text-align:center;">{{ $stay->nights }}</td>
+                        </tr>
+                        @endforeach
+                    @else
                     <tr>
                         <td style="font-weight:600;">
                             {{ strtoupper($tour->hotel->name ?? 'N/A') }}
@@ -95,6 +111,7 @@
                         <td>{{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '' }}—{{ $tour->date_to ? $tour->date_to->format('d.m.Y') : '' }}</td>
                         <td style="text-align:center;">{{ $tour->nights }}</td>
                     </tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -151,6 +168,36 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @if($tour->stays->isNotEmpty())
+                            @foreach($tour->stays as $stay)
+                            <tr>
+                                <td style="font-weight:600;">
+                                    {{ $stay->hotel->name ?? 'N/A' }}
+                                    @if($stay->hotel?->category)
+                                        <span style="color:#c90;">{{ str_repeat('★', (int) filter_var($stay->hotel->category->name, FILTER_SANITIZE_NUMBER_INT)) }}</span>
+                                    @endif
+                                </td>
+                                <td>{{ $stay->city->name_en ?? '' }}</td>
+                                <td>
+                                    @if($loop->first && $tour->tourPrices->isNotEmpty())
+                                        <select name="room_type_id" id="roomTypeSelect" onchange="updatePrice()" style="width:140px;">
+                                            @foreach($tour->tourPrices as $tp)
+                                                <option value="{{ $tp->room_type_id }}"
+                                                    {{ old('room_type_id') == $tp->room_type_id ? 'selected' : '' }}>
+                                                    {{ $tp->roomType->name_en ?? $tp->roomType->code ?? 'N/A' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @elseif($loop->first)
+                                        STANDARD
+                                    @endif
+                                </td>
+                                <td>@if($loop->first)<span id="paxSummary">{{ $tour->adults }}ADL{{ $tour->children > 0 ? '+' . $tour->children . 'CHD' : '' }}</span>@endif</td>
+                                <td><strong>{{ $stay->mealType->code ?? $tour->mealType->code ?? 'BB' }}</strong></td>
+                                <td>{{ $stay->nights }} ночей</td>
+                            </tr>
+                            @endforeach
+                        @else
                         <tr>
                             <td style="font-weight:600;">
                                 {{ $tour->hotel->name ?? 'N/A' }}
@@ -177,6 +224,7 @@
                             <td><strong>{{ $tour->mealType->code ?? 'BB' }}</strong></td>
                             <td>{{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '' }}—{{ $tour->date_to ? $tour->date_to->format('d.m.Y') : '' }}</td>
                         </tr>
+                        @endif
                     </tbody>
                 </table>
                 <div style="margin-top:6px;font-size:11px;color:#555;">

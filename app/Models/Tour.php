@@ -128,6 +128,29 @@ class Tour extends Model
         return $this->flights()->wherePivot('direction', 'return');
     }
 
+    public function stays(): HasMany
+    {
+        return $this->hasMany(TourStay::class)->orderBy('stay_order');
+    }
+
+    public function getTotalNightsAttribute(): int
+    {
+        if ($this->relationLoaded('stays') && $this->stays->isNotEmpty()) {
+            return $this->stays->sum('nights');
+        }
+
+        return $this->nights ?? 0;
+    }
+
+    public function getPrimaryHotelAttribute(): ?Hotel
+    {
+        if ($this->relationLoaded('stays') && $this->stays->isNotEmpty()) {
+            return $this->stays->first()->hotel;
+        }
+
+        return $this->hotel;
+    }
+
     public function amadeusSegments(): HasMany
     {
         return $this->hasMany(TourAmadeusSegment::class)->orderBy('leg_order');

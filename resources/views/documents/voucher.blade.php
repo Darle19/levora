@@ -27,12 +27,25 @@
         {{ __('messages.doc_booking_ref') }}: {{ $order->order_number }}-{{ $booking->id }}
     </div>
 
+    @if($tour->stays && $tour->stays->isNotEmpty())
+        @foreach($tour->stays as $stay)
+        <p class="hotel-name">
+            {{ $stay->hotel?->name ?? '—' }}
+            @if($stay->hotel?->category)
+                <span class="stars">{{ str_repeat('★', $stay->hotel->category->stars ?? 0) }}</span>
+            @endif
+            — {{ $stay->nights }} nights
+            @if($stay->city) · {{ $stay->city->name_en }} @endif
+        </p>
+        @endforeach
+    @else
     <p class="hotel-name">
         {{ $tour->hotel?->name ?? '—' }}
         @if($tour->hotel?->category)
             <span class="stars">{{ str_repeat('★', $tour->hotel->category->stars ?? 0) }}</span>
         @endif
     </p>
+    @endif
 
     <table class="info-table">
         <tr>

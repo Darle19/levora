@@ -63,7 +63,7 @@ class BookingService
 
     private function loadAndLockTour(int $tourId): Tour
     {
-        return Tour::with(['currency', 'tourPrices', 'flights', 'amadeusSegments', 'additionalServices', 'additionalServices.currency'])
+        return Tour::with(['currency', 'tourPrices', 'flights', 'amadeusSegments', 'stays', 'stays.hotel', 'stays.currency', 'additionalServices', 'additionalServices.currency'])
             ->lockForUpdate()
             ->findOrFail($tourId);
     }
@@ -100,11 +100,17 @@ class BookingService
 
     private function validateStopSale(Tour $tour): void
     {
-        if (! $tour->hotel_id) {
+        // Collect hotel IDs from stays (multi-city) or fallback to single hotel
+        $hotelIds = $tour->stays->pluck('hotel_id')->filter()->unique()->values()->toArray();
+        if (empty($hotelIds) && $tour->hotel_id) {
+            $hotelIds = [$tour->hotel_id];
+        }
+
+        if (empty($hotelIds)) {
             return;
         }
 
-        $hasStopSale = StopSale::where('hotel_id', $tour->hotel_id)
+        $hasStopSale = StopSale::whereIn('hotel_id', $hotelIds)
             ->where('start_date', '<=', $tour->date_from)
             ->where('end_date', '>=', $tour->date_from)
             ->where('is_active', true)

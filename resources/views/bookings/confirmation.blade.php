@@ -68,16 +68,29 @@
                                     </svg>
                                 </div>
                                 <div class="ml-3">
-                                    <div class="text-sm text-gray-600">Hotel</div>
-                                    <div class="font-medium text-gray-900">{{ $booking->bookable->hotel->name ?? 'N/A' }}</div>
-                                    @if($booking->bookable->hotel && $booking->bookable->hotel->category)
-                                        <div class="flex items-center mt-1">
-                                            @for($i = 0; $i < $booking->bookable->hotel->category->stars; $i++)
-                                                <svg class="h-4 w-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                                                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-                                                </svg>
-                                            @endfor
-                                        </div>
+                                    <div class="text-sm text-gray-600">Hotel(s)</div>
+                                    @if($booking->bookable->stays && $booking->bookable->stays->isNotEmpty())
+                                        @foreach($booking->bookable->stays as $stay)
+                                            <div class="font-medium text-gray-900">
+                                                {{ $stay->hotel->name ?? 'N/A' }}
+                                                @if($stay->hotel?->category)
+                                                    ({{ $stay->hotel->category->name }})
+                                                @endif
+                                                — {{ $stay->nights }} nights
+                                                @if($stay->city) · {{ $stay->city->name_en }} @endif
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="font-medium text-gray-900">{{ $booking->bookable->hotel->name ?? 'N/A' }}</div>
+                                        @if($booking->bookable->hotel && $booking->bookable->hotel->category)
+                                            <div class="flex items-center mt-1">
+                                                @for($i = 0; $i < $booking->bookable->hotel->category->stars; $i++)
+                                                    <svg class="h-4 w-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                                                    </svg>
+                                                @endfor
+                                            </div>
+                                        @endif
                                     @endif
                                 </div>
                             </div>

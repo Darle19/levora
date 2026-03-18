@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Tours\Schemas;
 
 use App\Models\AdditionalService;
 use App\Models\Airport;
+use App\Models\City;
 use App\Models\Flight;
 use App\Models\Hotel;
+use App\Models\MealType;
 use App\Models\Resort;
 use App\Models\Setting;
 use Filament\Forms\Components\DatePicker;
@@ -34,38 +36,6 @@ class TourForm
                         Select::make('program_type_id')
                             ->relationship('programType', 'name_en')
                             ->required(),
-                        Select::make('country_id')
-                            ->relationship('country', 'name_en')
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function (Set $set) {
-                                $set('resort_id', null);
-                                $set('hotel_id', null);
-                            }),
-                        Select::make('resort_id')
-                            ->label('Resort')
-                            ->options(fn (Get $get) => Resort::query()
-                                ->when($get('country_id'), fn ($q, $id) => $q->where('country_id', $id))
-                                ->where('is_active', true)
-                                ->whereNotNull('name_en')
-                                ->pluck('name_en', 'id')
-                                ->filter())
-                            ->live()
-                            ->afterStateUpdated(fn (Set $set) => $set('hotel_id', null)),
-                        Select::make('hotel_id')
-                            ->label('Hotel')
-                            ->options(function (Get $get) {
-                                $query = Hotel::where('is_active', true)->whereNotNull('name_en');
-                                if ($get('resort_id')) {
-                                    $query->where('resort_id', $get('resort_id'));
-                                } elseif ($get('country_id')) {
-                                    $query->whereHas('resort', fn ($q) => $q->where('country_id', $get('country_id')));
-                                }
-
-                                return $query->pluck('name_en', 'id')->filter();
-                            })
-                            ->searchable()
-                            ->helperText('Hotel must have a price set for auto-pricing to work'),
                         Select::make('transport_type_id')
                             ->relationship('transportType', 'name_en')
                             ->required(),
@@ -73,12 +43,13 @@ class TourForm
                             ->relationship('departureCity', 'name_en')
                             ->required()
                             ->live(),
-                        TextInput::make('nights')
-                            ->required()
-                            ->numeric(),
                         Select::make('currency_id')
                             ->relationship('currency', 'code')
                             ->required(),
+                        Select::make('country_id')
+                            ->relationship('country', 'name_en')
+                            ->required()
+                            ->helperText('Primary destination country'),
                         DatePicker::make('date_from')
                             ->required(),
                         DatePicker::make('date_to')
@@ -91,10 +62,99 @@ class TourForm
                             ->required()
                             ->numeric()
                             ->default(0),
+                    ])
+                    ->columns(2),
+
+                Section::make('Itinerary Stays')
+                    ->description('Add hotel stays in order. Pricing = sum of (price per night × nights) for each stay.')
+                    ->schema([
+                        Repeater::make('tour_stays')
+                            ->label('Stays')
+                            ->schema([
+                                TextInput::make('stay_order')
+                                    ->label('#')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(1)
+                                    ->minValue(1),
+                                Select::make('city_id')
+                                    ->label('City')
+                                    ->options(fn () => City::where('is_active', true)
+                                        ->whereNotNull('name_en')
+                                        ->pluck('name_en', 'id')
+                                        ->filter())
+                                    ->searchable()
+                                    ->live(),
+                                Select::make('resort_id')
+                                    ->label('Resort')
+                                    ->options(fn (Get $get) => Resort::query()
+                                        ->where('is_active', true)
+                                        ->whereNotNull('name_en')
+                                        ->when($get('city_id'), fn ($q, $id) => $q->where('city_id', $id))
+                                        ->pluck('name_en', 'id')
+                                        ->filter())
+                                    ->searchable()
+                                    ->live(),
+                                Select::make('hotel_id')
+                                    ->label('Hotel')
+                                    ->options(fn (Get $get) => Hotel::query()
+                                        ->where('is_active', true)
+                                        ->whereNotNull('name_en')
+                                        ->when($get('resort_id'), fn ($q, $id) => $q->where('resort_id', $id))
+                                        ->pluck('name_en', 'id')
+                                        ->filter())
+                                    ->searchable(),
+                                TextInput::make('nights')
+                                    ->label('Nights')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(6),
+                                Select::make('meal_type_id')
+                                    ->label('Meal')
+                                    ->options(fn () => MealType::where('is_active', true)
+                                        ->whereNotNull('name_en')
+                                        ->pluck('name_en', 'id')
+                                        ->filter()),
+                                TextInput::make('price_per_person')
+                                    ->label('Price/Night/Person')
+                                    ->numeric()
+                                    ->placeholder('Auto from hotel'),
+                                Select::make('currency_id')
+                                    ->label('Currency')
+                                    ->options(fn () => \App\Models\Currency::where('is_active', true)
+                                        ->pluck('code', 'id')),
+                            ])
+                            ->columns(4)
+                            ->defaultItems(1)
+                            ->reorderable()
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Legacy (single hotel)')
+                    ->description('Used for backward compatibility with simple single-hotel tours. Leave empty if using Itinerary Stays above.')
+                    ->schema([
+                        Select::make('resort_id')
+                            ->label('Resort')
+                            ->options(fn (Get $get) => Resort::query()
+                                ->when($get('country_id'), fn ($q, $id) => $q->where('country_id', $id))
+                                ->where('is_active', true)
+                                ->whereNotNull('name_en')
+                                ->pluck('name_en', 'id')
+                                ->filter()),
+                        Select::make('hotel_id')
+                            ->label('Hotel')
+                            ->options(fn () => Hotel::where('is_active', true)
+                                ->whereNotNull('name_en')
+                                ->pluck('name_en', 'id')
+                                ->filter())
+                            ->searchable(),
+                        TextInput::make('nights')
+                            ->numeric(),
                         Select::make('meal_type_id')
                             ->relationship('mealType', 'name_en'),
                     ])
-                    ->columns(2),
+                    ->columns(2)
+                    ->collapsed(),
 
                 Section::make('Tour Route')
                     ->schema([
@@ -170,7 +230,7 @@ class TourForm
                             ->prefix('$')
                             ->disabled()
                             ->dehydrated(true)
-                            ->helperText('Auto-calculated: Hotel + Flights + Markup'),
+                            ->helperText('Auto-calculated: Hotels + Flights + Markup'),
                     ])
                     ->columns(2),
 

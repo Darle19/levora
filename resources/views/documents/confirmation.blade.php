@@ -31,7 +31,15 @@
         </tr>
         <tr>
             <td class="label">{{ __('messages.doc_hotel') }}</td>
-            <td>{{ $tour->hotel?->name ?? '—' }} {{ $tour->hotel?->category ? str_repeat('★', $tour->hotel->category->stars ?? 0) : '' }}</td>
+            <td>
+                @if($tour->stays && $tour->stays->isNotEmpty())
+                    @foreach($tour->stays as $stay)
+                        {{ $stay->hotel?->name ?? '—' }} {{ $stay->hotel?->category ? str_repeat('★', $stay->hotel->category->stars ?? 0) : '' }} ({{ $stay->nights }}n){{ !$loop->last ? ' + ' : '' }}
+                    @endforeach
+                @else
+                    {{ $tour->hotel?->name ?? '—' }} {{ $tour->hotel?->category ? str_repeat('★', $tour->hotel->category->stars ?? 0) : '' }}
+                @endif
+            </td>
         </tr>
         <tr>
             <td class="label">{{ __('messages.doc_dates') }}</td>

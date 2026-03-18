@@ -15,7 +15,7 @@ class TourPricingService
      */
     public function recalculate(Tour $tour): ?string
     {
-        $tour->loadMissing(['hotel', 'flights', 'tourPrices']);
+        $tour->loadMissing(['hotel', 'flights', 'tourPrices', 'stays', 'stays.hotel', 'stays.currency']);
         $targetCurrencyId = $tour->currency_id;
 
         $activeTourPrices = $tour->tourPrices->where('is_active', true);
@@ -85,7 +85,7 @@ class TourPricingService
      */
     public function getBreakdown(Tour $tour): array
     {
-        $tour->loadMissing(['hotel', 'flights']);
+        $tour->loadMissing(['hotel', 'flights', 'stays', 'stays.hotel', 'stays.currency']);
         $targetCurrencyId = $tour->currency_id;
 
         $hotelPrice = $this->getHotelPrice($tour, $targetCurrencyId) ?? '0';
@@ -114,7 +114,7 @@ class TourPricingService
         int $children = 0,
         int $infants = 0,
     ): ?array {
-        $tour->loadMissing(['tourPrices', 'flights']);
+        $tour->loadMissing(['tourPrices', 'flights', 'stays', 'stays.hotel', 'stays.currency']);
 
         $tourPrice = $tour->tourPrices
             ->where('room_type_id', $roomTypeId)
@@ -196,6 +196,26 @@ class TourPricingService
 
     private function getHotelPrice(Tour $tour, ?int $targetCurrencyId): ?string
     {
+        // Multi-stay: sum price_per_person × nights for each stay
+        if ($tour->stays->isNotEmpty()) {
+            $total = '0';
+            foreach ($tour->stays as $stay) {
+                $price = $stay->price_per_person ?? $stay->hotel?->price_per_person;
+                if (! $price) {
+                    continue;
+                }
+                $currencyId = $stay->currency_id ?? $stay->hotel?->currency_id;
+                $converted = $this->currencyConverter->convert(
+                    (string) $price, $currencyId, $targetCurrencyId
+                );
+                $stayTotal = bcmul($converted, (string) $stay->nights, 2);
+                $total = bcadd($total, $stayTotal, 2);
+            }
+
+            return bccomp($total, '0', 2) > 0 ? $total : null;
+        }
+
+        // Single hotel fallback
         $hotel = $tour->hotel;
         if (! $hotel || ! $hotel->price_per_person) {
             return null;
