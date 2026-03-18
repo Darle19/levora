@@ -62,6 +62,11 @@ class Booking extends Model
         return $this->hasMany(BookingDocument::class);
     }
 
+    public function amadeusFlights(): HasMany
+    {
+        return $this->hasMany(BookingAmadeusFlight::class);
+    }
+
     public function additionalServices(): BelongsToMany
     {
         return $this->belongsToMany(AdditionalService::class, 'booking_additional_service')

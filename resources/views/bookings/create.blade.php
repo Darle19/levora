@@ -229,6 +229,40 @@
             </div>
         </div>
 
+        {{-- ═══ AMADEUS SEGMENTS ═══ --}}
+        @if($tour->amadeusSegments && $tour->amadeusSegments->count())
+            @foreach($tour->amadeusSegments as $segment)
+                <div class="section" id="amadeus-segment-{{ $segment->id }}">
+                    <div class="section-title">Перелёт {{ $segment->originAirport->code }} → {{ $segment->destinationAirport->code }} (Amadeus)</div>
+                    <div class="section-body">
+                        <div class="amadeus-loading" id="amadeus-loading-{{ $segment->id }}">
+                            <span style="color:#888;">Загрузка доступных рейсов...</span>
+                        </div>
+                        <div class="amadeus-error" id="amadeus-error-{{ $segment->id }}" style="display:none; color:#900; padding:4px;">
+                            Не удалось загрузить рейсы. Попробуйте позже.
+                        </div>
+                        <div id="amadeus-results-{{ $segment->id }}" style="display:none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:30px;"></th>
+                                        <th>Рейс</th>
+                                        <th>Дата</th>
+                                        <th>Маршрут</th>
+                                        <th>Время</th>
+                                        <th>Класс</th>
+                                        <th style="text-align:right;">Цена (взр.)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="amadeus-body-{{ $segment->id }}"></tbody>
+                            </table>
+                        </div>
+                        <div id="amadeus-hidden-{{ $segment->id }}"></div>
+                    </div>
+                </div>
+            @endforeach
+        @endif
+
         {{-- ═══ ADDITIONAL SERVICES ═══ --}}
         @if($tour->additionalServices->count())
         <div class="section">
@@ -786,6 +820,17 @@ function updatePrice() {
         if (breakdown) breakdown.style.display = 'none';
     }
 
+    // Add Amadeus segment costs (with markup)
+    if (typeof amadeusSelections !== 'undefined') {
+        Object.values(amadeusSelections).forEach(f => {
+            const aAdult = parseFloat(f.pricePerAdult || 0);
+            const aChild = parseFloat(f.pricePerChild || f.pricePerAdult || 0);
+            const aInfant = parseFloat(f.pricePerInfant || 0);
+            const amadeusBase = (aAdult * ages.adults) + (aChild * ages.children) + (aInfant * ages.infants);
+            total += amadeusBase * (1 + markupPercent / 100);
+        });
+    }
+
     // Add selected additional services
     document.querySelectorAll('.service-checkbox:checked').forEach(cb => {
         const price = parseFloat(cb.dataset.price) || 0;
@@ -802,6 +847,77 @@ function updatePrice() {
 // Recalculate when services are toggled
 document.querySelectorAll('.service-checkbox').forEach(cb => {
     cb.addEventListener('change', updatePrice);
+});
+
+// ═══ AMADEUS SEGMENT HANDLING ═══
+const amadeusSegments = @json($tour->amadeusSegments ?? []);
+const amadeusSelections = {}; // segmentId => selected flight data
+
+amadeusSegments.forEach(segment => {
+    const segId = segment.id;
+    fetch(`/api/tours/{{ $tour->id }}/amadeus-flights/${segId}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+            document.getElementById('amadeus-loading-' + segId).style.display = 'none';
+            const flights = data.flights || [];
+            if (flights.length === 0) {
+                document.getElementById('amadeus-error-' + segId).style.display = 'block';
+                document.getElementById('amadeus-error-' + segId).textContent = 'Нет доступных рейсов на эту дату.';
+                return;
+            }
+            document.getElementById('amadeus-results-' + segId).style.display = 'block';
+            const tbody = document.getElementById('amadeus-body-' + segId);
+            flights.forEach((f, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="radio" name="amadeus_radio_${segId}" value="${i}" data-segment="${segId}" data-flight='${JSON.stringify(f).replace(/'/g, "&#39;")}' class="amadeus-radio"></td>
+                    <td><strong>${f.airlineName || f.airline}</strong> ${f.flightNumber || ''}</td>
+                    <td>${f.departureDate || ''}</td>
+                    <td>${f.origin} → ${f.destination}</td>
+                    <td>${(f.departureTime || '').substring(0,5)} — ${(f.arrivalTime || '').substring(0,5)}</td>
+                    <td>${f.cabinClass || 'ECONOMY'}</td>
+                    <td style="text-align:right;font-weight:600;">${fmt(parseFloat(f.pricePerAdult || 0))} ${f.currency || 'USD'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(() => {
+            document.getElementById('amadeus-loading-' + segId).style.display = 'none';
+            document.getElementById('amadeus-error-' + segId).style.display = 'block';
+        });
+});
+
+document.addEventListener('change', function(e) {
+    if (!e.target.classList.contains('amadeus-radio')) return;
+    const segId = e.target.dataset.segment;
+    const flight = JSON.parse(e.target.dataset.flight);
+    amadeusSelections[segId] = flight;
+
+    // Populate hidden inputs
+    const container = document.getElementById('amadeus-hidden-' + segId);
+    const idx = Object.keys(amadeusSelections).indexOf(segId + '');
+    const prefix = `amadeus_flights[${idx}]`;
+    container.innerHTML = `
+        <input type="hidden" name="${prefix}[segment_id]" value="${segId}">
+        <input type="hidden" name="${prefix}[offer_id]" value="${flight.amadeusOfferId || flight.id || ''}">
+        <input type="hidden" name="${prefix}[airline]" value="${flight.airline || ''}">
+        <input type="hidden" name="${prefix}[airline_name]" value="${flight.airlineName || flight.airline || ''}">
+        <input type="hidden" name="${prefix}[flight_number]" value="${flight.flightNumber || ''}">
+        <input type="hidden" name="${prefix}[origin]" value="${flight.origin || ''}">
+        <input type="hidden" name="${prefix}[destination]" value="${flight.destination || ''}">
+        <input type="hidden" name="${prefix}[departure_date]" value="${flight.departureDate || ''}">
+        <input type="hidden" name="${prefix}[departure_time]" value="${(flight.departureTime || '').substring(0,5)}">
+        <input type="hidden" name="${prefix}[arrival_date]" value="${flight.arrivalDate || flight.departureDate || ''}">
+        <input type="hidden" name="${prefix}[arrival_time]" value="${(flight.arrivalTime || '').substring(0,5)}">
+        <input type="hidden" name="${prefix}[duration]" value="${flight.duration || ''}">
+        <input type="hidden" name="${prefix}[stops]" value="${flight.stops || 0}">
+        <input type="hidden" name="${prefix}[cabin_class]" value="${flight.cabinClass || 'ECONOMY'}">
+        <input type="hidden" name="${prefix}[price_per_adult]" value="${flight.pricePerAdult || 0}">
+        <input type="hidden" name="${prefix}[price_per_child]" value="${flight.pricePerChild || flight.pricePerAdult || 0}">
+        <input type="hidden" name="${prefix}[price_per_infant]" value="${flight.pricePerInfant || 0}">
+        <input type="hidden" name="${prefix}[currency]" value="${flight.currency || 'USD'}">
+    `;
+    updatePrice();
 });
 
 // Calculate correct total on page load

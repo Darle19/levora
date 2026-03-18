@@ -38,6 +38,9 @@ class BookingController extends Controller
             'flights.fromAirport.city',
             'flights.toAirport',
             'flights.toAirport.city',
+            'amadeusSegments' => fn ($q) => $q->where('is_active', true),
+            'amadeusSegments.originAirport',
+            'amadeusSegments.destinationAirport',
             'additionalServices',
             'additionalServices.currency',
             'tourPrices' => fn ($q) => $q->where('is_active', true)->where('availability', '>', 0),
@@ -93,6 +96,7 @@ class BookingController extends Controller
             'bookable',
             'currency',
             'tourists',
+            'amadeusFlights',
         ]);
 
         if ($booking->bookable instanceof Tour) {

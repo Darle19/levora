@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AdditionalService;
 use App\Models\Booking;
+use App\Models\BookingAmadeusFlight;
 use App\Models\Flight;
 use App\Models\Order;
 use App\Models\RoomType;
@@ -44,14 +45,17 @@ class BookingService
             $this->decrementFlightSeats($tour, $touristCounts['pax_without_infants']);
 
             $totalPrice = $this->calculateTotalPrice($tour, $roomTypeId, $touristCounts, $validated);
-            $serviceAttachments = $this->calculateServicePrices($tour, $validated, $touristCounts['total']);
+            $amadeusPrice = $this->calculateAmadeusPrice($tour, $validated, $touristCounts);
+            $totalPrice = bcadd($totalPrice, $amadeusPrice, 2);
 
+            $serviceAttachments = $this->calculateServicePrices($tour, $validated, $touristCounts['total']);
             $totalPrice = bcadd((string) $totalPrice, (string) array_sum(array_column($serviceAttachments, 'price')), 2);
 
             $order = $this->createOrder($agencyId, $userId, $totalPrice, $tour, $validated);
             $booking = $this->createBookingRecord($order, $tour, $roomTypeId, $totalPrice);
             $this->createTourists($booking, $validated['tourists']);
             $this->attachServices($booking, $serviceAttachments);
+            $this->saveAmadeusFlightSelections($booking, $tour, $validated, $touristCounts);
 
             return ['booking' => $booking, 'order' => $order];
         });
@@ -59,7 +63,7 @@ class BookingService
 
     private function loadAndLockTour(int $tourId): Tour
     {
-        return Tour::with(['currency', 'tourPrices', 'flights', 'additionalServices', 'additionalServices.currency'])
+        return Tour::with(['currency', 'tourPrices', 'flights', 'amadeusSegments', 'additionalServices', 'additionalServices.currency'])
             ->lockForUpdate()
             ->findOrFail($tourId);
     }
@@ -286,6 +290,97 @@ class BookingService
     {
         if (! empty($attachments)) {
             $booking->additionalServices()->attach($attachments);
+        }
+    }
+
+    private function calculateAmadeusPrice(Tour $tour, array $validated, array $counts): string
+    {
+        $selections = $validated['amadeus_flights'] ?? [];
+        if (empty($selections)) {
+            return '0';
+        }
+
+        $total = '0';
+        foreach ($selections as $selection) {
+            $adultPrice = (string) ($selection['price_per_adult'] ?? '0');
+            $childPrice = (string) ($selection['price_per_child'] ?? $adultPrice);
+            $infantPrice = (string) ($selection['price_per_infant'] ?? '0');
+
+            $segmentTotal = bcadd(
+                bcadd(
+                    bcmul($adultPrice, (string) $counts['adults'], 2),
+                    bcmul($childPrice, (string) $counts['children'], 2),
+                    2
+                ),
+                bcmul($infantPrice, (string) $counts['infants'], 2),
+                2
+            );
+
+            // Convert from Amadeus currency (usually USD) to tour currency
+            $amadeusUsdCurrencyId = \App\Models\Currency::where('code', $selection['currency'] ?? 'USD')->value('id');
+            if ($amadeusUsdCurrencyId && $amadeusUsdCurrencyId !== $tour->currency_id) {
+                $segmentTotal = $this->currencyConverter->convert(
+                    $segmentTotal,
+                    $amadeusUsdCurrencyId,
+                    $tour->currency_id,
+                );
+            }
+
+            $total = bcadd($total, $segmentTotal, 2);
+        }
+
+        // Apply tour markup to Amadeus total
+        $markupPercent = (string) $tour->getEffectiveMarkupPercent();
+        $markupMultiplier = bcadd('1', bcdiv($markupPercent, '100', 6), 6);
+
+        return bcmul($total, $markupMultiplier, 2);
+    }
+
+    private function saveAmadeusFlightSelections(Booking $booking, Tour $tour, array $validated, array $counts): void
+    {
+        $selections = $validated['amadeus_flights'] ?? [];
+        if (empty($selections)) {
+            return;
+        }
+
+        foreach ($selections as $selection) {
+            $adultPrice = (string) ($selection['price_per_adult'] ?? '0');
+            $childPrice = (string) ($selection['price_per_child'] ?? $adultPrice);
+            $infantPrice = (string) ($selection['price_per_infant'] ?? '0');
+
+            $priceTotal = bcadd(
+                bcadd(
+                    bcmul($adultPrice, (string) $counts['adults'], 2),
+                    bcmul($childPrice, (string) $counts['children'], 2),
+                    2
+                ),
+                bcmul($infantPrice, (string) $counts['infants'], 2),
+                2
+            );
+
+            BookingAmadeusFlight::create([
+                'booking_id' => $booking->id,
+                'tour_amadeus_segment_id' => $selection['segment_id'],
+                'amadeus_offer_id' => $selection['offer_id'] ?? null,
+                'airline' => $selection['airline'],
+                'airline_name' => $selection['airline_name'],
+                'flight_number' => $selection['flight_number'],
+                'origin' => $selection['origin'],
+                'destination' => $selection['destination'],
+                'departure_date' => $selection['departure_date'],
+                'departure_time' => $selection['departure_time'],
+                'arrival_date' => $selection['arrival_date'],
+                'arrival_time' => $selection['arrival_time'],
+                'duration' => $selection['duration'] ?? null,
+                'stops' => $selection['stops'] ?? 0,
+                'cabin_class' => $selection['cabin_class'],
+                'price_per_adult' => $adultPrice,
+                'price_per_child' => $selection['price_per_child'] ?? null,
+                'price_per_infant' => $selection['price_per_infant'] ?? null,
+                'price_total' => $priceTotal,
+                'currency' => $selection['currency'],
+                'raw_offer_data' => $selection,
+            ]);
         }
     }
 }

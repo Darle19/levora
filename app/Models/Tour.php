@@ -115,7 +115,7 @@ class Tour extends Model
     public function flights(): BelongsToMany
     {
         return $this->belongsToMany(Flight::class, 'tour_flight')
-            ->withPivot('direction');
+            ->withPivot(['direction', 'leg_order']);
     }
 
     public function outboundFlights(): BelongsToMany
@@ -126,6 +126,16 @@ class Tour extends Model
     public function returnFlights(): BelongsToMany
     {
         return $this->flights()->wherePivot('direction', 'return');
+    }
+
+    public function amadeusSegments(): HasMany
+    {
+        return $this->hasMany(TourAmadeusSegment::class)->orderBy('leg_order');
+    }
+
+    public function requiresAmadeusBooking(): bool
+    {
+        return $this->amadeusSegments()->where('is_active', true)->exists();
     }
 
     public function additionalServices(): BelongsToMany

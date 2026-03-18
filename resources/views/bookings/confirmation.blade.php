@@ -139,6 +139,32 @@
                     </div>
                 @endif
 
+                <!-- Amadeus Flights -->
+                @if($booking->amadeusFlights && $booking->amadeusFlights->count())
+                    <div class="border-t border-gray-200 pt-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">Amadeus Flights</h3>
+                        <div class="space-y-3">
+                            @foreach($booking->amadeusFlights as $af)
+                                <div class="bg-blue-50 rounded-lg p-4">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <span class="font-medium text-gray-900">{{ $af->airline_name }}</span>
+                                            <span class="text-gray-600">{{ $af->flight_number }}</span>
+                                        </div>
+                                        <div class="font-semibold text-gray-900">{{ number_format($af->price_total, 2) }} {{ $af->currency }}</div>
+                                    </div>
+                                    <div class="text-sm text-gray-600 mt-1">
+                                        {{ $af->origin }} → {{ $af->destination }} &middot;
+                                        {{ $af->departure_date?->format('d.m.Y') }} {{ $af->departure_time }}—{{ $af->arrival_time }} &middot;
+                                        {{ ucfirst(strtolower($af->cabin_class)) }}
+                                        @if($af->stops > 0) &middot; {{ $af->stops }} stop(s) @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Travelers Information -->
                 @if($booking->tourists->count() > 0)
                     <div class="border-t border-gray-200 pt-6">
