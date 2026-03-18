@@ -47,20 +47,22 @@ class TourForm
                             ->options(fn (Get $get) => Resort::query()
                                 ->when($get('country_id'), fn ($q, $id) => $q->where('country_id', $id))
                                 ->where('is_active', true)
-                                ->pluck('name_en', 'id'))
+                                ->whereNotNull('name_en')
+                                ->pluck('name_en', 'id')
+                                ->filter())
                             ->live()
                             ->afterStateUpdated(fn (Set $set) => $set('hotel_id', null)),
                         Select::make('hotel_id')
                             ->label('Hotel')
                             ->options(function (Get $get) {
-                                $query = Hotel::where('is_active', true);
+                                $query = Hotel::where('is_active', true)->whereNotNull('name_en');
                                 if ($get('resort_id')) {
                                     $query->where('resort_id', $get('resort_id'));
                                 } elseif ($get('country_id')) {
                                     $query->whereHas('resort', fn ($q) => $q->where('country_id', $get('country_id')));
                                 }
 
-                                return $query->pluck('name_en', 'id');
+                                return $query->pluck('name_en', 'id')->filter();
                             })
                             ->searchable()
                             ->helperText('Hotel must have a price set for auto-pricing to work'),
