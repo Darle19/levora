@@ -41,15 +41,17 @@
                                                 @endif
                                             </div>
                                             <div class="text-sm text-gray-600 mt-1">
-                                                @if($firstTour->resort)
-                                                    <span class="flex items-center">
-                                                        <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                        </svg>
+                                                <span class="flex items-center">
+                                                    <svg class="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                    </svg>
+                                                    @if($firstTour->stays->isNotEmpty())
+                                                        {{ $firstTour->stays->map(fn($s) => ($s->city->name ?? $s->resort->name_en ?? '') . ' (' . $s->nights . 'n)')->join(' + ') }}
+                                                    @elseif($firstTour->resort)
                                                         {{ $firstTour->resort->name_en }}, {{ $firstTour->country->name_en ?? '' }}
-                                                    </span>
-                                                @endif
+                                                    @endif
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -355,20 +357,29 @@
                                 {{ $tour->nights ?? 0 }}
                             </td>
                             <td class="px-4 py-3 text-sm">
-                                <div class="font-medium text-gray-900">
-                                    {{ $tour->hotel->name ?? '-' }}
-                                    @if($tour->hotel && $tour->hotel->category)
-                                        <div class="inline-flex items-center space-x-0.5 ml-1">
-                                            @for($i = 0; $i < $tour->hotel->category->stars; $i++)
-                                                <svg class="h-3 w-3 text-yellow-500 fill-current" viewBox="0 0 20 20">
-                                                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-                                                </svg>
-                                            @endfor
+                                @if($tour->stays->isNotEmpty())
+                                    @foreach($tour->stays as $stay)
+                                        <div class="{{ !$loop->first ? 'mt-1 pt-1 border-t border-gray-100' : '' }}">
+                                            <span class="font-medium text-gray-900">{{ $stay->hotel->name ?? ($stay->city->name ?? '-') }}</span>
+                                            <span class="text-xs text-gray-500">{{ $stay->nights }}n</span>
                                         </div>
+                                    @endforeach
+                                @else
+                                    <div class="font-medium text-gray-900">
+                                        {{ $tour->hotel->name ?? '-' }}
+                                        @if($tour->hotel && $tour->hotel->category)
+                                            <div class="inline-flex items-center space-x-0.5 ml-1">
+                                                @for($i = 0; $i < $tour->hotel->category->stars; $i++)
+                                                    <svg class="h-3 w-3 text-yellow-500 fill-current" viewBox="0 0 20 20">
+                                                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                                                    </svg>
+                                                @endfor
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @if($tour->resort)
+                                        <div class="text-xs text-gray-600">{{ $tour->resort->name_en }}</div>
                                     @endif
-                                </div>
-                                @if($tour->resort)
-                                    <div class="text-xs text-gray-600">{{ $tour->resort->name_en }}</div>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-center">
