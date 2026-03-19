@@ -93,7 +93,7 @@ class AmadeusFlightService
 
         try {
             $response = Http::withToken($token)
-                ->timeout(5)
+                ->timeout(15)
                 ->get("{$baseUrl}/v2/shopping/flight-offers", $queryParams);
 
             if (! $response->successful()) {
@@ -113,11 +113,7 @@ class AmadeusFlightService
                 $offers
             );
 
-            // Filter to allowed airlines only
-            return array_values(array_filter(
-                $results,
-                fn(FlightOfferDto $dto) => in_array($dto->airline, self::ALLOWED_AIRLINES, true)
-            ));
+            return $results;
         } catch (\Exception $e) {
             Log::error('Amadeus flight search exception', ['message' => $e->getMessage()]);
             return null;
