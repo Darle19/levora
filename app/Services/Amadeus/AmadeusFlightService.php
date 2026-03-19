@@ -113,7 +113,7 @@ class AmadeusFlightService
                 $offers
             );
 
-            // Only show fares with checked baggage included
+            // Only fares with checked baggage included
             return array_values(array_filter(
                 $results,
                 fn(FlightOfferDto $dto) => $dto->checkedBags > 0
