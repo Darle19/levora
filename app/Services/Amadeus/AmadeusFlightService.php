@@ -34,7 +34,7 @@ class AmadeusFlightService
         int $infants = 0,
         string $travelClass = 'ECONOMY',
         bool $nonStop = false,
-        int $maxResults = 20,
+        int $maxResults = 100,
     ): array {
         $params = compact('origin', 'destination', 'departureDate', 'returnDate', 'adults', 'children', 'infants', 'travelClass', 'nonStop');
         $cacheKey = hash('sha256', json_encode($params));
@@ -113,11 +113,7 @@ class AmadeusFlightService
                 $offers
             );
 
-            // Only fares with checked baggage included
-            return array_values(array_filter(
-                $results,
-                fn(FlightOfferDto $dto) => $dto->checkedBags > 0
-            ));
+            return $results;
         } catch (\Exception $e) {
             Log::error('Amadeus flight search exception', ['message' => $e->getMessage()]);
             return null;

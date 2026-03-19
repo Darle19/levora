@@ -101,7 +101,7 @@ class FlightOfferDto
             availableSeats: (int) ($offer['numberOfBookableSeats'] ?? 0),
             cabinClass: $travelerPricings[0]['fareDetailsBySegment'][0]['cabin'] ?? 'ECONOMY',
             brandedFare: $travelerPricings[0]['fareDetailsBySegment'][0]['brandedFareLabel'] ?? $travelerPricings[0]['fareDetailsBySegment'][0]['brandedFare'] ?? null,
-            checkedBags: (int) ($travelerPricings[0]['fareDetailsBySegment'][0]['includedCheckedBags']['quantity'] ?? $travelerPricings[0]['fareDetailsBySegment'][0]['includedCheckedBags']['weight'] ?? 0),
+            checkedBags: self::parseBagCount($travelerPricings[0]['fareDetailsBySegment'][0]['includedCheckedBags'] ?? []),
             cabinBags: (int) ($travelerPricings[0]['fareDetailsBySegment'][0]['includedCabinBags']['quantity'] ?? 0),
             returnDepartureDate: $returnItinerary ? substr($returnItinerary['segments'][0]['departure']['at'] ?? '', 0, 10) : null,
             returnDepartureTime: $returnItinerary ? substr($returnItinerary['segments'][0]['departure']['at'] ?? '', 11, 5) : null,
@@ -146,6 +146,18 @@ class FlightOfferDto
     public function toArray(): array
     {
         return get_object_vars($this);
+    }
+
+    private static function parseBagCount(array $bagData): int
+    {
+        // Some airlines report quantity, others report weight in KG
+        if (! empty($bagData['quantity'])) {
+            return (int) $bagData['quantity'];
+        }
+        if (! empty($bagData['weight']) && (int) $bagData['weight'] > 0) {
+            return 1; // Has weight allowance = at least 1 bag
+        }
+        return 0;
     }
 
     private static function formatDuration(string $isoDuration): string
