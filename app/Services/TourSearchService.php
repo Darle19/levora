@@ -53,14 +53,22 @@ class TourSearchService
             $query->where('country_id', $filters['country_id']);
         }
 
-        // Multiple resort filter
+        // Multiple resort filter (check both primary resort and stays)
         if (! empty($filters['resort_ids'])) {
-            $query->whereIn('resort_id', $filters['resort_ids']);
+            $resortIds = $filters['resort_ids'];
+            $query->where(function ($q) use ($resortIds) {
+                $q->whereIn('resort_id', $resortIds)
+                    ->orWhereHas('stays', fn ($sq) => $sq->whereIn('resort_id', $resortIds));
+            });
         }
 
-        // Multiple hotel filter
+        // Multiple hotel filter (check both primary hotel and stays)
         if (! empty($filters['hotel_ids'])) {
-            $query->whereIn('hotel_id', $filters['hotel_ids']);
+            $hotelIds = $filters['hotel_ids'];
+            $query->where(function ($q) use ($hotelIds) {
+                $q->whereIn('hotel_id', $hotelIds)
+                    ->orWhereHas('stays', fn ($sq) => $sq->whereIn('hotel_id', $hotelIds));
+            });
         }
 
         // Departure city filter
@@ -156,8 +164,10 @@ class TourSearchService
         return $query->with([
             'country', 'resort', 'hotel', 'hotel.category', 'hotel.currency',
             'tourType', 'programType', 'transportType',
-            'departureCity', 'currency', 'mealType', 'tourPrices.roomType',
+            'departureCity', 'currency', 'mealType',
+            'tourPrices.roomType', 'tourPrices.currency',
             'flights.currency',
+            'stays.hotel', 'stays.city', 'stays.resort',
         ])
             ->paginate($perPage)
             ->withQueryString();

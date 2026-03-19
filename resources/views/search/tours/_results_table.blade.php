@@ -158,9 +158,10 @@
                                     {{ $tour->nights ?? 0 }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-center">
-                                    @if($tour->availability_status == 'available' || $tour->available_seats > 5)
+                                    @php $seats = $tour->tourPrices->sum('availability'); @endphp
+                                    @if($tour->is_available && $seats > 5)
                                         <span class="inline-block w-3 h-3 bg-green-500 rounded-full" title="{{ __('messages.available') }}"></span>
-                                    @elseif($tour->available_seats > 0)
+                                    @elseif($tour->is_available && $seats > 0)
                                         <span class="inline-block w-3 h-3 bg-yellow-500 rounded-full" title="{{ __('messages.limited') }}"></span>
                                     @else
                                         <span class="inline-block w-3 h-3 bg-red-500 rounded-full" title="{{ __('messages.sold_out') }}"></span>

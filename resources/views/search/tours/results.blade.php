@@ -74,14 +74,14 @@
 
                     <div id="resort-container" class="filter-row" style="display: {{ !empty($currentFilters['country_id']) ? 'block' : 'none' }}">
                         <span class="filter-label">{{ __('messages.resort') }}</span>
-                        <select id="resort_id" name="resort_id">
+                        <select id="resort_id" name="resort_ids[]">
                             <option value="">{{ __('messages.all_resorts') }}</option>
                         </select>
                     </div>
 
                     <div id="hotel-container" class="filter-row" style="display: {{ !empty($currentFilters['resort_id']) ? 'block' : 'none' }}">
                         <span class="filter-label">{{ __('messages.hotel') }}</span>
-                        <select id="hotel_id" name="hotel_id">
+                        <select id="hotel_id" name="hotel_ids[]">
                             <option value="">{{ __('messages.all_hotels') }}</option>
                         </select>
                     </div>
