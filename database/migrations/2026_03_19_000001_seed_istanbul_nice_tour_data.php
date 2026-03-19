@@ -65,18 +65,46 @@ return new class extends Migration
             ]
         );
 
-        // Reference IDs
+        // Ensure Centrum Air airline exists
+        $centrumAirId = DB::table('airlines')->where('code', 'C2')->value('id');
+        if (! $centrumAirId) {
+            $centrumAirId = DB::table('airlines')->insertGetId([
+                'name' => 'Centrum Air',
+                'code' => 'C2',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Ensure France country exists
+        $franceId = DB::table('countries')->where('name_en', 'France')->value('id');
+        if (! $franceId) {
+            $franceId = DB::table('countries')->insertGetId([
+                'name_en' => 'France',
+                'name_ru' => 'Франция',
+                'name_uz' => 'Frantsiya',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Reference IDs (bail if critical data missing)
         $tasAirportId = DB::table('airports')->where('code', 'TAS')->value('id');
         $istAirportId = DB::table('airports')->where('code', 'IST')->value('id');
-        $centrumAirId = DB::table('airlines')->where('code', 'C2')->value('id');
         $usdId = DB::table('currencies')->where('code', 'USD')->value('id');
-        $franceId = DB::table('countries')->where('name_en', 'France')->value('id');
+
+        if (! $tasAirportId || ! $istAirportId || ! $usdId) {
+            throw new \RuntimeException('Missing critical reference data: TAS/IST airports or USD currency. Run BasicDataSeeder first.');
+        }
+
         $istanbulCityId = DB::table('cities')->where('name_en', 'Istanbul')->value('id');
         $sultanahmetId = DB::table('resorts')->where('name_en', 'Sultanahmet')->value('id');
-        $bbMealId = DB::table('meal_types')->where('name_en', 'Bed & Breakfast')->value('id');
-        $combinedTypeId = DB::table('tour_types')->where('name_en', 'Combined')->value('id');
-        $standardProgramId = DB::table('program_types')->where('name_en', 'Standard')->value('id');
-        $airplaneId = DB::table('transport_types')->where('name_en', 'Airplane')->value('id');
+        $bbMealId = DB::table('meal_types')->where('name_en', 'Bed & Breakfast')->value('id') ?? DB::table('meal_types')->first()?->id;
+        $combinedTypeId = DB::table('tour_types')->where('name_en', 'Combined')->value('id') ?? DB::table('tour_types')->first()?->id;
+        $standardProgramId = DB::table('program_types')->where('name_en', 'Standard')->value('id') ?? DB::table('program_types')->first()?->id;
+        $airplaneId = DB::table('transport_types')->where('name_en', 'Airplane')->value('id') ?? DB::table('transport_types')->first()?->id;
         $tashkentCityId = DB::table('cities')->where('name_en', 'Tashkent')->value('id');
         $doubleRoomId = DB::table('room_types')->where('name_en', 'Double')->value('id');
 
