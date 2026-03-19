@@ -13,6 +13,7 @@ class TourAmadeusSegment extends Model
         'leg_order',
         'origin_airport_id',
         'destination_airport_id',
+        'offset_days',
         'is_active',
     ];
 

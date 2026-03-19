@@ -9,6 +9,7 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('/available-dates', [TourAvailabilityController::class, 'availableDates']);
         Route::get('/nights-range', [TourAvailabilityController::class, 'nightsRange']);
         Route::get('/{tour}/amadeus-flights/{segment}', [AmadeusSegmentSearchController::class, 'search']);
+        Route::get('/{tour}/amadeus-flights', [AmadeusSegmentSearchController::class, 'searchRoundTrip']);
     });
 
     Route::get('/resorts', [TourAvailabilityController::class, 'resorts']);
