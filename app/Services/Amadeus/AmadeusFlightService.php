@@ -113,7 +113,11 @@ class AmadeusFlightService
                 $offers
             );
 
-            return $results;
+            // Only show fares with checked baggage included
+            return array_values(array_filter(
+                $results,
+                fn(FlightOfferDto $dto) => $dto->checkedBags > 0
+            ));
         } catch (\Exception $e) {
             Log::error('Amadeus flight search exception', ['message' => $e->getMessage()]);
             return null;

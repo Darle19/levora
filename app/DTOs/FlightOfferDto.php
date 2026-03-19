@@ -35,6 +35,9 @@ class FlightOfferDto
         public readonly ?int $returnStops = null,
         public readonly bool $isAmadeus = false,
         public readonly ?string $amadeusOfferId = null,
+        public readonly ?string $brandedFare = null,
+        public readonly int $checkedBags = 0,
+        public readonly int $cabinBags = 0,
     ) {}
 
     public static function fromAmadeus(array $offer, array $dictionaries = []): self
@@ -97,6 +100,9 @@ class FlightOfferDto
             pricePerInfant: $infantPrice,
             availableSeats: (int) ($offer['numberOfBookableSeats'] ?? 0),
             cabinClass: $travelerPricings[0]['fareDetailsBySegment'][0]['cabin'] ?? 'ECONOMY',
+            brandedFare: $travelerPricings[0]['fareDetailsBySegment'][0]['brandedFareLabel'] ?? $travelerPricings[0]['fareDetailsBySegment'][0]['brandedFare'] ?? null,
+            checkedBags: (int) ($travelerPricings[0]['fareDetailsBySegment'][0]['includedCheckedBags']['quantity'] ?? $travelerPricings[0]['fareDetailsBySegment'][0]['includedCheckedBags']['weight'] ?? 0),
+            cabinBags: (int) ($travelerPricings[0]['fareDetailsBySegment'][0]['includedCabinBags']['quantity'] ?? 0),
             returnDepartureDate: $returnItinerary ? substr($returnItinerary['segments'][0]['departure']['at'] ?? '', 0, 10) : null,
             returnDepartureTime: $returnItinerary ? substr($returnItinerary['segments'][0]['departure']['at'] ?? '', 11, 5) : null,
             returnArrivalDate: $returnItinerary ? substr(end($returnItinerary['segments'])['arrival']['at'] ?? '', 0, 10) : null,
