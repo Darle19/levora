@@ -48,9 +48,18 @@ class TourSearchService
     {
         $query = Tour::query()->where('is_available', true);
 
-        // Country filter
+        // Country filter (also match tours that have a stay in a city of that country)
         if (! empty($filters['country_id'])) {
-            $query->where('country_id', $filters['country_id']);
+            $countryId = $filters['country_id'];
+            $query->where(function ($q) use ($countryId) {
+                $q->where('country_id', $countryId)
+                    ->orWhereHas('stays', function ($sq) use ($countryId) {
+                        $sq->whereHas('city', fn ($cq) => $cq->where('country_id', $countryId));
+                    })
+                    ->orWhereHas('stays', function ($sq) use ($countryId) {
+                        $sq->whereHas('resort', fn ($rq) => $rq->where('country_id', $countryId));
+                    });
+            });
         }
 
         // Multiple resort filter (check both primary resort and stays)
