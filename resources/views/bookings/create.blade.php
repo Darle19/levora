@@ -277,38 +277,36 @@
             </div>
         </div>
 
-        {{-- ═══ AMADEUS SEGMENTS ═══ --}}
+        {{-- ═══ AMADEUS FLIGHTS (round-trip) ═══ --}}
         @if($tour->amadeusSegments && $tour->amadeusSegments->count())
-            @foreach($tour->amadeusSegments as $segment)
-                <div class="section" id="amadeus-segment-{{ $segment->id }}">
-                    <div class="section-title">Перелёт {{ $segment->originAirport->code }} → {{ $segment->destinationAirport->code }} (Amadeus)</div>
-                    <div class="section-body">
-                        <div class="amadeus-loading" id="amadeus-loading-{{ $segment->id }}">
-                            <span style="color:#888;">Загрузка доступных рейсов...</span>
-                        </div>
-                        <div class="amadeus-error" id="amadeus-error-{{ $segment->id }}" style="display:none; color:#900; padding:4px;">
-                            Не удалось загрузить рейсы. Попробуйте позже.
-                        </div>
-                        <div id="amadeus-results-{{ $segment->id }}" style="display:none;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width:30px;"></th>
-                                        <th>Рейс</th>
-                                        <th>Дата</th>
-                                        <th>Маршрут</th>
-                                        <th>Время</th>
-                                        <th>Класс</th>
-                                        <th style="text-align:right;">Цена (взр.)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="amadeus-body-{{ $segment->id }}"></tbody>
-                            </table>
-                        </div>
-                        <div id="amadeus-hidden-{{ $segment->id }}"></div>
+            <div class="section" id="amadeus-roundtrip-section">
+                <div class="section-title">Перелёт (Amadeus — туда и обратно)</div>
+                <div class="section-body">
+                    <div id="amadeus-rt-loading">
+                        <span style="color:#888;">Загрузка доступных рейсов...</span>
                     </div>
+                    <div id="amadeus-rt-error" style="display:none; color:#900; padding:4px;">
+                        Не удалось загрузить рейсы. Попробуйте позже.
+                    </div>
+                    <div id="amadeus-rt-results" style="display:none;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:30px;"></th>
+                                    <th>Авиакомпания</th>
+                                    <th>Туда</th>
+                                    <th>Обратно</th>
+                                    <th>Тариф</th>
+                                    <th>Багаж</th>
+                                    <th style="text-align:right;">Цена (взр.)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="amadeus-rt-body"></tbody>
+                        </table>
+                    </div>
+                    <div id="amadeus-rt-hidden"></div>
                 </div>
-            @endforeach
+            </div>
         @endif
 
         {{-- ═══ ADDITIONAL SERVICES ═══ --}}
@@ -897,74 +895,140 @@ document.querySelectorAll('.service-checkbox').forEach(cb => {
     cb.addEventListener('change', updatePrice);
 });
 
-// ═══ AMADEUS SEGMENT HANDLING ═══
+// ═══ AMADEUS ROUND-TRIP HANDLING ═══
 const amadeusSegments = @json($tour->amadeusSegments ?? []);
-const amadeusSelections = {}; // segmentId => selected flight data
+let amadeusSelectedFlight = null;
 
-amadeusSegments.forEach(segment => {
-    const segId = segment.id;
-    fetch(`/api/tours/{{ $tour->id }}/amadeus-flights/${segId}`)
+if (amadeusSegments.length > 0) {
+    fetch(`/api/tours/{{ $tour->id }}/amadeus-flights`)
         .then(r => r.ok ? r.json() : Promise.reject(r))
         .then(data => {
-            document.getElementById('amadeus-loading-' + segId).style.display = 'none';
-            const flights = data.flights || [];
-            if (flights.length === 0) {
-                document.getElementById('amadeus-error-' + segId).style.display = 'block';
-                document.getElementById('amadeus-error-' + segId).textContent = 'Нет доступных рейсов на эту дату.';
+            document.getElementById('amadeus-rt-loading').style.display = 'none';
+            const segmentResults = data.segments || [];
+            if (segmentResults.length === 0) {
+                document.getElementById('amadeus-rt-error').style.display = 'block';
+                document.getElementById('amadeus-rt-error').textContent = 'Нет доступных рейсов.';
                 return;
             }
-            document.getElementById('amadeus-results-' + segId).style.display = 'block';
-            const tbody = document.getElementById('amadeus-body-' + segId);
+
+            const rt = segmentResults[0]; // first (and usually only) paired result
+            const flights = rt.flights || [];
+            if (flights.length === 0) {
+                document.getElementById('amadeus-rt-error').style.display = 'block';
+                document.getElementById('amadeus-rt-error').textContent = 'Нет доступных рейсов на эти даты.';
+                return;
+            }
+
+            document.getElementById('amadeus-rt-results').style.display = 'block';
+            const tbody = document.getElementById('amadeus-rt-body');
+            const isRoundTrip = rt.type === 'round_trip';
+
             flights.forEach((f, i) => {
+                const outInfo = `${f.origin}→${f.destination} ${(f.departureDate||'').substring(5)} ${(f.departureTime||'').substring(0,5)}—${(f.arrivalTime||'').substring(0,5)}`;
+                let retInfo = '—';
+                if (isRoundTrip && f.returnDepartureDate) {
+                    retInfo = `${f.destination}→${f.origin} ${(f.returnDepartureDate||'').substring(5)} ${(f.returnDepartureTime||'').substring(0,5)}—${(f.returnArrivalTime||'').substring(0,5)}`;
+                }
+                const bags = f.checkedBags > 0 ? `✓ ${f.checkedBags} bag` : '✗';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><input type="radio" name="amadeus_radio_${segId}" value="${i}" data-segment="${segId}" data-flight='${JSON.stringify(f).replace(/'/g, "&#39;")}' class="amadeus-radio"></td>
-                    <td><strong>${f.airlineName || f.airline}</strong> ${f.flightNumber || ''}</td>
-                    <td>${f.departureDate || ''}</td>
-                    <td>${f.origin} → ${f.destination}</td>
-                    <td>${(f.departureTime || '').substring(0,5)} — ${(f.arrivalTime || '').substring(0,5)}</td>
-                    <td>${f.cabinClass || 'ECONOMY'}</td>
+                    <td><input type="radio" name="amadeus_rt_radio" value="${i}" data-flight='${JSON.stringify(f).replace(/'/g, "&#39;")}' data-rt='${JSON.stringify(rt).replace(/'/g, "&#39;")}' class="amadeus-rt-radio"></td>
+                    <td><strong>${f.airlineName || f.airline}</strong><br><small>${f.flightNumber || ''}</small></td>
+                    <td style="font-size:11px;">${outInfo}</td>
+                    <td style="font-size:11px;">${retInfo}</td>
+                    <td><small>${f.brandedFare || f.cabinClass || 'ECONOMY'}</small></td>
+                    <td>${bags}</td>
                     <td style="text-align:right;font-weight:600;">${fmt(parseFloat(f.pricePerAdult || 0))} ${f.currency || 'USD'}</td>
                 `;
                 tbody.appendChild(tr);
             });
         })
         .catch(() => {
-            document.getElementById('amadeus-loading-' + segId).style.display = 'none';
-            document.getElementById('amadeus-error-' + segId).style.display = 'block';
+            document.getElementById('amadeus-rt-loading').style.display = 'none';
+            document.getElementById('amadeus-rt-error').style.display = 'block';
         });
-});
+}
 
 document.addEventListener('change', function(e) {
-    if (!e.target.classList.contains('amadeus-radio')) return;
-    const segId = e.target.dataset.segment;
+    if (!e.target.classList.contains('amadeus-rt-radio')) return;
     const flight = JSON.parse(e.target.dataset.flight);
-    amadeusSelections[segId] = flight;
+    const rt = JSON.parse(e.target.dataset.rt);
+    amadeusSelectedFlight = flight;
 
-    // Populate hidden inputs
-    const container = document.getElementById('amadeus-hidden-' + segId);
-    const idx = Object.keys(amadeusSelections).indexOf(segId + '');
-    const prefix = `amadeus_flights[${idx}]`;
-    container.innerHTML = `
-        <input type="hidden" name="${prefix}[segment_id]" value="${segId}">
-        <input type="hidden" name="${prefix}[offer_id]" value="${flight.amadeusOfferId || flight.id || ''}">
-        <input type="hidden" name="${prefix}[airline]" value="${flight.airline || ''}">
-        <input type="hidden" name="${prefix}[airline_name]" value="${flight.airlineName || flight.airline || ''}">
-        <input type="hidden" name="${prefix}[flight_number]" value="${flight.flightNumber || ''}">
-        <input type="hidden" name="${prefix}[origin]" value="${flight.origin || ''}">
-        <input type="hidden" name="${prefix}[destination]" value="${flight.destination || ''}">
-        <input type="hidden" name="${prefix}[departure_date]" value="${flight.departureDate || ''}">
-        <input type="hidden" name="${prefix}[departure_time]" value="${(flight.departureTime || '').substring(0,5)}">
-        <input type="hidden" name="${prefix}[arrival_date]" value="${flight.arrivalDate || flight.departureDate || ''}">
-        <input type="hidden" name="${prefix}[arrival_time]" value="${(flight.arrivalTime || '').substring(0,5)}">
-        <input type="hidden" name="${prefix}[duration]" value="${flight.duration || ''}">
-        <input type="hidden" name="${prefix}[stops]" value="${flight.stops || 0}">
-        <input type="hidden" name="${prefix}[cabin_class]" value="${flight.cabinClass || 'ECONOMY'}">
-        <input type="hidden" name="${prefix}[price_per_adult]" value="${flight.pricePerAdult || 0}">
-        <input type="hidden" name="${prefix}[price_per_child]" value="${flight.pricePerChild || flight.pricePerAdult || 0}">
-        <input type="hidden" name="${prefix}[price_per_infant]" value="${flight.pricePerInfant || 0}">
-        <input type="hidden" name="${prefix}[currency]" value="${flight.currency || 'USD'}">
-    `;
+    const container = document.getElementById('amadeus-rt-hidden');
+    let html = '';
+
+    if (rt.type === 'round_trip') {
+        // Outbound segment
+        const outSegId = rt.outbound_segment_id;
+        html += `
+            <input type="hidden" name="amadeus_flights[0][segment_id]" value="${outSegId}">
+            <input type="hidden" name="amadeus_flights[0][offer_id]" value="${flight.amadeusOfferId || flight.id || ''}">
+            <input type="hidden" name="amadeus_flights[0][airline]" value="${flight.airline || ''}">
+            <input type="hidden" name="amadeus_flights[0][airline_name]" value="${flight.airlineName || ''}">
+            <input type="hidden" name="amadeus_flights[0][flight_number]" value="${flight.flightNumber || ''}">
+            <input type="hidden" name="amadeus_flights[0][origin]" value="${flight.origin || ''}">
+            <input type="hidden" name="amadeus_flights[0][destination]" value="${flight.destination || ''}">
+            <input type="hidden" name="amadeus_flights[0][departure_date]" value="${flight.departureDate || ''}">
+            <input type="hidden" name="amadeus_flights[0][departure_time]" value="${(flight.departureTime||'').substring(0,5)}">
+            <input type="hidden" name="amadeus_flights[0][arrival_date]" value="${flight.arrivalDate || flight.departureDate || ''}">
+            <input type="hidden" name="amadeus_flights[0][arrival_time]" value="${(flight.arrivalTime||'').substring(0,5)}">
+            <input type="hidden" name="amadeus_flights[0][duration]" value="${flight.duration || ''}">
+            <input type="hidden" name="amadeus_flights[0][stops]" value="${flight.stops || 0}">
+            <input type="hidden" name="amadeus_flights[0][cabin_class]" value="${flight.cabinClass || 'ECONOMY'}">
+            <input type="hidden" name="amadeus_flights[0][price_per_adult]" value="${flight.pricePerAdult || 0}">
+            <input type="hidden" name="amadeus_flights[0][price_per_child]" value="${flight.pricePerChild || flight.pricePerAdult || 0}">
+            <input type="hidden" name="amadeus_flights[0][price_per_infant]" value="${flight.pricePerInfant || 0}">
+            <input type="hidden" name="amadeus_flights[0][currency]" value="${flight.currency || 'USD'}">
+        `;
+        // Return segment (from round-trip data)
+        const retSegId = rt.return_segment_id;
+        html += `
+            <input type="hidden" name="amadeus_flights[1][segment_id]" value="${retSegId}">
+            <input type="hidden" name="amadeus_flights[1][offer_id]" value="${flight.amadeusOfferId || flight.id || ''}">
+            <input type="hidden" name="amadeus_flights[1][airline]" value="${flight.airline || ''}">
+            <input type="hidden" name="amadeus_flights[1][airline_name]" value="${flight.airlineName || ''}">
+            <input type="hidden" name="amadeus_flights[1][flight_number]" value="${flight.flightNumber || ''}_RT">
+            <input type="hidden" name="amadeus_flights[1][origin]" value="${flight.destination || ''}">
+            <input type="hidden" name="amadeus_flights[1][destination]" value="${flight.origin || ''}">
+            <input type="hidden" name="amadeus_flights[1][departure_date]" value="${flight.returnDepartureDate || ''}">
+            <input type="hidden" name="amadeus_flights[1][departure_time]" value="${(flight.returnDepartureTime||'').substring(0,5)}">
+            <input type="hidden" name="amadeus_flights[1][arrival_date]" value="${flight.returnArrivalDate || flight.returnDepartureDate || ''}">
+            <input type="hidden" name="amadeus_flights[1][arrival_time]" value="${(flight.returnArrivalTime||'').substring(0,5)}">
+            <input type="hidden" name="amadeus_flights[1][duration]" value="${flight.returnDuration || ''}">
+            <input type="hidden" name="amadeus_flights[1][stops]" value="${flight.returnStops || 0}">
+            <input type="hidden" name="amadeus_flights[1][cabin_class]" value="${flight.cabinClass || 'ECONOMY'}">
+            <input type="hidden" name="amadeus_flights[1][price_per_adult]" value="0">
+            <input type="hidden" name="amadeus_flights[1][price_per_child]" value="0">
+            <input type="hidden" name="amadeus_flights[1][price_per_infant]" value="0">
+            <input type="hidden" name="amadeus_flights[1][currency]" value="${flight.currency || 'USD'}">
+        `;
+    } else {
+        // One-way fallback
+        const segId = rt.segment_id;
+        html += `
+            <input type="hidden" name="amadeus_flights[0][segment_id]" value="${segId}">
+            <input type="hidden" name="amadeus_flights[0][offer_id]" value="${flight.amadeusOfferId || flight.id || ''}">
+            <input type="hidden" name="amadeus_flights[0][airline]" value="${flight.airline || ''}">
+            <input type="hidden" name="amadeus_flights[0][airline_name]" value="${flight.airlineName || ''}">
+            <input type="hidden" name="amadeus_flights[0][flight_number]" value="${flight.flightNumber || ''}">
+            <input type="hidden" name="amadeus_flights[0][origin]" value="${flight.origin || ''}">
+            <input type="hidden" name="amadeus_flights[0][destination]" value="${flight.destination || ''}">
+            <input type="hidden" name="amadeus_flights[0][departure_date]" value="${flight.departureDate || ''}">
+            <input type="hidden" name="amadeus_flights[0][departure_time]" value="${(flight.departureTime||'').substring(0,5)}">
+            <input type="hidden" name="amadeus_flights[0][arrival_date]" value="${flight.arrivalDate || flight.departureDate || ''}">
+            <input type="hidden" name="amadeus_flights[0][arrival_time]" value="${(flight.arrivalTime||'').substring(0,5)}">
+            <input type="hidden" name="amadeus_flights[0][duration]" value="${flight.duration || ''}">
+            <input type="hidden" name="amadeus_flights[0][stops]" value="${flight.stops || 0}">
+            <input type="hidden" name="amadeus_flights[0][cabin_class]" value="${flight.cabinClass || 'ECONOMY'}">
+            <input type="hidden" name="amadeus_flights[0][price_per_adult]" value="${flight.pricePerAdult || 0}">
+            <input type="hidden" name="amadeus_flights[0][price_per_child]" value="${flight.pricePerChild || flight.pricePerAdult || 0}">
+            <input type="hidden" name="amadeus_flights[0][price_per_infant]" value="${flight.pricePerInfant || 0}">
+            <input type="hidden" name="amadeus_flights[0][currency]" value="${flight.currency || 'USD'}">
+        `;
+    }
+
+    container.innerHTML = html;
     updatePrice();
 });
 
