@@ -7,26 +7,36 @@
 }
 .st .results-table th a { color: #555; text-decoration: none; }
 .st .results-table th a:hover { color: #1B6B2E; }
-.st .results-table td { padding: 6px 8px; border-bottom: 1px solid #e8e8e8; font-size: 12px; vertical-align: middle; }
+.st .results-table td { padding: 5px 8px; border-bottom: 1px solid #e8e8e8; font-size: 12px; vertical-align: middle; }
 .st .results-table .row-even { background: #fff; }
-.st .results-table .row-odd { background: #f8f9fa; }
+.st .results-table .row-odd { background: #f8f9fb; }
 .st .results-table .row-even:hover, .st .results-table .row-odd:hover { background: #eef6ee; }
 .st .results-table .row-stop { background: #fff0f0; }
 .st .results-table .row-stop:hover { background: #ffe8e8; }
+.st .results-table tr { cursor: pointer; }
+
+/* Hotel group */
 .st .hotel-group-row { background: #e8f5e9; cursor: pointer; font-weight: 600; }
 .st .hotel-group-row:hover { background: #d4edda; }
 .st .hotel-group-row td { padding: 7px 8px; font-size: 12px; }
-.st .avail-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
-.st .avail-green { background: #28a745; }
-.st .avail-yellow { background: #ffc107; }
-.st .avail-red { background: #dc3545; }
-.st .avail-request { background: #6c757d; }
+
+/* Availability bars (4 bars like aquatravel) */
+.st .avail-bars { display: inline-flex; gap: 2px; }
+.st .avail-bar { width: 4px; height: 14px; border-radius: 1px; }
+.st .bar-y { background: #28a745; }
+.st .bar-r { background: #6c757d; }
+.st .bar-n { background: #dc3545; }
+.st .bar-f { background: #ffc107; }
+
+/* Meal badges */
 .st .meal-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
 .st .meal-ai { background: #e8d5f5; color: #6b21a8; }
 .st .meal-fb { background: #dbeafe; color: #1d4ed8; }
 .st .meal-hb { background: #d1fae5; color: #065f46; }
 .st .meal-bb { background: #fef3c7; color: #92400e; }
 .st .meal-ro { background: #f3f4f6; color: #4b5563; }
+
+/* Buttons */
 .st .book-btn {
     display: inline-block; padding: 3px 10px; background: #1B6B2E; color: #fff;
     font-size: 11px; font-weight: 600; border-radius: 3px; text-decoration: none;
@@ -34,71 +44,110 @@
 .st .book-btn:hover { background: #145222; }
 .st .view-link { color: #1B6B2E; text-decoration: none; font-size: 13px; margin-right: 6px; }
 .st .view-link:hover { color: #145222; }
-.st .hotel-name { font-weight: 600; color: #222; }
+
+/* Hotel name - clickable */
+.st .hotel-link { font-weight: 600; color: #005991; cursor: pointer; text-decoration: none; }
+.st .hotel-link:hover { color: #003d66; text-decoration: underline; }
 .st .hotel-loc { font-size: 10px; color: #888; }
-.st .stars { color: #e8a500; font-size: 12px; letter-spacing: -1px; }
+.st .stars { color: #e8a500; font-size: 11px; letter-spacing: -1px; }
+
+/* Price */
 .st .price-val { font-size: 13px; font-weight: 700; color: #1B6B2E; white-space: nowrap; }
-.st .price-cur { font-size: 10px; color: #888; margin-left: 2px; }
-.st .price-stop { color: #c00; }
+.st .price-stop { color: #c00; text-decoration: line-through; }
+.st .stop-label { font-size: 9px; color: #c00; display: block; font-weight: 600; }
+
+/* Tour / route */
 .st .tour-name { font-size: 11px; color: #444; }
+.st .route-code { font-size: 9px; color: #999; display: block; font-family: monospace; }
+
+/* Room */
 .st .room-info { font-size: 11px; color: #333; }
 .st .room-pax { font-size: 10px; color: #888; }
-.st .transport-cls { font-size: 10px; color: #555; display: block; white-space: nowrap; }
-.st .seat-avail { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
+
+/* Transport */
+.st .transport-line { font-size: 10px; color: #555; display: flex; align-items: center; gap: 3px; white-space: nowrap; margin-bottom: 1px; }
+.st .transport-line:last-child { margin-bottom: 0; }
+.st .seat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
 .st .seat-y { background: #28a745; }
 .st .seat-f { background: #ffc107; }
 .st .seat-n { background: #dc3545; }
+
+/* Departure cell */
+.st .dep-date { font-weight: 500; color: #222; }
+.st .dep-day { font-size: 10px; color: #888; }
+.st .dep-time { font-size: 10px; color: #005991; }
+
+/* No results */
 .st .no-results { padding: 40px 20px; text-align: center; }
 .st .no-results-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px; }
 .st .no-results-text { font-size: 12px; color: #888; margin-bottom: 14px; }
-.st .stop-label { font-size: 9px; color: #c00; display: block; }
+
+/* Hotel popup tooltip */
+.st .hotel-popup { display: none; position: absolute; z-index: 100; background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 10px 14px; min-width: 250px; font-size: 12px; }
+.st .hotel-popup .popup-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; color: #222; }
+.st .hotel-popup .popup-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+.st .hotel-popup .popup-label { color: #888; }
+.st .hotel-popup .popup-val { font-weight: 500; color: #222; }
 </style>
+
+@php
+    // Helper: build route code from tour
+    function tourRouteCode($tour) {
+        $dep = $tour->departureCity->name_en ?? 'TAS';
+        $dep = strtoupper(substr($dep, 0, 3));
+        if ($tour->stays->isNotEmpty()) {
+            $cities = $tour->stays->pluck('city.name_en')->filter()->map(fn($c) => strtoupper(substr($c, 0, 3)));
+            return $dep . '→' . $cities->implode('→') . '→' . $dep;
+        }
+        $dest = $tour->country->name_en ?? '???';
+        return $dep . '→' . strtoupper(substr($dest, 0, 3));
+    }
+
+    // Helper: get availability bars for a tour (4 bars)
+    function availBars($tour, $seats) {
+        if (!$tour->is_available || $seats <= 0) return ['n','n','n','n'];
+        if ($seats > 10) return ['y','y','y','y'];
+        if ($seats > 5) return ['y','y','y','f'];
+        if ($seats > 2) return ['f','f','r','r'];
+        return ['f','r','n','n'];
+    }
+@endphp
 
 @if($tours->count() > 0)
     @if($groupByHotel)
-        {{-- Grouped by Hotel View --}}
         @php $groupedTours = $tours->groupBy('hotel_id'); @endphp
 
         <table class="results-table">
             <thead>
                 <tr>
-                    <th style="text-align:left; width:90px;">
-                        <a href="#" class="sortable-header" data-sort="date_from">
-                            {{ __('messages.check_in') }}@if($sortBy == 'date_from') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                    <th style="text-align:left;">
+                        <a href="#" class="sortable-header" data-sort="date_from">Departure @if($sortBy=='date_from'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
-                    <th style="text-align:left;">{{ __('messages.tour') ?? 'Tour' }}</th>
-                    <th style="text-align:center; width:50px;">
-                        <a href="#" class="sortable-header" data-sort="nights">
-                            {{ __('messages.nights') }}@if($sortBy == 'nights') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                    <th style="text-align:left;">Tour</th>
+                    <th style="text-align:center;">
+                        <a href="#" class="sortable-header" data-sort="nights">Nights @if($sortBy=='nights'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
                     <th style="text-align:left;">
-                        <a href="#" class="sortable-header" data-sort="hotel_name">
-                            {{ __('messages.hotel') }}@if($sortBy == 'hotel_name') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                        <a href="#" class="sortable-header" data-sort="hotel_name">Hotel @if($sortBy=='hotel_name'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
-                    <th style="text-align:center; width:50px;">{{ __('messages.avail') }}</th>
-                    <th style="text-align:center;">{{ __('messages.meal') }}</th>
-                    <th style="text-align:left;">{{ __('messages.room') ?? 'Room' }}</th>
+                    <th style="text-align:center;">Avail</th>
+                    <th style="text-align:center;">Meal</th>
+                    <th style="text-align:left;">Room / Accom</th>
                     <th style="text-align:right;">
-                        <a href="#" class="sortable-header" data-sort="price">
-                            {{ __('messages.price') }}@if($sortBy == 'price') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                        <a href="#" class="sortable-header" data-sort="price">Price @if($sortBy=='price'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
-                    <th style="text-align:center;">{{ __('messages.transport') }}</th>
-                    <th style="text-align:center; width:80px;"></th>
+                    <th style="text-align:center;">Transport</th>
+                    <th></th>
                 </tr>
             </thead>
 
             @foreach($groupedTours as $hotelId => $hotelTours)
                 @php $firstTour = $hotelTours->first(); $hotel = $firstTour->hotel; @endphp
-
                 <tbody>
                     <tr class="hotel-group-row hotel-group-header" data-hotel-id="{{ $hotelId }}">
                         <td colspan="10">
                             <span class="toggle-icon" style="display:inline-block; width:14px;">▼</span>
-                            <span class="hotel-name">{{ $hotel->name ?? __('messages.unknown_hotel') }}</span>
+                            <span class="hotel-link">{{ $hotel->name ?? 'Unknown' }}</span>
                             @if($hotel && $hotel->category)
                                 <span class="stars" style="margin-left:3px;">@for($i = 0; $i < $hotel->category->stars; $i++)★@endfor</span>
                             @endif
@@ -109,229 +158,45 @@
                                     ({{ $firstTour->resort->name_en }})
                                 @endif
                             </span>
-                            <span style="float:right; font-weight:400; font-size:11px; color:#555;">{{ $hotelTours->count() }} {{ __('messages.tours') }}</span>
+                            <span style="float:right; font-weight:400; font-size:11px; color:#555;">{{ $hotelTours->count() }} tours</span>
                         </td>
                     </tr>
                 </tbody>
-
                 <tbody id="hotel-group-{{ $hotelId }}">
                     @foreach($hotelTours as $tour)
-                        @php
-                            $seats = $tour->tourPrices->sum('availability');
-                            $isStop = !$tour->is_available || $seats <= 0;
-                            $rowClass = $isStop ? 'row-stop' : ($loop->even ? 'row-even' : 'row-odd');
-                        @endphp
-                        <tr class="{{ $rowClass }}">
-                            <td style="white-space:nowrap;">
-                                {{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '-' }}
-                                @if($tour->date_from)
-                                    <span style="font-size:10px; color:#888;">{{ $tour->date_from->locale('en')->shortDayName }}</span>
-                                @endif
-                            </td>
-                            <td class="tour-name">
-                                @if($tour->stays->isNotEmpty())
-                                    {{ $tour->stays->pluck('city.name_en')->filter()->unique()->implode(' + ') }}
-                                @else
-                                    {{ $tour->country->name_en ?? '-' }}
-                                @endif
-                            </td>
-                            <td style="text-align:center; font-weight:600;">{{ $tour->nights ?? 0 }}</td>
-                            <td>
-                                @if($tour->stays->isNotEmpty())
-                                    @foreach($tour->stays as $stay)
-                                        <div @if(!$loop->first) style="border-top:1px solid #eee; margin-top:2px; padding-top:2px;" @endif>
-                                            <span class="hotel-name" style="font-size:11px;">{{ $stay->hotel->name ?? ($stay->city->name ?? '-') }}</span>
-                                            @if($stay->hotel && $stay->hotel->category)
-                                                <span class="stars" style="font-size:10px;">@for($i = 0; $i < $stay->hotel->category->stars; $i++)★@endfor</span>
-                                            @endif
-                                            <span style="font-size:10px; color:#999;">({{ $stay->nights }}n)</span>
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <span class="hotel-name" style="font-size:11px;">{{ $tour->hotel->name ?? '-' }}</span>
-                                    @if($tour->hotel && $tour->hotel->category)
-                                        <span class="stars" style="font-size:10px;">@for($i = 0; $i < $tour->hotel->category->stars; $i++)★@endfor</span>
-                                    @endif
-                                    @if($tour->resort)
-                                        <span class="hotel-loc">({{ $tour->resort->name_en }})</span>
-                                    @endif
-                                @endif
-                            </td>
-                            <td style="text-align:center;">
-                                @if($tour->is_available && $seats > 5)
-                                    <span class="avail-dot avail-green" title="{{ __('messages.available') }} ({{ $seats }})"></span>
-                                @elseif($tour->is_available && $seats > 0)
-                                    <span class="avail-dot avail-yellow" title="{{ __('messages.limited') }} ({{ $seats }})"></span>
-                                @else
-                                    <span class="avail-dot avail-red" title="{{ __('messages.sold_out') }}"></span>
-                                @endif
-                            </td>
-                            <td style="text-align:center;">
-                                @if($tour->mealType)
-                                    @php $mc = strtolower($tour->mealType->code); @endphp
-                                    <span class="meal-badge @if($mc=='ai') meal-ai @elseif($mc=='fb') meal-fb @elseif($mc=='hb') meal-hb @elseif($mc=='bb') meal-bb @else meal-ro @endif">{{ $tour->mealType->code }}</span>
-                                @else
-                                    <span style="color:#ccc;">-</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($tour->tourPrices && $tour->tourPrices->first())
-                                    <span class="room-info">{{ $tour->tourPrices->first()->roomType->name_en ?? 'Standard' }}</span>
-                                    <span class="room-pax">/ {{ $tour->adults ?? 2 }}ADL{{ $tour->children ? '+' . $tour->children . 'CHD' : '' }}</span>
-                                @else
-                                    <span class="room-info">Standard</span>
-                                @endif
-                            </td>
-                            <td style="text-align:right;">
-                                <span class="price-val {{ $isStop ? 'price-stop' : '' }}">{{ number_format($tour->price, 0) }} {{ $tour->currency->code ?? 'USD' }}</span>
-                                @if($isStop)
-                                    <span class="stop-label">stop sale</span>
-                                @endif
-                            </td>
-                            <td style="text-align:center;">
-                                @if($tour->transportType)
-                                    @if(str_contains(strtolower($tour->transportType->name_en ?? ''), 'air') || str_contains(strtolower($tour->transportType->name_en ?? ''), 'plane'))
-                                        <span class="transport-cls">Econom <span class="seat-avail {{ $seats > 5 ? 'seat-y' : ($seats > 0 ? 'seat-f' : 'seat-n') }}"></span></span>
-                                    @else
-                                        <span style="font-size:10px;">{{ $tour->transportType->name_en }}</span>
-                                    @endif
-                                @else
-                                    <span style="color:#ccc;">-</span>
-                                @endif
-                            </td>
-                            <td style="text-align:center; white-space:nowrap;">
-                                <a href="{{ route('tours.show', $tour) }}" class="view-link" title="{{ __('messages.view_details') }}">👁</a>
-                                <a href="{{ route('bookings.create', $tour) }}" class="book-btn">{{ __('messages.book') }}</a>
-                            </td>
-                        </tr>
+                        @include('search.tours._tour_row', ['tour' => $tour, 'loop' => $loop])
                     @endforeach
                 </tbody>
             @endforeach
         </table>
 
     @else
-        {{-- Standard Table View --}}
         <table class="results-table">
             <thead>
                 <tr>
-                    <th style="text-align:left; width:90px;">
-                        <a href="#" class="sortable-header" data-sort="date_from">
-                            {{ __('messages.check_in') }}@if($sortBy == 'date_from') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                    <th style="text-align:left;">
+                        <a href="#" class="sortable-header" data-sort="date_from">Departure @if($sortBy=='date_from'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
-                    <th style="text-align:left;">{{ __('messages.tour') ?? 'Tour' }}</th>
-                    <th style="text-align:center; width:50px;">
-                        <a href="#" class="sortable-header" data-sort="nights">
-                            {{ __('messages.nights') }}@if($sortBy == 'nights') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                    <th style="text-align:left;">Tour</th>
+                    <th style="text-align:center;">
+                        <a href="#" class="sortable-header" data-sort="nights">Nights @if($sortBy=='nights'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
                     <th style="text-align:left;">
-                        <a href="#" class="sortable-header" data-sort="hotel_name">
-                            {{ __('messages.hotel') }}@if($sortBy == 'hotel_name') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                        <a href="#" class="sortable-header" data-sort="hotel_name">Hotel @if($sortBy=='hotel_name'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
-                    <th style="text-align:center; width:50px;">{{ __('messages.avail') }}</th>
-                    <th style="text-align:center;">{{ __('messages.meal') }}</th>
-                    <th style="text-align:left;">{{ __('messages.room') ?? 'Room' }}</th>
+                    <th style="text-align:center;">Avail</th>
+                    <th style="text-align:center;">Meal</th>
+                    <th style="text-align:left;">Room / Accom</th>
                     <th style="text-align:right;">
-                        <a href="#" class="sortable-header" data-sort="price">
-                            {{ __('messages.price') }}@if($sortBy == 'price') {{ $sortDir == 'asc' ? '▲' : '▼' }}@endif
-                        </a>
+                        <a href="#" class="sortable-header" data-sort="price">Price @if($sortBy=='price'){{ $sortDir=='asc'?'▲':'▼' }}@endif</a>
                     </th>
-                    <th style="text-align:center;">{{ __('messages.transport') }}</th>
-                    <th style="text-align:center; width:80px;"></th>
+                    <th style="text-align:center;">Transport</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($tours as $tour)
-                    @php
-                        $seats = $tour->tourPrices->sum('availability');
-                        $isStop = !$tour->is_available || $seats <= 0;
-                        $rowClass = $isStop ? 'row-stop' : ($loop->even ? 'row-even' : 'row-odd');
-                    @endphp
-                    <tr class="{{ $rowClass }}">
-                        <td style="white-space:nowrap;">
-                            {{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '-' }}
-                            @if($tour->date_from)
-                                <span style="font-size:10px; color:#888;">{{ $tour->date_from->locale('en')->shortDayName }}</span>
-                            @endif
-                        </td>
-                        <td class="tour-name">
-                            @if($tour->stays->isNotEmpty())
-                                {{ $tour->stays->pluck('city.name_en')->filter()->unique()->implode(' + ') }}
-                            @else
-                                {{ $tour->country->name_en ?? '-' }}
-                            @endif
-                        </td>
-                        <td style="text-align:center; font-weight:600;">{{ $tour->nights ?? 0 }}</td>
-                        <td>
-                            @if($tour->stays->isNotEmpty())
-                                @foreach($tour->stays as $stay)
-                                    <div @if(!$loop->first) style="border-top:1px solid #eee; margin-top:2px; padding-top:2px;" @endif>
-                                        <span class="hotel-name" style="font-size:11px;">{{ $stay->hotel->name ?? ($stay->city->name ?? '-') }}</span>
-                                        @if($stay->hotel && $stay->hotel->category)
-                                            <span class="stars" style="font-size:10px;">@for($i = 0; $i < $stay->hotel->category->stars; $i++)★@endfor</span>
-                                        @endif
-                                        <span style="font-size:10px; color:#999;">({{ $stay->nights }}n)</span>
-                                    </div>
-                                @endforeach
-                            @else
-                                <span class="hotel-name" style="font-size:11px;">{{ $tour->hotel->name ?? '-' }}</span>
-                                @if($tour->hotel && $tour->hotel->category)
-                                    <span class="stars" style="font-size:10px;">@for($i = 0; $i < $tour->hotel->category->stars; $i++)★@endfor</span>
-                                @endif
-                                @if($tour->resort)
-                                    <span class="hotel-loc">({{ $tour->resort->name_en }})</span>
-                                @endif
-                            @endif
-                        </td>
-                        <td style="text-align:center;">
-                            @if($tour->is_available && $seats > 5)
-                                <span class="avail-dot avail-green" title="{{ __('messages.available') }} ({{ $seats }})"></span>
-                            @elseif($tour->is_available && $seats > 0)
-                                <span class="avail-dot avail-yellow" title="{{ __('messages.limited') }} ({{ $seats }})"></span>
-                            @else
-                                <span class="avail-dot avail-red" title="{{ __('messages.sold_out') }}"></span>
-                            @endif
-                        </td>
-                        <td style="text-align:center;">
-                            @if($tour->mealType)
-                                @php $mc = strtolower($tour->mealType->code); @endphp
-                                <span class="meal-badge @if($mc=='ai') meal-ai @elseif($mc=='fb') meal-fb @elseif($mc=='hb') meal-hb @elseif($mc=='bb') meal-bb @else meal-ro @endif">{{ $tour->mealType->code }}</span>
-                            @else
-                                <span style="color:#ccc;">-</span>
-                            @endif
-                        </td>
-                        <td>
-                            @if($tour->tourPrices && $tour->tourPrices->first())
-                                <span class="room-info">{{ $tour->tourPrices->first()->roomType->name_en ?? 'Standard' }}</span>
-                                <span class="room-pax">/ {{ $tour->adults ?? 2 }}ADL{{ $tour->children ? '+' . $tour->children . 'CHD' : '' }}</span>
-                            @else
-                                <span class="room-info">Standard</span>
-                            @endif
-                        </td>
-                        <td style="text-align:right;">
-                            <span class="price-val {{ $isStop ? 'price-stop' : '' }}">{{ number_format($tour->price, 0) }} {{ $tour->currency->code ?? 'USD' }}</span>
-                            @if($isStop)
-                                <span class="stop-label">stop sale</span>
-                            @endif
-                        </td>
-                        <td style="text-align:center;">
-                            @if($tour->transportType)
-                                @if(str_contains(strtolower($tour->transportType->name_en ?? ''), 'air') || str_contains(strtolower($tour->transportType->name_en ?? ''), 'plane'))
-                                    <span class="transport-cls">Econom <span class="seat-avail {{ $seats > 5 ? 'seat-y' : ($seats > 0 ? 'seat-f' : 'seat-n') }}"></span></span>
-                                @else
-                                    <span style="font-size:10px;">{{ $tour->transportType->name_en }}</span>
-                                @endif
-                            @else
-                                <span style="color:#ccc;">-</span>
-                            @endif
-                        </td>
-                        <td style="text-align:center; white-space:nowrap;">
-                            <a href="{{ route('tours.show', $tour) }}" class="view-link" title="{{ __('messages.view_details') }}">👁</a>
-                            <a href="{{ route('bookings.create', $tour) }}" class="book-btn">{{ __('messages.book') }}</a>
-                        </td>
-                    </tr>
+                    @include('search.tours._tour_row', ['tour' => $tour, 'loop' => $loop])
                 @endforeach
             </tbody>
         </table>
