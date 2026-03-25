@@ -11,10 +11,12 @@ use App\Models\MealType;
 use App\Models\ProgramType;
 use App\Models\Resort;
 use App\Models\Tour;
+use App\Models\TourStay;
 use App\Models\TourType;
 use App\Models\TransportType;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class TourSearchService
 {
@@ -26,6 +28,7 @@ class TourSearchService
                 ->whereIn('id', Tour::distinct()->pluck('departure_city_id'))
                 ->orderBy('order')
                 ->get(),
+            'tourRoutes' => $this->buildTourRoutes(),
             'tourTypes' => TourType::where('is_active', true)->get(),
             'programTypes' => ProgramType::where('is_active', true)->get(),
             'transportTypes' => TransportType::where('is_active', true)->get(),
@@ -44,9 +47,50 @@ class TourSearchService
         ]);
     }
 
+    /**
+     * Build tour route labels from stays (e.g., "Istanbul + Nice", "Batumi").
+     * Returns a collection of ['slug' => 'istanbul-nice', 'label' => 'Istanbul + Nice', 'tour_ids' => [...]].
+     */
+    private function buildTourRoutes(): array
+    {
+        $tours = Tour::with(['stays' => fn ($q) => $q->orderBy('stay_order')->with('city')])
+            ->where('is_available', true)
+            ->whereHas('stays')
+            ->get();
+
+        $grouped = $tours->groupBy(function ($tour) {
+            return $tour->stays->pluck('city.name_en')->filter()->unique()->implode(' + ');
+        });
+
+        $routes = [];
+        foreach ($grouped as $label => $tourGroup) {
+            if (empty($label)) {
+                continue;
+            }
+            $slug = str($label)->slug()->toString();
+            $routes[] = [
+                'slug' => $slug,
+                'label' => $label,
+                'tour_ids' => $tourGroup->pluck('id')->toArray(),
+            ];
+        }
+
+        return $routes;
+    }
+
     public function search(array $filters, string $sortBy = 'price', string $sortDir = 'asc', int $perPage = 20): LengthAwarePaginator
     {
         $query = Tour::query()->where('is_available', true);
+
+        // Tour route filter (e.g., "istanbul-nice" slug → specific tour IDs)
+        if (! empty($filters['tour_route'])) {
+            $routeSlug = $filters['tour_route'];
+            $allRoutes = $this->buildTourRoutes();
+            $matchedRoute = collect($allRoutes)->firstWhere('slug', $routeSlug);
+            if ($matchedRoute) {
+                $query->whereIn('id', $matchedRoute['tour_ids']);
+            }
+        }
 
         // Country filter (also match tours that have a stay in a city of that country)
         if (! empty($filters['country_id'])) {

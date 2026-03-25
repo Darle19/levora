@@ -20,6 +20,7 @@ class TourSearchRequest extends FormRequest
             'hotel_ids' => 'nullable|array',
             'hotel_ids.*' => 'exists:hotels,id',
             'departure_city_id' => 'nullable|exists:cities,id',
+            'tour_route' => 'nullable|string|max:100',
             'tour_type_id' => 'nullable|exists:tour_types,id',
             'program_type_id' => 'nullable|exists:program_types,id',
             'transport_type_id' => 'nullable|exists:transport_types,id',

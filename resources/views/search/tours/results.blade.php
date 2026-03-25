@@ -100,12 +100,12 @@
 
                     <div class="filter-row-pair">
                         <div>
-                            <span class="filter-label">{{ __('messages.tour_type') }}</span>
-                            <select id="tour_type_id" name="tour_type_id">
+                            <span class="filter-label">{{ __('messages.search.tour_route') ?? 'Тур' }}</span>
+                            <select id="tour_route" name="tour_route">
                                 <option value="">{{ __('messages.all_types') }}</option>
-                                @foreach($tourTypes as $type)
-                                    <option value="{{ $type->id }}" {{ ($currentFilters['tour_type_id'] ?? '') == $type->id ? 'selected' : '' }}>
-                                        {{ $type->name_en }}
+                                @foreach($tourRoutes as $route)
+                                    <option value="{{ $route['slug'] }}" {{ ($currentFilters['tour_route'] ?? '') == $route['slug'] ? 'selected' : '' }}>
+                                        {{ $route['label'] }}
                                     </option>
                                 @endforeach
                             </select>

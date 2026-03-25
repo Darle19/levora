@@ -122,12 +122,12 @@
                         <td style="width:50%; vertical-align:top;">
                             <table style="width:100%">
                                 <tr>
-                                    <td class="dir-label" style="width:50px;">{{ __('messages.search.tour_type') ?? 'тур' }}</td>
+                                    <td class="dir-label" style="width:50px;">{{ __('messages.search.tour_route') ?? 'Тур' }}</td>
                                     <td style="padding:4px 8px;">
-                                        <select name="program_type_id">
+                                        <select name="tour_route">
                                             <option value="">----</option>
-                                            @foreach($programTypes as $program)
-                                                <option value="{{ $program->id }}">{{ $program->name }}</option>
+                                            @foreach($tourRoutes as $route)
+                                                <option value="{{ $route['slug'] }}">{{ $route['label'] }}</option>
                                             @endforeach
                                         </select>
                                     </td>
