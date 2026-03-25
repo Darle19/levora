@@ -1,85 +1,91 @@
 <style>
-.st .results-table { width: 100%; border-collapse: collapse; }
+/* === RESULTS TABLE — Professional B2B Travel Style === */
+.st .results-table { width: 97%; margin: auto; border-collapse: collapse; border-spacing: 0; empty-cells: show; font-family: Tahoma, Arial, sans-serif; font-size: 13px; }
+
+/* Header */
 .st .results-table th {
-    background: #f0f4f7; padding: 6px 8px; font-size: 11px; font-weight: 600;
-    text-transform: uppercase; color: #555; border-bottom: 2px solid #ccc;
-    white-space: nowrap;
+    background: #366383; color: #ecf5fb; font-weight: bold; font-size: 13px;
+    padding: 4px 10px; white-space: nowrap; overflow: hidden; border-bottom: 1px solid #2a4f6a;
 }
-.st .results-table th a { color: #555; text-decoration: none; }
-.st .results-table th a:hover { color: #1B6B2E; }
-.st .results-table td { padding: 5px 8px; border-bottom: 1px solid #e8e8e8; font-size: 12px; vertical-align: middle; }
-.st .results-table .row-even { background: #fff; }
-.st .results-table .row-odd { background: #f8f9fb; }
-.st .results-table .row-even:hover, .st .results-table .row-odd:hover { background: #eef6ee; }
-.st .results-table .row-stop { background: #fff0f0; }
-.st .results-table .row-stop:hover { background: #ffe8e8; }
+.st .results-table th a { color: #ecf5fb; text-decoration: none; }
+.st .results-table th a:hover { color: #fff; text-decoration: underline; }
+
+/* Cells */
+.st .results-table td { padding: 5px 5px 5px 8px; font-size: 13px; vertical-align: middle; }
+
+/* Row striping */
+.st .results-table .row-even td { background: #F6F9FB; border-bottom: 1px solid #8E959A; }
+.st .results-table .row-odd td { background: #e3e7ea; border-bottom: 1px solid #8E959A; }
+.st .results-table .row-even:hover td { background: #cdddff; }
+.st .results-table .row-odd:hover td { background: #c3d5ff; }
+.st .results-table .row-stop td { background: #f1afaf; border-bottom: 1px solid #cc5050; color: #9f4d4d; }
+.st .results-table .row-stop:hover td { background: #e89999; }
 .st .results-table tr { cursor: pointer; }
 
 /* Hotel group */
 .st .hotel-group-row { background: #e8f5e9; cursor: pointer; font-weight: 600; }
 .st .hotel-group-row:hover { background: #d4edda; }
-.st .hotel-group-row td { padding: 7px 8px; font-size: 12px; }
+.st .hotel-group-row td { padding: 6px 8px; font-size: 13px; background: #e8f5e9; border-bottom: 1px solid #8E959A; }
 
-/* Availability bars (4 bars like aquatravel) */
-.st .avail-bars { display: inline-flex; gap: 2px; }
-.st .avail-bar { width: 4px; height: 14px; border-radius: 1px; }
-.st .bar-y { background: #28a745; }
-.st .bar-r { background: #6c757d; }
-.st .bar-n { background: #dc3545; }
-.st .bar-f { background: #ffc107; }
+/* Availability bars */
+.st .avail-bars { display: inline-flex; gap: 3px; }
+.st .avail-bar { width: 5px; height: 16px; border-radius: 0; box-shadow: gray -1px 1px 2px inset; cursor: pointer; }
+.st .bar-y { background: rgb(77, 182, 70); }
+.st .bar-r { background: rgb(169, 169, 169); }
+.st .bar-n { background: rgb(199, 61, 66); }
+.st .bar-f { background: rgb(255, 193, 7); }
 
-/* Meal badges */
-.st .meal-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+/* Meal */
+.st .meal-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; }
 .st .meal-ai { background: #e8d5f5; color: #6b21a8; }
 .st .meal-fb { background: #dbeafe; color: #1d4ed8; }
 .st .meal-hb { background: #d1fae5; color: #065f46; }
 .st .meal-bb { background: #fef3c7; color: #92400e; }
 .st .meal-ro { background: #f3f4f6; color: #4b5563; }
 
-/* Buttons */
-.st .book-btn {
-    display: inline-block; padding: 3px 10px; background: #1B6B2E; color: #fff;
-    font-size: 11px; font-weight: 600; border-radius: 3px; text-decoration: none;
-}
+/* Actions */
+.st .book-btn { display: inline-block; padding: 3px 10px; background: #1B6B2E; color: #fff; font-size: 11px; font-weight: 600; border-radius: 3px; text-decoration: none; }
 .st .book-btn:hover { background: #145222; }
-.st .view-link { color: #1B6B2E; text-decoration: none; font-size: 13px; margin-right: 6px; }
-.st .view-link:hover { color: #145222; }
+.st .view-link { color: #366383; text-decoration: none; font-size: 14px; margin-right: 6px; }
+.st .view-link:hover { color: #1a3a50; }
 
-/* Hotel name - clickable */
-.st .hotel-link { font-weight: 600; color: #005991; cursor: pointer; text-decoration: none; }
-.st .hotel-link:hover { color: #003d66; text-decoration: underline; }
-.st .hotel-loc { font-size: 10px; color: #888; }
-.st .stars { color: #e8a500; font-size: 11px; letter-spacing: -1px; }
+/* Hotel name */
+.st .hotel-link { font-weight: 600; color: #366383; cursor: pointer; text-decoration: none; font-size: 13px; }
+.st .hotel-link:hover { color: #1a3a50; text-decoration: underline; }
+.st .hotel-loc { font-size: 11px; color: #666; }
+.st .stars { color: #e8a500; font-size: 12px; letter-spacing: -1px; }
 
 /* Price */
-.st .price-val { font-size: 13px; font-weight: 700; color: #1B6B2E; white-space: nowrap; }
-.st .price-stop { color: #c00; text-decoration: line-through; }
-.st .stop-label { font-size: 9px; color: #c00; display: block; font-weight: 600; }
+.st .price-val { font-size: 13px; font-weight: 700; color: inherit; white-space: nowrap; }
+.st .row-stop .price-val { color: #9f4d4d; font-style: italic; }
+.st .stop-label { font-size: 9px; color: #9f4d4d; display: block; font-weight: 600; }
 
 /* Tour / route */
-.st .tour-name { font-size: 11px; color: #444; }
-.st .route-code { font-size: 9px; color: #999; display: block; font-family: monospace; }
+.st .tour-name { font-size: 13px; color: #333; }
+.st .route-code { font-size: 10px; color: #888; display: block; font-family: monospace; }
 
 /* Room */
-.st .room-info { font-size: 11px; color: #333; }
-.st .room-pax { font-size: 10px; color: #888; }
+.st .room-info { font-size: 12px; color: #333; }
+.st .room-pax { font-size: 11px; color: #666; }
 
-/* Transport */
-.st .transport-line { font-size: 10px; color: #555; display: flex; align-items: center; gap: 3px; white-space: nowrap; margin-bottom: 1px; }
+/* Transport — arrows with colored indicators */
+.st .transport-line { font-size: 12px; color: #333; display: flex; align-items: center; gap: 3px; white-space: nowrap; line-height: 17px; margin-bottom: 1px; }
 .st .transport-line:last-child { margin-bottom: 0; }
-.st .seat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
-.st .seat-y { background: #28a745; }
-.st .seat-f { background: #ffc107; }
-.st .seat-n { background: #dc3545; }
+.st .seat-arrow { display: inline-block; font-size: 12px; font-weight: bold; cursor: help; }
+.st .seat-arrow-y { color: rgb(77, 182, 70); }
+.st .seat-arrow-f { color: rgb(255, 193, 7); }
+.st .seat-arrow-n { color: rgb(199, 61, 66); }
+.st .seat-arrow-r { color: rgb(169, 169, 169); }
 
 /* Departure cell */
-.st .dep-date { font-weight: 500; color: #222; }
-.st .dep-day { font-size: 10px; color: #888; }
-.st .dep-time { font-size: 11px; color: #005991; cursor: help; font-weight: 500; }
+.st .dep-date { font-weight: 500; color: #222; font-size: 13px; }
+.st .dep-day { font-size: 11px; color: #666; }
+.st .dep-time { font-size: 12px; color: #366383; cursor: help; font-weight: 500; }
 .st .dep-time:hover { text-decoration: underline; }
 
-/* Tooltips */
+/* Helpers */
 .st .tip { cursor: help; }
+.st .nw { white-space: nowrap; }
 
 /* No results */
 .st .no-results { padding: 40px 20px; text-align: center; }

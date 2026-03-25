@@ -8,12 +8,19 @@
     $hotelNights = $tour->stays->isNotEmpty() ? $tour->stays->sum('nights') : $tour->nights;
     $travelNights = ($tour->nights ?? 0) - $hotelNights;
 
-    // First outbound flight time
-    $firstFlight = $tour->flights->sortBy('pivot.leg_order')->first();
-    $depTime = $firstFlight?->departure_time ?? null;
+    // Flights: outbound and return
+    $outboundFlight = $tour->flights->firstWhere('pivot.direction', 'outbound')
+        ?? $tour->flights->sortBy('pivot.leg_order')->first();
+    $returnFlight = $tour->flights->firstWhere('pivot.direction', 'return')
+        ?? $tour->flights->sortByDesc('pivot.leg_order')->first();
+    $depTime = $outboundFlight?->departure_time ?? null;
+    $flightSeats = $outboundFlight?->available_seats ?? 0;
 
-    // Flight seat info
-    $flightSeats = $firstFlight?->available_seats ?? 0;
+    // Seat status helper
+    $seatClass = fn($s) => $s > 5 ? 'seat-y' : ($s > 0 ? 'seat-f' : 'seat-n');
+    $seatTitle = fn($s) => $s > 5 ? 'Many seats (' . $s . ')' : ($s > 0 ? 'Few seats (' . $s . ')' : 'No seats');
+    $outSeats = $outboundFlight?->available_seats ?? 0;
+    $retSeats = $returnFlight?->available_seats ?? 0;
 
     // Build flights monitor data for popup
     $fmData = [
@@ -136,23 +143,22 @@
         @endif
     </td>
 
-    {{-- 9. Transport (Econom + Business with seat indicators) --}}
-    <td style="text-align:center;">
-        @if($tour->transportType && (str_contains(strtolower($tour->transportType->name_en ?? ''), 'air') || str_contains(strtolower($tour->transportType->name_en ?? ''), 'plane')))
+    {{-- 9. Transport (Econom/Business with →outbound ←return arrows) --}}
+    <td class="nw" style="text-align:left;">
+        @if($tour->flights->isNotEmpty())
+            @php
+                $arrowCls = fn($s) => $s > 5 ? 'seat-arrow-y' : ($s > 0 ? 'seat-arrow-f' : 'seat-arrow-n');
+                $arrowTip = fn($dir, $s) => $dir . ': ' . ($s > 5 ? 'many seats (' . $s . ')' : ($s > 0 ? 'few seats (' . $s . ')' : 'no seats'));
+            @endphp
             <div class="transport-line">
                 <span>Econom</span>
-                <span class="seat-dot {{ $flightSeats > 5 ? 'seat-y' : ($flightSeats > 0 ? 'seat-f' : 'seat-n') }}" title="{{ $flightSeats > 5 ? 'Seats available' : ($flightSeats > 0 ? 'Few seats (' . $flightSeats . ')' : 'No seats') }}"></span>
-                <span class="seat-dot {{ $flightSeats > 0 ? 'seat-f' : 'seat-n' }}" title="{{ $flightSeats > 0 ? 'Return available' : 'No return seats' }}"></span>
-            </div>
-            <div class="transport-line">
-                <span>Business</span>
-                <span class="seat-dot seat-f" title="Few seats"></span>
-                <span class="seat-dot seat-n" title="No seats"></span>
+                <span class="seat-arrow {{ $arrowCls($outSeats) }}" title="{{ $arrowTip('Outbound', $outSeats) }}">»</span>
+                <span class="seat-arrow {{ $arrowCls($retSeats) }}" title="{{ $arrowTip('Return', $retSeats) }}">«</span>
             </div>
         @elseif($tour->transportType)
-            <span style="font-size:10px;">{{ $tour->transportType->name_en }}</span>
+            <span style="font-size:12px;">{{ $tour->transportType->name_en }}</span>
         @else
-            <span style="color:#ccc;">-</span>
+            <span style="color:#aaa;">-</span>
         @endif
     </td>
 
