@@ -14,6 +14,29 @@
 
     // Flight seat info
     $flightSeats = $firstFlight?->available_seats ?? 0;
+
+    // Build flights monitor data for popup
+    $fmData = [
+        'date' => $tour->date_from?->format('d.m.Y, D') ?? '-',
+        'hotel' => $tour->hotel->name ?? ($tour->stays->first()?->hotel?->name ?? '-'),
+        'nights' => $tour->nights,
+        'price' => number_format($tour->price, 0) . ' ' . ($tour->currency->code ?? 'USD'),
+        'flights' => $tour->flights->map(function($f) {
+            return [
+                'date' => $f->departure_date?->format('d.m.Y, D') ?? '-',
+                'direction' => $f->pivot->direction ?? 'outbound',
+                'airline' => $f->airline->name ?? 'Unknown',
+                'flight_number' => $f->flight_number ?? '-',
+                'from' => $f->fromAirport->code ?? '???',
+                'to' => $f->toAirport->code ?? '???',
+                'from_city' => $f->fromAirport->city->name_en ?? $f->fromAirport->name_en ?? '',
+                'to_city' => $f->toAirport->city->name_en ?? $f->toAirport->name_en ?? '',
+                'dep_time' => $f->departure_time ?? '-',
+                'arr_time' => $f->arrival_time ?? '-',
+                'seats' => $f->available_seats ?? 0,
+            ];
+        })->values()->toArray(),
+    ];
 @endphp
 <tr class="{{ $rowClass }}" onclick="window.location='{{ route('tours.show', $tour) }}'">
     {{-- 1. Departure date + time --}}
@@ -22,6 +45,13 @@
         <span class="dep-day">{{ $tour->date_from?->locale('en')->shortDayName }}</span>
         @if($depTime)
             <br><span class="dep-time tip" title="Departure time">{{ $depTime }}</span>
+        @endif
+    </td>
+
+    {{-- 1b. Stats/Flights monitor icon --}}
+    <td style="text-align:center; width:24px; padding:2px;" onclick="event.stopPropagation();">
+        @if($tour->flights->isNotEmpty())
+            <button class="stats-btn" onclick="openFM(this)" data-fm='@json($fmData)' title="Flights monitor">📊</button>
         @endif
     </td>
 
