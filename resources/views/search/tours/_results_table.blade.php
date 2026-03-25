@@ -75,7 +75,11 @@
 /* Departure cell */
 .st .dep-date { font-weight: 500; color: #222; }
 .st .dep-day { font-size: 10px; color: #888; }
-.st .dep-time { font-size: 10px; color: #005991; }
+.st .dep-time { font-size: 11px; color: #005991; cursor: help; font-weight: 500; }
+.st .dep-time:hover { text-decoration: underline; }
+
+/* Tooltips */
+.st .tip { cursor: help; }
 
 /* No results */
 .st .no-results { padding: 40px 20px; text-align: center; }

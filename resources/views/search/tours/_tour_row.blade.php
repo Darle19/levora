@@ -3,13 +3,25 @@
     $isStop = !$tour->is_available || $seats <= 0;
     $rowClass = $isStop ? 'row-stop' : ($loop->even ? 'row-even' : 'row-odd');
     $bars = availBars($tour, $seats);
+
+    // Calculate hotel nights vs total nights (travel nights = total - hotel)
+    $hotelNights = $tour->stays->isNotEmpty() ? $tour->stays->sum('nights') : $tour->nights;
+    $travelNights = ($tour->nights ?? 0) - $hotelNights;
+
+    // First outbound flight time
+    $firstFlight = $tour->flights->sortBy('pivot.leg_order')->first();
+    $depTime = $firstFlight?->departure_time ?? null;
+
+    // Flight seat info
+    $flightSeats = $firstFlight?->available_seats ?? 0;
 @endphp
-<tr class="{{ $rowClass }}" onclick="window.location='{{ route('tours.show', $tour) }}'" title="{{ $isStop ? 'Stop sale' : '' }}">
-    {{-- 1. Departure --}}
+<tr class="{{ $rowClass }}" onclick="window.location='{{ route('tours.show', $tour) }}'">
+    {{-- 1. Departure date + time --}}
     <td style="white-space:nowrap;">
         <span class="dep-date">{{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '-' }}</span>
-        @if($tour->date_from)
-            <span class="dep-day">{{ $tour->date_from->locale('en')->shortDayName }}</span>
+        <span class="dep-day">{{ $tour->date_from?->locale('en')->shortDayName }}</span>
+        @if($depTime)
+            <br><span class="dep-time tip" title="Departure time">{{ $depTime }}</span>
         @endif
     </td>
 
@@ -25,10 +37,12 @@
         <span class="route-code">{{ tourRouteCode($tour) }}</span>
     </td>
 
-    {{-- 3. Nights --}}
-    <td style="text-align:center; font-weight:600;">{{ $tour->nights ?? 0 }}</td>
+    {{-- 3. Nights (hotel + travel) --}}
+    <td style="text-align:center; font-weight:600;">
+        {{ $hotelNights }}@if($travelNights > 0)<span class="tip" title="Nights on the road" style="color:#005991; font-weight:400; cursor:help;">+{{ $travelNights }}</span>@endif
+    </td>
 
-    {{-- 4. Hotel (clickable) --}}
+    {{-- 4. Hotel (clickable link) --}}
     <td>
         @if($tour->stays->isNotEmpty())
             @foreach($tour->stays as $stay)
@@ -37,7 +51,7 @@
                     @if($stay->hotel && $stay->hotel->category)
                         <span class="stars">@for($i = 0; $i < $stay->hotel->category->stars; $i++)★@endfor</span>
                     @endif
-                    <span class="hotel-loc">({{ $stay->city->name ?? $stay->resort->name_en ?? '' }} {{ $stay->nights }}n)</span>
+                    <span class="hotel-loc">({{ $stay->city->name ?? $stay->resort->name_en ?? '' }})</span>
                 </div>
             @endforeach
         @else
@@ -51,9 +65,9 @@
         @endif
     </td>
 
-    {{-- 5. Availability bars (4 bars like aquatravel) --}}
+    {{-- 5. Availability bars --}}
     <td style="text-align:center;">
-        <span class="avail-bars" title="{{ $isStop ? 'No availability' : $seats . ' seats' }}">
+        <span class="avail-bars" title="{{ $isStop ? 'No availability' : $seats . ' room(s) available' }}">
             @foreach($bars as $b)
                 <span class="avail-bar bar-{{ $b }}"></span>
             @endforeach
@@ -64,9 +78,9 @@
     <td style="text-align:center;">
         @if($tour->mealType)
             @php $mc = strtolower($tour->mealType->code ?? ''); @endphp
-            <span class="meal-badge @if($mc=='ai') meal-ai @elseif($mc=='fb') meal-fb @elseif($mc=='hb') meal-hb @elseif($mc=='bb') meal-bb @else meal-ro @endif">{{ $tour->mealType->code }}</span>
+            <span class="meal-badge @if($mc=='ai') meal-ai @elseif($mc=='fb') meal-fb @elseif($mc=='hb') meal-hb @elseif($mc=='bb') meal-bb @else meal-ro @endif" title="{{ $tour->mealType->name_en ?? $tour->mealType->code }}">{{ $tour->mealType->code }}</span>
         @else
-            <span style="color:#ccc;">-</span>
+            <span class="meal-badge meal-ro" title="Room only">RO</span>
         @endif
     </td>
 
@@ -81,10 +95,10 @@
         @endif
     </td>
 
-    {{-- 8. Price (with tooltip for stop sale dates) --}}
+    {{-- 8. Price --}}
     <td style="text-align:right;" onclick="event.stopPropagation();">
         <span class="price-val {{ $isStop ? 'price-stop' : '' }}"
-              @if($isStop) title="Stop sale active" @endif>
+              @if($isStop) title="Stop sale — booking unavailable" @else title="Price per person" @endif>
             {{ number_format($tour->price, 0) }} {{ $tour->currency->code ?? 'USD' }}
         </span>
         @if($isStop)
@@ -92,12 +106,18 @@
         @endif
     </td>
 
-    {{-- 9. Transport (Econom/Business with seat dots) --}}
+    {{-- 9. Transport (Econom + Business with seat indicators) --}}
     <td style="text-align:center;">
         @if($tour->transportType && (str_contains(strtolower($tour->transportType->name_en ?? ''), 'air') || str_contains(strtolower($tour->transportType->name_en ?? ''), 'plane')))
             <div class="transport-line">
                 <span>Econom</span>
-                <span class="seat-dot {{ $seats > 5 ? 'seat-y' : ($seats > 0 ? 'seat-f' : 'seat-n') }}" title="{{ $seats > 5 ? 'Available' : ($seats > 0 ? 'Few seats' : 'No seats') }}"></span>
+                <span class="seat-dot {{ $flightSeats > 5 ? 'seat-y' : ($flightSeats > 0 ? 'seat-f' : 'seat-n') }}" title="{{ $flightSeats > 5 ? 'Seats available' : ($flightSeats > 0 ? 'Few seats (' . $flightSeats . ')' : 'No seats') }}"></span>
+                <span class="seat-dot {{ $flightSeats > 0 ? 'seat-f' : 'seat-n' }}" title="{{ $flightSeats > 0 ? 'Return available' : 'No return seats' }}"></span>
+            </div>
+            <div class="transport-line">
+                <span>Business</span>
+                <span class="seat-dot seat-f" title="Few seats"></span>
+                <span class="seat-dot seat-n" title="No seats"></span>
             </div>
         @elseif($tour->transportType)
             <span style="font-size:10px;">{{ $tour->transportType->name_en }}</span>
@@ -108,7 +128,7 @@
 
     {{-- 10. Actions --}}
     <td style="text-align:center; white-space:nowrap;" onclick="event.stopPropagation();">
-        <a href="{{ route('tours.show', $tour) }}" class="view-link" title="Details">👁</a>
+        <a href="{{ route('tours.show', $tour) }}" class="view-link" title="View details">👁</a>
         <a href="{{ route('bookings.create', $tour) }}" class="book-btn">Book</a>
     </td>
 </tr>
