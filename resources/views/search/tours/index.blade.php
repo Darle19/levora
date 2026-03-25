@@ -396,6 +396,54 @@
 <script>
     const resortsByCountry = @json($resortsByCountry);
     const hotelsByResort = @json($hotelsByResort);
+    const tourRouteFilters = @json(collect($tourRoutes)->keyBy('slug')->map(fn($r) => $r['filters']));
+
+    // Tour Route → auto-fill all filters
+    document.querySelector('select[name="tour_route"]').addEventListener('change', function() {
+        const f = tourRouteFilters[this.value];
+        if (!f) return;
+
+        // Country
+        if (f.country_id) {
+            const cs = document.getElementById('country_id');
+            cs.value = f.country_id;
+            cs.dispatchEvent(new Event('change'));
+        }
+
+        // Departure city
+        if (f.departure_city_id) {
+            document.getElementById('departure_city_id').value = f.departure_city_id;
+        }
+
+        // Dates
+        if (f.date_from) document.getElementById('date_from').value = f.date_from;
+        if (f.date_to) document.getElementById('date_to').value = f.date_to;
+
+        // Nights
+        if (f.nights_from) document.getElementById('nights_from').value = f.nights_from;
+        if (f.nights_to) document.getElementById('nights_to').value = f.nights_to;
+
+        // Wait for country change to render resorts, then check the right ones
+        setTimeout(() => {
+            if (f.resort_ids && f.resort_ids.length) {
+                document.querySelectorAll('.resort-checkbox').forEach(cb => {
+                    cb.checked = f.resort_ids.includes(parseInt(cb.value));
+                });
+                updateResortsAllCheckbox();
+                updateHotels();
+
+                // Then check the right hotels after hotels render
+                setTimeout(() => {
+                    if (f.hotel_ids && f.hotel_ids.length) {
+                        document.querySelectorAll('.hotel-checkbox').forEach(cb => {
+                            cb.checked = f.hotel_ids.includes(parseInt(cb.value));
+                        });
+                        updateHotelsAllCheckbox();
+                    }
+                }, 50);
+            }
+        }, 50);
+    });
 
     // Country → Resorts
     document.getElementById('country_id').addEventListener('change', function() {

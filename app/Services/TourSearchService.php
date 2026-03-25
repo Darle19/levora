@@ -53,7 +53,9 @@ class TourSearchService
      */
     private function buildTourRoutes(): array
     {
-        $tours = Tour::with(['stays' => fn ($q) => $q->orderBy('stay_order')->with('city')])
+        $tours = Tour::with([
+            'stays' => fn ($q) => $q->orderBy('stay_order')->with(['city', 'resort', 'hotel']),
+        ])
             ->where('is_available', true)
             ->whereHas('stays')
             ->get();
@@ -67,11 +69,32 @@ class TourSearchService
             if (empty($label)) {
                 continue;
             }
+
             $slug = str($label)->slug()->toString();
+
+            // Collect filter hints from all tours in this route
+            $countryIds = $tourGroup->pluck('country_id')->unique()->filter()->values()->toArray();
+            $departureCityIds = $tourGroup->pluck('departure_city_id')->unique()->filter()->values()->toArray();
+            $resortIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('resort_id'))->unique()->filter()->values()->toArray();
+            $hotelIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('hotel_id'))->unique()->filter()->values()->toArray();
+            $nights = $tourGroup->pluck('nights')->unique()->sort()->values()->toArray();
+            $dateFrom = $tourGroup->min('date_from')?->format('Y-m-d');
+            $dateTo = $tourGroup->max('date_from')?->format('Y-m-d');
+
             $routes[] = [
                 'slug' => $slug,
                 'label' => $label,
                 'tour_ids' => $tourGroup->pluck('id')->toArray(),
+                'filters' => [
+                    'country_id' => count($countryIds) === 1 ? $countryIds[0] : null,
+                    'departure_city_id' => count($departureCityIds) === 1 ? $departureCityIds[0] : null,
+                    'resort_ids' => $resortIds,
+                    'hotel_ids' => $hotelIds,
+                    'nights_from' => min($nights) ?? null,
+                    'nights_to' => max($nights) ?? null,
+                    'date_from' => $dateFrom,
+                    'date_to' => $dateTo,
+                ],
             ];
         }
 
