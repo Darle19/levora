@@ -36,7 +36,7 @@ class TourSearchService
             'hotelCategories' => HotelCategory::where('is_active', true)->orderBy('stars')->get(),
             'currencies' => Currency::where('is_active', true)->get(),
             'resortsByCountry' => Resort::where('is_active', true)
-                ->with('country')
+                ->with(['country', 'city'])
                 ->orderBy('order')
                 ->get()
                 ->groupBy('country_id'),

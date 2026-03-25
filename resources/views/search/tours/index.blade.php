@@ -467,18 +467,38 @@
         updateResortsAllCheckbox();
     });
 
-    // Resorts → Hotels
+    // Build resort→city map from resortsByCountry data
+    const resortCityMap = {};
+    for (const [cid, resorts] of Object.entries(resortsByCountry)) {
+        resorts.forEach(r => {
+            resortCityMap[r.id] = r.city ? (r.city.name_en || r.city.name) : (r.name_en || r.name);
+        });
+    }
+
+    // Resorts → Hotels (grouped by city)
     function updateHotels() {
         const sel = Array.from(document.querySelectorAll('.resort-checkbox:checked')).map(cb => cb.value);
         const hc = document.getElementById('hotelsContainer');
         if (!sel.length) { hc.innerHTML = '<label style="color:#999;padding:20px 0;">{{ __("messages.search.select_resorts") ?? "Select resorts" }}</label>'; return; }
-        let html = '';
+
+        // Group hotels by city name
+        const byCity = {};
         sel.forEach(rid => {
+            const cityName = resortCityMap[rid] || 'Other';
+            if (!byCity[cityName]) byCity[cityName] = [];
             (hotelsByResort[rid] || []).forEach(h => {
                 const s = h.category ? '★'.repeat(h.category.stars) : '';
-                html += `<label class="hotel-item"><input type="checkbox" name="hotel_ids[]" value="${h.id}" class="hotel-checkbox"> ${h.name} <span class="stars">${s}</span></label>`;
+                byCity[cityName].push(`<label class="hotel-item"><input type="checkbox" name="hotel_ids[]" value="${h.id}" class="hotel-checkbox"> ${h.name} <span class="stars">${s}</span></label>`);
             });
         });
+
+        let html = '';
+        for (const [city, items] of Object.entries(byCity)) {
+            if (Object.keys(byCity).length > 1) {
+                html += `<div style="font-weight:600;font-size:11px;color:#1B6B2E;padding:4px 4px 1px;border-bottom:1px solid #e0e0e0;margin-top:3px;">${city}</div>`;
+            }
+            html += items.join('');
+        }
         hc.innerHTML = html || '<label style="color:#999;padding:20px 0;">No hotels</label>';
         updateHotelsAllCheckbox();
     }
