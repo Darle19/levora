@@ -403,17 +403,13 @@
         const f = tourRouteFilters[this.value];
         if (!f) return;
 
-        // Country
-        if (f.country_id) {
-            const cs = document.getElementById('country_id');
-            cs.value = f.country_id;
-            cs.dispatchEvent(new Event('change'));
-        }
-
         // Departure city
         if (f.departure_city_id) {
             document.getElementById('departure_city_id').value = f.departure_city_id;
         }
+
+        // Clear country — multi-city routes span multiple countries, route filter handles it
+        document.getElementById('country_id').value = '';
 
         // Dates
         if (f.date_from) document.getElementById('date_from').value = f.date_from;
@@ -423,24 +419,32 @@
         if (f.nights_from) document.getElementById('nights_from').value = f.nights_from;
         if (f.nights_to) document.getElementById('nights_to').value = f.nights_to;
 
-        // Wait for country change to render resorts, then check the right ones
-        setTimeout(() => {
-            if (f.resort_ids && f.resort_ids.length) {
-                document.querySelectorAll('.resort-checkbox').forEach(cb => {
-                    cb.checked = f.resort_ids.includes(parseInt(cb.value));
-                });
-                updateResortsAllCheckbox();
-                updateHotels();
+        // Render resorts from ALL countries involved in this route, then check the right ones
+        const rc = document.getElementById('resortsContainer');
+        const hc = document.getElementById('hotelsContainer');
+        let resortHtml = '';
+        let allResortIds = new Set(f.resort_ids || []);
 
-                // Then check the right hotels after hotels render
-                setTimeout(() => {
-                    if (f.hotel_ids && f.hotel_ids.length) {
-                        document.querySelectorAll('.hotel-checkbox').forEach(cb => {
-                            cb.checked = f.hotel_ids.includes(parseInt(cb.value));
-                        });
-                        updateHotelsAllCheckbox();
-                    }
-                }, 50);
+        // Collect resorts from all countries that have matching resort IDs
+        for (const [countryId, resorts] of Object.entries(resortsByCountry)) {
+            resorts.forEach(r => {
+                if (allResortIds.has(r.id)) {
+                    resortHtml += `<label><input type="checkbox" name="resort_ids[]" value="${r.id}" class="resort-checkbox" checked> ${r.name_en || r.name}</label>`;
+                }
+            });
+        }
+        rc.innerHTML = resortHtml || '<label style="color:#999;padding:20px 0;">No resorts</label>';
+        document.querySelectorAll('.resort-checkbox').forEach(cb => cb.addEventListener('change', updateHotels));
+        document.getElementById('resorts_all').checked = true;
+        updateHotels();
+
+        // Check only relevant hotels
+        setTimeout(() => {
+            if (f.hotel_ids && f.hotel_ids.length) {
+                document.querySelectorAll('.hotel-checkbox').forEach(cb => {
+                    cb.checked = f.hotel_ids.includes(parseInt(cb.value));
+                });
+                updateHotelsAllCheckbox();
             }
         }, 50);
     });
