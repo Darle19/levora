@@ -1,29 +1,29 @@
 <style>
 .st .results-table { width: 100%; border-collapse: collapse; }
 .st .results-table th {
-    background: #f0f4f7; padding: 4px 6px; font-size: 11px; font-weight: 600;
+    background: #f0f4f7; padding: 8px 10px; font-size: 11px; font-weight: 600;
     text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd;
     white-space: nowrap;
 }
 .st .results-table th a { color: #555; text-decoration: none; }
 .st .results-table th a:hover { color: #1B6B2E; }
-.st .results-table td { padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 12px; }
+.st .results-table td { padding: 7px 10px; border-bottom: 1px solid #eee; font-size: 12px; }
 .st .results-table tr:hover { background: #f8fdf9; }
 .st .hotel-group-row { background: #e8f5e9; cursor: pointer; font-weight: 600; }
 .st .hotel-group-row:hover { background: #d4edda; }
-.st .hotel-group-row td { padding: 5px 6px; font-size: 12px; }
+.st .hotel-group-row td { padding: 8px 10px; font-size: 12px; }
 .st .avail-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .st .avail-green { background: #28a745; }
 .st .avail-yellow { background: #ffc107; }
 .st .avail-red { background: #dc3545; }
-.st .meal-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.st .meal-badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; }
 .st .meal-ai { background: #e8d5f5; color: #6b21a8; }
 .st .meal-fb { background: #dbeafe; color: #1d4ed8; }
 .st .meal-hb { background: #d1fae5; color: #065f46; }
 .st .meal-bb { background: #fef3c7; color: #92400e; }
 .st .meal-ro { background: #f3f4f6; color: #4b5563; }
 .st .book-btn {
-    display: inline-block; padding: 2px 8px; background: #1B6B2E; color: #fff;
+    display: inline-block; padding: 4px 12px; background: #1B6B2E; color: #fff;
     font-size: 11px; font-weight: 600; border-radius: 3px; text-decoration: none;
 }
 .st .book-btn:hover { background: #145222; }

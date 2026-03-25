@@ -47,18 +47,18 @@
     .st .search-row-3 { grid-template-columns: repeat(3, 1fr); }
     .st .search-row-4 { grid-template-columns: repeat(4, 1fr); }
     .st .search-row-5 { grid-template-columns: repeat(5, 1fr); }
-    .st .search-cell { padding: 4px 6px; }
+    .st .search-cell { padding: 8px 12px; }
     .st .search-cell + .search-cell { border-left: 1px solid #e8e8e8; }
-    .st .field-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px; line-height: 1.2; }
+    .st .field-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; line-height: 1.2; }
     .st .filters-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid #e8e8e8; }
-    .st .filters-row > div { padding: 4px 3px; }
+    .st .filters-row > div { padding: 8px 8px; }
     .st .filters-row > div + div { border-left: 1px solid #e8e8e8; }
-    .st .inline-checks { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; padding: 4px 6px; border-bottom: 1px solid #e8e8e8; }
-    .st .inline-checks label { cursor: pointer; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; white-space: nowrap; color: #444; }
+    .st .inline-checks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 10px 12px; border-bottom: 1px solid #e8e8e8; }
+    .st .inline-checks label { cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; color: #444; }
     .st .inline-checks label input { margin: 0; width: auto; height: auto; }
-    .st .inline-checks .separator { width: 1px; height: 14px; background: #ddd; margin: 0 4px; }
-    .st .footer-row { display: flex; align-items: center; justify-content: flex-end; gap: 15px; padding: 6px 10px; }
-    .st .footer-row label { cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; color: #555; }
+    .st .inline-checks .separator { width: 1px; height: 14px; background: #ddd; margin: 0 6px; }
+    .st .footer-row { display: flex; align-items: center; justify-content: flex-end; gap: 20px; padding: 10px 14px; }
+    .st .footer-row label { cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
     .st .footer-row label input { accent-color: #c00; width: auto; height: auto; }
     .st .reset-link { color: #F64214; text-decoration: none; font-size: 12px; font-weight: 500; }
     .st .reset-link:hover { text-decoration: underline; }
