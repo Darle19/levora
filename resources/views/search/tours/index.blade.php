@@ -10,16 +10,12 @@
     }
     .st select { cursor: pointer; }
     .st input.hotelsearch { background: #ffc; border: 1px solid #999; border-radius: 4px; font-size: 12px; height: 20px; width: 150px; padding: 1px 3px; }
-    .st table { border-collapse: collapse; border-spacing: 0; }
-    .st table td, .st table th { font-size: 12px; vertical-align: middle; }
     .st .searchmodes { display: flex; gap: 0; margin-bottom: 0; }
     .st .searchmode { padding: 6px 14px; font-size: 13px; cursor: pointer; border-radius: 6px 6px 0 0; }
     .st .searchmode a { color: #1B6B2E; text-decoration: none; font-weight: 500; }
     .st .searchmode a:hover { color: #F64214; }
     .st .searchmode-active { background: #fff; font-weight: 700; box-shadow: 0 -2px 4px hsl(0 0% 88%); color: #222; }
     .st .searchmode-inactive { background: #e8edf1; color: #555; }
-    .st .dir-label { width: 130px; text-align: right; padding-right: 8px; color: #555; white-space: nowrap; }
-    .st .desc-label { text-align: right; padding-right: 6px; color: #555; white-space: nowrap; }
     .st .checklistbox {
         height: 13em; overflow-y: auto; overflow-x: hidden; border: 1px solid silver;
         border-radius: 0 0 4px 4px; background: #fff; padding: 3px;
@@ -45,6 +41,27 @@
     }
     .st .btn-search:hover { background: #145222; }
     .st .stars { color: #e8a500; font-size: 13px; letter-spacing: -1px; }
+
+    /* Grid layout for search rows */
+    .st .search-row { display: grid; gap: 0; border-bottom: 1px solid #e8e8e8; }
+    .st .search-row-3 { grid-template-columns: repeat(3, 1fr); }
+    .st .search-row-4 { grid-template-columns: repeat(4, 1fr); }
+    .st .search-row-5 { grid-template-columns: repeat(5, 1fr); }
+    .st .search-cell { padding: 4px 6px; }
+    .st .search-cell + .search-cell { border-left: 1px solid #e8e8e8; }
+    .st .field-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px; line-height: 1.2; }
+    .st .filters-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid #e8e8e8; }
+    .st .filters-row > div { padding: 4px 3px; }
+    .st .filters-row > div + div { border-left: 1px solid #e8e8e8; }
+    .st .inline-checks { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; padding: 4px 6px; border-bottom: 1px solid #e8e8e8; }
+    .st .inline-checks label { cursor: pointer; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; white-space: nowrap; color: #444; }
+    .st .inline-checks label input { margin: 0; width: auto; height: auto; }
+    .st .inline-checks .separator { width: 1px; height: 14px; background: #ddd; margin: 0 4px; }
+    .st .footer-row { display: flex; align-items: center; justify-content: flex-end; gap: 15px; padding: 6px 10px; }
+    .st .footer-row label { cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; color: #555; }
+    .st .footer-row label input { accent-color: #c00; width: auto; height: auto; }
+    .st .reset-link { color: #F64214; text-decoration: none; font-size: 12px; font-weight: 500; }
+    .st .reset-link:hover { text-decoration: underline; }
 </style>
 
 <div class="st">
@@ -58,10 +75,10 @@
                 <div class="banner-slide" style="min-width:100%; flex-shrink:0;">
                     @if($banner->link)
                     <a href="{{ $banner->link }}" target="_blank">
-                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:400px; object-fit:cover; display:block;">
+                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:200px; object-fit:cover; display:block;">
                     </a>
                     @else
-                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:400px; object-fit:cover; display:block;">
+                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:200px; object-fit:cover; display:block;">
                     @endif
                 </div>
                 @endforeach
@@ -89,265 +106,201 @@
         <form action="{{ route('search.tours.search') }}" method="POST" id="tourSearchForm">
             @csrf
 
-            {{-- Direction Panel --}}
             <div class="panel" style="border-radius: 0 8px 0 0; margin-bottom:0;">
-                <table style="width:100%">
-                    <tr>
-                        <td style="width:50%; vertical-align:top;">
-                            <table style="width:100%">
-                                <tr>
-                                    <td class="dir-label">{{ __('messages.search.departure_city') }}</td>
-                                    <td style="padding:4px 8px;">
-                                        <select id="departure_city_id" name="departure_city_id" required>
-                                            <option value="">—</option>
-                                            @foreach($cities as $city)
-                                                <option value="{{ $city->id }}">{{ $city->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="dir-label">{{ __('messages.search.country') }}</td>
-                                    <td style="padding:4px 8px;">
-                                        <select id="country_id" name="country_id" required>
-                                            <option value="">—</option>
-                                            @foreach($countries as $country)
-                                                <option value="{{ $country->id }}">{{ $country->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                        <td style="width:50%; vertical-align:top;">
-                            <table style="width:100%">
-                                <tr>
-                                    <td class="dir-label" style="width:50px;">{{ __('messages.search.tour_route') ?? 'Тур' }}</td>
-                                    <td style="padding:4px 8px;">
-                                        <select name="tour_route">
-                                            <option value="">----</option>
-                                            @foreach($tourRoutes as $route)
-                                                <option value="{{ $route['slug'] }}">{{ $route['label'] }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </div>
 
-            {{-- Date / Nights / Tourists / Price Panel --}}
-            <div class="panel" style="border-radius:0; margin-bottom:0; border-top:1px solid #ddd;">
-                <table style="width:100%">
-                    <tr>
-                        <td style="width:50%;">
-                            <table style="width:100%">
-                                <tr>
-                                    <td class="desc-label" style="width:70px;">{{ __('messages.search.departure_from') }}</td>
-                                    <td style="padding:3px 4px; width:130px;">
-                                        <input type="date" id="date_from" name="date_from" value="{{ date('Y-m-d') }}">
-                                    </td>
-                                    <td class="desc-label" style="width:70px;">{{ __('messages.search.nights_from') }}</td>
-                                    <td style="padding:3px 4px; width:55px;">
-                                        <select id="nights_from" name="nights_from">
-                                            @for($i = 3; $i <= 21; $i++)
-                                                <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
-                                            @endfor
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="desc-label">{{ __('messages.search.departure_till') }}</td>
-                                    <td style="padding:3px 4px;">
-                                        <input type="date" id="date_to" name="date_to" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
-                                    </td>
-                                    <td class="desc-label">{{ __('messages.search.nights_to') ?? 'до' }}</td>
-                                    <td style="padding:3px 4px;">
-                                        <select id="nights_to" name="nights_to">
-                                            @for($i = 3; $i <= 21; $i++)
-                                                <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
-                                            @endfor
-                                        </select>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                        <td style="width:50%;">
-                            <table style="width:100%">
-                                <tr>
-                                    <td class="desc-label" style="width:80px;">{{ __('messages.search.adults') }}</td>
-                                    <td style="padding:3px 4px; width:55px;">
-                                        <select id="adults" name="adults">
-                                            @for($i = 1; $i <= 6; $i++)
-                                                <option value="{{ $i }}" {{ $i == 2 ? 'selected' : '' }}>{{ $i }}</option>
-                                            @endfor
-                                        </select>
-                                    </td>
-                                    <td class="desc-label" style="width:45px;">{{ __('messages.search.currency') }}</td>
-                                    <td style="padding:3px 4px; width:60px;">
-                                        <select id="currency_id" name="currency_id">
-                                            @foreach($currencies as $currency)
-                                                <option value="{{ $currency->id }}" {{ $currency->code == 'USD' ? 'selected' : '' }}>{{ $currency->code }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td class="desc-label" style="width:20px;">{{ __('messages.search.price_from') ?? 'от' }}</td>
-                                    <td style="padding:3px 4px; width:70px;">
-                                        <input type="number" name="price_from" min="0" placeholder="" style="width:100%;">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="desc-label">{{ __('messages.search.children') }}</td>
-                                    <td style="padding:3px 4px;">
-                                        <select id="children" name="children">
-                                            @for($i = 0; $i <= 4; $i++)
-                                                <option value="{{ $i }}">{{ $i }}</option>
-                                            @endfor
-                                        </select>
-                                    </td>
-                                    <td class="desc-label" colspan="2"></td>
-                                    <td class="desc-label">{{ __('messages.search.price_to') ?? 'до' }}</td>
-                                    <td style="padding:3px 4px;">
-                                        <input type="number" name="price_to" min="0" placeholder="" style="width:100%;">
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+                {{-- Row 1: Departure City | Country | Tour Route --}}
+                <div class="search-row search-row-3">
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.departure_city') }}</div>
+                        <select id="departure_city_id" name="departure_city_id" required>
+                            <option value="">---</option>
+                            @foreach($cities as $city)
+                                <option value="{{ $city->id }}">{{ $city->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.country') }}</div>
+                        <select id="country_id" name="country_id" required>
+                            <option value="">---</option>
+                            @foreach($countries as $country)
+                                <option value="{{ $country->id }}">{{ $country->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.tour_route') ?? 'Tour Route' }}</div>
+                        <select name="tour_route">
+                            <option value="">----</option>
+                            @foreach($tourRoutes as $route)
+                                <option value="{{ $route['slug'] }}">{{ $route['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
 
-            {{-- Child Ages (dynamic, hidden by default) --}}
-            <div id="childAgesRow" class="panel" style="border-radius:0; margin-bottom:0; border-top:1px solid #ddd; display:none; padding:4px 10px;">
-                <span style="color:#555;">{{ __('messages.search.child_age') }}:</span>
-                <span id="childAges"></span>
-            </div>
+                {{-- Row 2: Date From | Date To | Nights From | Nights To --}}
+                <div class="search-row search-row-4">
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.departure_from') }}</div>
+                        <input type="date" id="date_from" name="date_from" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.departure_till') }}</div>
+                        <input type="date" id="date_to" name="date_to" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.nights_from') }}</div>
+                        <select id="nights_from" name="nights_from">
+                            @for($i = 3; $i <= 21; $i++)
+                                <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.nights_to') ?? 'Nights To' }}</div>
+                        <select id="nights_to" name="nights_to">
+                            @for($i = 3; $i <= 21; $i++)
+                                <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                </div>
 
-            {{-- 4-Column Filter Panel: Resorts | Stars+Category | Hotels | Meals --}}
-            <div class="panel" style="border-radius:0; margin-bottom:0; border-top:1px solid #ddd; padding:5px;">
-                <table style="width:100%">
-                    <tr>
-                        {{-- Column 1: Resorts/Cities (20%) --}}
-                        <td style="width:20%; vertical-align:top; padding:0 3px;">
-                            <div class="filter-header">
-                                <span class="title">{{ __('messages.search.resorts_regions') ?? 'город' }}</span>
+                {{-- Row 3: Adults | Children | Currency | Price From | Price To --}}
+                <div class="search-row search-row-5">
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.adults') }}</div>
+                        <select id="adults" name="adults">
+                            @for($i = 1; $i <= 6; $i++)
+                                <option value="{{ $i }}" {{ $i == 2 ? 'selected' : '' }}>{{ $i }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.children') }}</div>
+                        <select id="children" name="children">
+                            @for($i = 0; $i <= 4; $i++)
+                                <option value="{{ $i }}">{{ $i }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.currency') }}</div>
+                        <select id="currency_id" name="currency_id">
+                            @foreach($currencies as $currency)
+                                <option value="{{ $currency->id }}" {{ $currency->code == 'USD' ? 'selected' : '' }}>{{ $currency->code }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.price_from') ?? 'Price From' }}</div>
+                        <input type="number" name="price_from" min="0" placeholder="">
+                    </div>
+                    <div class="search-cell">
+                        <div class="field-label">{{ __('messages.search.price_to') ?? 'Price To' }}</div>
+                        <input type="number" name="price_to" min="0" placeholder="">
+                    </div>
+                </div>
+
+                {{-- Child Ages (dynamic, hidden by default) --}}
+                <div id="childAgesRow" style="display:none; padding:4px 6px; border-bottom:1px solid #e8e8e8;">
+                    <span style="color:#555; font-size:11px;">{{ __('messages.search.child_age') }}:</span>
+                    <span id="childAges"></span>
+                </div>
+
+                {{-- Row 4: 4-Column Filter Panel: Resorts | Star Rating | Hotels | Meal Types --}}
+                <div class="filters-row">
+                    {{-- Resorts/Cities --}}
+                    <div>
+                        <div class="filter-header">
+                            <span class="title">{{ __('messages.search.resorts_regions') ?? 'Resorts' }}</span>
+                            <label class="any-check">
+                                <input type="checkbox" id="resorts_all" checked> {{ __('messages.search.all') ?? 'All' }}
+                            </label>
+                        </div>
+                        <div id="resortsContainer" class="checklistbox">
+                            <label style="color:#999; text-align:center; padding:20px 0;">{{ __('messages.search.select_destination') }}</label>
+                        </div>
+                    </div>
+
+                    {{-- Star Rating --}}
+                    <div>
+                        <div class="filter-header">
+                            <span class="title">{{ __('messages.search.star_rating') ?? 'Stars' }}</span>
+                        </div>
+                        <div class="checklistbox">
+                            @foreach($hotelCategories as $category)
+                                <label>
+                                    <input type="checkbox" name="hotel_category_ids[]" value="{{ $category->id }}">
+                                    <span class="stars">@for($i = 0; $i < $category->stars; $i++)&#9733;@endfor</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Hotels --}}
+                    <div>
+                        <div class="filter-header">
+                            <span class="title">{{ __('messages.search.hotels') ?? 'Hotels' }}</span>
+                            <span style="display:flex; align-items:center; gap:6px;">
+                                <input type="text" id="hotelSearchInput" class="hotelsearch" placeholder="{{ __('messages.search.search_hotel') ?? 'Search...' }}">
                                 <label class="any-check">
-                                    <input type="checkbox" id="resorts_all" checked> {{ __('messages.search.all') ?? 'любой' }}
+                                    <input type="checkbox" id="hotels_all" checked> {{ __('messages.search.all') ?? 'All' }}
                                 </label>
-                            </div>
-                            <div id="resortsContainer" class="checklistbox">
-                                <label style="color:#999; text-align:center; padding:20px 0;">{{ __('messages.search.select_destination') }}</label>
-                            </div>
-                        </td>
+                            </span>
+                        </div>
+                        <div id="hotelsContainer" class="checklistbox">
+                            <label style="color:#999; text-align:center; padding:20px 0;">{{ __('messages.search.select_resorts') ?? 'Select a country first' }}</label>
+                        </div>
+                    </div>
 
-                        {{-- Column 2: Stars/Category (20%) --}}
-                        <td style="width:20%; vertical-align:top; padding:0 3px;">
-                            <div class="filter-header">
-                                <span class="title">{{ __('messages.search.star_rating') ?? 'категория' }}</span>
-                            </div>
-                            <div class="checklistbox">
-                                @foreach($hotelCategories as $category)
-                                    <label>
-                                        <input type="checkbox" name="hotel_category_ids[]" value="{{ $category->id }}">
-                                        <span class="stars">@for($i = 0; $i < $category->stars; $i++)★@endfor</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </td>
-
-                        {{-- Column 3: Hotels (40%) --}}
-                        <td style="width:40%; vertical-align:top; padding:0 3px;">
-                            <div class="filter-header">
-                                <span class="title">{{ __('messages.search.hotels') ?? 'гостиница' }}</span>
-                                <span style="display:flex; align-items:center; gap:6px;">
-                                    <input type="text" id="hotelSearchInput" class="hotelsearch" placeholder="{{ __('messages.search.search_hotel') ?? 'Search...' }}">
-                                    <label class="any-check">
-                                        <input type="checkbox" id="hotels_all" checked> {{ __('messages.search.all') ?? 'любая' }}
-                                    </label>
-                                </span>
-                            </div>
-                            <div id="hotelsContainer" class="checklistbox">
-                                <label style="color:#999; text-align:center; padding:20px 0;">{{ __('messages.search.select_resorts') ?? 'Select a country first' }}</label>
-                            </div>
-                        </td>
-
-                        {{-- Column 4: Meal Types (20%) --}}
-                        <td style="width:20%; vertical-align:top; padding:0 3px;">
-                            <div class="filter-header">
-                                <span class="title">{{ __('messages.search.meal_types') ?? 'питание' }}</span>
-                                <label class="any-check">
-                                    <input type="checkbox" id="meals_all" checked> {{ __('messages.search.all') ?? 'любое' }}
+                    {{-- Meal Types --}}
+                    <div>
+                        <div class="filter-header">
+                            <span class="title">{{ __('messages.search.meal_types') ?? 'Meals' }}</span>
+                            <label class="any-check">
+                                <input type="checkbox" id="meals_all" checked> {{ __('messages.search.all') ?? 'All' }}
+                            </label>
+                        </div>
+                        <div class="checklistbox">
+                            @foreach($mealTypes as $meal)
+                                <label>
+                                    <input type="checkbox" name="meal_type_ids[]" value="{{ $meal->id }}" class="meal-checkbox">
+                                    {{ $meal->code }}
                                 </label>
-                            </div>
-                            <div class="checklistbox">
-                                @foreach($mealTypes as $meal)
-                                    <label>
-                                        <input type="checkbox" name="meal_type_ids[]" value="{{ $meal->id }}" class="meal-checkbox">
-                                        {{ $meal->code }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </td>
-                    </tr>
-                </table>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Row 5: Inline checkboxes — filters + transport types --}}
+                <div class="inline-checks">
+                    <label><input type="checkbox" name="instant_confirmation" value="1"> {{ __('messages.search.instant_confirmation') }}</label>
+                    <label><input type="checkbox" name="no_stop_sale" value="1"> {{ __('messages.search.no_stop_sale') }}</label>
+                    <label><input type="checkbox" name="with_flight" value="1"> {{ __('messages.search.with_flight') }}</label>
+                    <label><input type="checkbox" name="direct_flight" value="1"> {{ __('messages.search.direct_flight') }}</label>
+                    <label><input type="checkbox" name="is_hot" value="1"> {{ __('messages.search.hot_deals_only') }}</label>
+                    <span class="separator"></span>
+                    @foreach($transportTypes as $type)
+                        <label><input type="checkbox" name="transport_type_ids[]" value="{{ $type->id }}"> {{ $type->name }}</label>
+                    @endforeach
+                </div>
+
             </div>
 
-            {{-- Bottom: Filters + Promotions --}}
-            <div class="panel" style="border-radius:0; margin-bottom:0; border-top:1px solid #ddd; padding:5px;">
-                <table style="width:100%">
-                    <tr>
-                        {{-- Filters --}}
-                        <td style="width:50%; vertical-align:top; padding:0 3px;">
-                            <div class="filter-header">
-                                <span class="title">{{ __('messages.search.filters') ?? 'Фильтры' }}</span>
-                            </div>
-                            <div class="checklistbox small-list" style="display:flex; flex-wrap:wrap;">
-                                <label style="min-width:48%;">
-                                    <input type="checkbox" name="instant_confirmation" value="1"> {{ __('messages.search.instant_confirmation') }}
-                                </label>
-                                <label style="min-width:48%;">
-                                    <input type="checkbox" name="no_stop_sale" value="1"> {{ __('messages.search.no_stop_sale') }}
-                                </label>
-                                <label style="min-width:48%;">
-                                    <input type="checkbox" name="with_flight" value="1"> {{ __('messages.search.with_flight') }}
-                                </label>
-                                <label style="min-width:48%;">
-                                    <input type="checkbox" name="direct_flight" value="1"> {{ __('messages.search.direct_flight') }}
-                                </label>
-                                <label style="min-width:48%;">
-                                    <input type="checkbox" name="is_hot" value="1"> {{ __('messages.search.hot_deals_only') }}
-                                </label>
-                            </div>
-                        </td>
-
-                        {{-- Promotions / Transport --}}
-                        <td style="width:50%; vertical-align:top; padding:0 3px;">
-                            <div class="filter-header">
-                                <span class="title">{{ __('messages.search.transport_type') ?? 'Транспорт' }}</span>
-                            </div>
-                            <div class="checklistbox small-list">
-                                @foreach($transportTypes as $type)
-                                    <label>
-                                        <input type="checkbox" name="transport_type_ids[]" value="{{ $type->id }}"> {{ $type->name }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-
-            {{-- Footer: Group by + Search button --}}
-            <div class="panel" style="border-radius:0 0 8px 8px; padding:6px 10px; display:flex; align-items:center; justify-content:flex-end; gap:15px; border-top:1px solid #ddd;">
-                <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:12px; color:#555;">
-                    <input type="checkbox" name="group_by_hotel" value="1" style="accent-color:#c00; width:auto; height:auto;">
-                    {{ __('messages.search.group_by_hotel') ?? 'группировать результаты' }}
-                </label>
-                <button type="submit" class="btn-search">
-                    {{ __('messages.search.search_button') }}
-                </button>
+            {{-- Row 6: Group by hotel | Reset | Search --}}
+            <div class="panel" style="border-radius:0 0 8px 8px; margin-bottom:0;">
+                <div class="footer-row">
+                    <label>
+                        <input type="checkbox" name="group_by_hotel" value="1">
+                        {{ __('messages.search.group_by_hotel') ?? 'Group by hotel' }}
+                    </label>
+                    <a href="javascript:void(0)" onclick="resetForm()" class="reset-link">{{ __('messages.search.reset') ?? 'Reset' }}</a>
+                    <button type="submit" class="btn-search">
+                        {{ __('messages.search.search_button') }}
+                    </button>
+                </div>
             </div>
 
         </form>
@@ -370,7 +323,7 @@
                         <option value="nights">{{ __('messages.nights') }}</option>
                         <option value="hotel_name">{{ __('messages.hotel') }}</option>
                     </select>
-                    <button id="sort_dir_toggle" type="button" data-direction="asc" style="border:1px solid #999; border-radius:4px; background:#fff; cursor:pointer; padding:2px 5px; line-height:1;" title="{{ __('messages.toggle_sort_direction') }}">▲</button>
+                    <button id="sort_dir_toggle" type="button" data-direction="asc" style="border:1px solid #999; border-radius:4px; background:#fff; cursor:pointer; padding:2px 5px; line-height:1;" title="{{ __('messages.toggle_sort_direction') }}">&#9650;</button>
                 </div>
             </div>
 
@@ -489,7 +442,7 @@
             const cityName = resortCityMap[rid] || 'Other';
             if (!byCity[cityName]) byCity[cityName] = [];
             (hotelsByResort[rid] || []).forEach(h => {
-                const s = h.category ? '★'.repeat(h.category.stars) : '';
+                const s = h.category ? '\u2605'.repeat(h.category.stars) : '';
                 byCity[cityName].push(`<label class="hotel-item"><input type="checkbox" name="hotel_ids[]" value="${h.id}" class="hotel-checkbox"> ${h.name} <span class="stars">${s}</span></label>`);
             });
         });
@@ -612,7 +565,7 @@
     document.getElementById('sort_dir_toggle').addEventListener('click', function() {
         const d = this.dataset.direction === 'asc' ? 'desc' : 'asc';
         this.dataset.direction = d;
-        this.textContent = d === 'asc' ? '▲' : '▼';
+        this.textContent = d === 'asc' ? '\u25B2' : '\u25BC';
         doSearch();
     });
     document.getElementById('group_by_hotel').addEventListener('change', function() { doSearch(); });
@@ -635,8 +588,8 @@
             h.addEventListener('click', function() {
                 const tbody = document.getElementById('hotel-group-' + this.dataset.hotelId);
                 const icon = this.querySelector('.toggle-icon');
-                if (tbody.style.display === 'none') { tbody.style.display = ''; icon.textContent = '▼'; }
-                else { tbody.style.display = 'none'; icon.textContent = '►'; }
+                if (tbody.style.display === 'none') { tbody.style.display = ''; icon.textContent = '\u25BC'; }
+                else { tbody.style.display = 'none'; icon.textContent = '\u25BA'; }
             });
         });
         document.querySelectorAll('.pagination-link').forEach(link => {
