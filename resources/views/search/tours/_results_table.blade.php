@@ -341,6 +341,14 @@ function closeFM() {
     document.getElementById('fm-popup').style.display = 'none';
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFM(); });
+
+// Row click → navigate, but NOT if clicking a link, button, or interactive element
+document.addEventListener('click', function(e) {
+    const row = e.target.closest('tr[data-href]');
+    if (!row) return;
+    if (e.target.closest('a, button, .stats-btn, .book-btn, .view-link, .hotel-link')) return;
+    window.location = row.dataset.href;
+});
 </script>
 
 @else

@@ -45,7 +45,7 @@
         })->values()->toArray(),
     ];
 @endphp
-<tr class="{{ $rowClass }}" onclick="window.location='{{ route('tours.show', $tour) }}'">
+<tr class="{{ $rowClass }}" data-href="{{ route('tours.show', $tour) }}">
     {{-- 1. Departure date + time --}}
     <td style="white-space:nowrap;">
         <span class="dep-date">{{ $tour->date_from ? $tour->date_from->format('d.m.Y') : '-' }}</span>
@@ -56,7 +56,7 @@
     </td>
 
     {{-- 1b. Stats/Flights monitor icon --}}
-    <td style="text-align:center; width:24px; padding:2px;" onclick="event.stopPropagation();">
+    <td style="text-align:center; width:24px; padding:2px;">
         @if($tour->flights->isNotEmpty())
             <button class="stats-btn" onclick="openFM(this)" data-fm='@json($fmData)' title="Flights monitor">📊</button>
         @endif
@@ -84,7 +84,7 @@
         @if($tour->stays->isNotEmpty())
             @foreach($tour->stays as $stay)
                 <div @if(!$loop->first) style="border-top:1px solid #eee; margin-top:2px; padding-top:2px;" @endif>
-                    <a href="{{ route('tours.show', $tour) }}" class="hotel-link" onclick="event.stopPropagation();">{{ $stay->hotel->name ?? ($stay->city->name ?? '-') }}</a>
+                    <a href="{{ route('tours.show', $tour) }}" class="hotel-link">{{ $stay->hotel->name ?? ($stay->city->name ?? '-') }}</a>
                     @if($stay->hotel && $stay->hotel->category)
                         <span class="stars">@for($i = 0; $i < $stay->hotel->category->stars; $i++)★@endfor</span>
                     @endif
@@ -92,7 +92,7 @@
                 </div>
             @endforeach
         @else
-            <a href="{{ route('tours.show', $tour) }}" class="hotel-link" onclick="event.stopPropagation();">{{ $tour->hotel->name ?? '-' }}</a>
+            <a href="{{ route('tours.show', $tour) }}" class="hotel-link">{{ $tour->hotel->name ?? '-' }}</a>
             @if($tour->hotel && $tour->hotel->category)
                 <span class="stars">@for($i = 0; $i < $tour->hotel->category->stars; $i++)★@endfor</span>
             @endif
@@ -133,7 +133,7 @@
     </td>
 
     {{-- 8. Price --}}
-    <td style="text-align:right;" onclick="event.stopPropagation();">
+    <td style="text-align:right;">
         <span class="price-val {{ $isStop ? 'price-stop' : '' }}"
               @if($isStop) title="Stop sale — booking unavailable" @else title="Price per person" @endif>
             {{ number_format($tour->price, 0) }} {{ $tour->currency->code ?? 'USD' }}
@@ -163,7 +163,7 @@
     </td>
 
     {{-- 10. Actions --}}
-    <td style="text-align:center; white-space:nowrap;" onclick="event.stopPropagation();">
+    <td style="text-align:center; white-space:nowrap;">
         <a href="{{ route('tours.show', $tour) }}" class="view-link" title="View details">👁</a>
         <a href="{{ route('bookings.create', $tour) }}" class="book-btn">Book</a>
     </td>
