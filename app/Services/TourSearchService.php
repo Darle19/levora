@@ -72,8 +72,9 @@ class TourSearchService
 
             $slug = str($label)->slug()->toString();
 
-            // Collect filter hints from all tours in this route
-            $countryIds = $tourGroup->pluck('country_id')->unique()->filter()->values()->toArray();
+            // Country = last stay's country (Nice → France, Bali → Indonesia)
+            $lastStay = $tourGroup->first()->stays->sortByDesc('stay_order')->first();
+            $lastCountryId = $lastStay?->resort?->country_id ?? $lastStay?->city?->country_id ?? $tourGroup->first()->country_id;
             $departureCityIds = $tourGroup->pluck('departure_city_id')->unique()->filter()->values()->toArray();
             $resortIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('resort_id'))->unique()->filter()->values()->toArray();
             $hotelIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('hotel_id'))->unique()->filter()->values()->toArray();
@@ -86,7 +87,7 @@ class TourSearchService
                 'label' => $label,
                 'tour_ids' => $tourGroup->pluck('id')->toArray(),
                 'filters' => [
-                    'country_id' => count($countryIds) === 1 ? $countryIds[0] : null,
+                    'country_id' => $lastCountryId,
                     'departure_city_id' => count($departureCityIds) === 1 ? $departureCityIds[0] : null,
                     'resort_ids' => $resortIds,
                     'hotel_ids' => $hotelIds,

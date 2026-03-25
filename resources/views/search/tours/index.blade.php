@@ -408,8 +408,10 @@
             document.getElementById('departure_city_id').value = f.departure_city_id;
         }
 
-        // Clear country — multi-city routes span multiple countries, route filter handles it
-        document.getElementById('country_id').value = '';
+        // Country — last destination (Nice → France, Bali → Indonesia)
+        if (f.country_id) {
+            document.getElementById('country_id').value = f.country_id;
+        }
 
         // Dates
         if (f.date_from) document.getElementById('date_from').value = f.date_from;
