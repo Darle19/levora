@@ -74,11 +74,7 @@
                         </div>
 
                         <!-- Quick Info Grid -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-gray-50 rounded-lg">
-                            <div>
-                                <div class="text-sm text-gray-500 mb-1">Tour Type</div>
-                                <div class="font-semibold text-gray-900">{{ $tour->tourType->name_en ?? 'N/A' }}</div>
-                            </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 p-4 bg-gray-50 rounded-lg">
                             <div>
                                 <div class="text-sm text-gray-500 mb-1">Program</div>
                                 <div class="font-semibold text-gray-900">{{ $tour->programType->name_en ?? 'N/A' }}</div>

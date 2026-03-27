@@ -44,7 +44,12 @@
       "Bash(grep -A2 \"price_per_night\\\\|price_override\" /c/Users/user/Herd/malaktour/app/Models/*.php)",
       "Bash(grep -n \"decimal\\\\|float\\\\|double\\\\|price\" /c/Users/user/Herd/malaktour/database/migrations/*.php)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:amadeus4dev.github.io)"
+      "WebFetch(domain:amadeus4dev.github.io)",
+      "Bash(find /c/Users/user/Herd/malaktour/app/Filament/Pages -maxdepth 1 -type f -name *.php)",
+      "Bash(find /c/Users/user/Herd/malaktour/app/Filament/Widgets -maxdepth 1 -type f -name *.php)",
+      "Bash(grep -l 'protected static ?string $model' /c/Users/user/Herd/malaktour/app/Filament/Resources/*/*Resource.php)",
+      "Bash(grep -h 'protected static ?string $model = ' /c/Users/user/Herd/malaktour/app/Filament/Resources/*/*Resource.php)",
+      "Bash(sed 's/.*= //')"
     ]
   }
 }

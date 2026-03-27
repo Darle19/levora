@@ -81,11 +81,6 @@ class BasicDataSeeder extends Seeder
         $hotel2 = \App\Models\Hotel::create(['resort_id' => $antalya->id, 'hotel_category_id' => $cat4->id, 'name' => 'Sunset Beach Resort', 'description' => 'Beautiful 4-star resort', 'address' => 'Antalya, Turkey', 'rating' => 4.5, 'is_active' => true]);
         $hotel3 = \App\Models\Hotel::create(['resort_id' => $phuket->id, 'hotel_category_id' => $cat5->id, 'name' => 'Phuket Paradise Resort', 'description' => 'Luxury resort in Phuket', 'address' => 'Phuket, Thailand', 'rating' => 4.9, 'is_active' => true]);
 
-        // Tour Types
-        $beach = \App\Models\TourType::create(['name_en' => 'Beach Holiday', 'name_ru' => 'Пляжный отдых', 'name_uz' => 'Plyaj dam olish', 'is_active' => true]);
-        $excursion = \App\Models\TourType::create(['name_en' => 'Excursion', 'name_ru' => 'Экскурсионный', 'name_uz' => 'Ekskursion', 'is_active' => true]);
-        $combined = \App\Models\TourType::create(['name_en' => 'Combined', 'name_ru' => 'Комбинированный', 'name_uz' => 'Kombinatsiyalashgan', 'is_active' => true]);
-
         // Program Types
         $standard = \App\Models\ProgramType::create(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
         $vip = \App\Models\ProgramType::create(['name_en' => 'VIP', 'name_ru' => 'VIP', 'name_uz' => 'VIP', 'is_active' => true]);
@@ -101,7 +96,6 @@ class BasicDataSeeder extends Seeder
         // Sample Tours
         for ($i = 1; $i <= 10; $i++) {
             \App\Models\Tour::create([
-                'tour_type_id' => $beach->id,
                 'program_type_id' => $standard->id,
                 'country_id' => $turkey->id,
                 'resort_id' => $antalya->id,

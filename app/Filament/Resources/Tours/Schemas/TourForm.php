@@ -30,9 +30,6 @@ class TourForm
             ->components([
                 Section::make('Tour Details')
                     ->schema([
-                        Select::make('tour_type_id')
-                            ->relationship('tourType', 'name_en')
-                            ->required(),
                         Select::make('program_type_id')
                             ->relationship('programType', 'name_en')
                             ->required(),

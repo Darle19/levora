@@ -22,7 +22,6 @@ class AddHotelsFixFlightsSeeder extends Seeder
         $cat5 = 1; $cat4 = 2; $cat3 = 3;
         $airplaneId = 1;
         $mealBB = 1; $mealHB = 2;
-        $tourTypeBeach = 1; $tourTypeExcursion = 2; $tourTypeCombined = 3;
         $programStandard = 1;
         $centrumAirId = DB::table('airlines')->where('code', 'C2')->value('id');
 
@@ -90,7 +89,7 @@ class AddHotelsFixFlightsSeeder extends Seeder
         $markup = (float) (Setting::getValue('tour_markup_percent', 15) ?? 15);
         $istanbulTourIds = DB::table('tours')
             ->where('country_id', $turkeyId)
-            ->where('tour_type_id', $tourTypeCombined)
+            ->where('program_type_id', $programStandard)
             ->get(['id', 'hotel_id', 'nights']);
 
         foreach ($istanbulTourIds as $tour) {
@@ -248,7 +247,6 @@ class AddHotelsFixFlightsSeeder extends Seeder
                     $finalPrice = round(($hotelPrice * 10 + $flightCost) * (1 + $markup / 100), 2);
 
                     $tourId = DB::table('tours')->insertGetId([
-                        'tour_type_id' => $tourTypeCombined,
                         'program_type_id' => $programStandard,
                         'country_id' => $turkeyId,
                         'resort_id' => $group['resort_id'],
@@ -295,7 +293,6 @@ class AddHotelsFixFlightsSeeder extends Seeder
                 $finalPrice = round(($hotelPrice * 10 + $flightCost) * (1 + $markup / 100), 2);
 
                 $tourId = DB::table('tours')->insertGetId([
-                    'tour_type_id' => $tourTypeCombined,
                     'program_type_id' => $programStandard,
                     'country_id' => $azerbaijanId,
                     'resort_id' => $bakuHotelResortMap[$hotelId],

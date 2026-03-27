@@ -12,7 +12,6 @@ use App\Models\ProgramType;
 use App\Models\Resort;
 use App\Models\Tour;
 use App\Models\TourStay;
-use App\Models\TourType;
 use App\Models\TransportType;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -29,7 +28,6 @@ class TourSearchService
                 ->orderBy('order')
                 ->get(),
             'tourRoutes' => $this->buildTourRoutes(),
-            'tourTypes' => TourType::where('is_active', true)->get(),
             'programTypes' => ProgramType::where('is_active', true)->get(),
             'transportTypes' => TransportType::where('is_active', true)->get(),
             'mealTypes' => MealType::where('is_active', true)->get(),
@@ -161,11 +159,6 @@ class TourSearchService
             $query->where('departure_city_id', $filters['departure_city_id']);
         }
 
-        // Tour type filter
-        if (! empty($filters['tour_type_id'])) {
-            $query->where('tour_type_id', $filters['tour_type_id']);
-        }
-
         // Program type filter
         if (! empty($filters['program_type_id'])) {
             $query->where('program_type_id', $filters['program_type_id']);
@@ -248,7 +241,7 @@ class TourSearchService
 
         return $query->with([
             'country', 'resort', 'hotel', 'hotel.category', 'hotel.currency',
-            'tourType', 'programType', 'transportType',
+            'programType', 'transportType',
             'departureCity', 'currency', 'mealType',
             'tourPrices.roomType', 'tourPrices.currency',
             'flights.currency',

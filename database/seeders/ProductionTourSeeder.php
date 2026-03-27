@@ -15,7 +15,6 @@ use App\Models\ProgramType;
 use App\Models\Resort;
 use App\Models\Tour;
 use App\Models\TourStay;
-use App\Models\TourType;
 use App\Models\TransportType;
 use App\Models\Setting;
 use App\Services\TourPricingService;
@@ -49,7 +48,6 @@ class ProductionTourSeeder extends Seeder
         $usd = Currency::firstOrCreate(['code' => 'USD'], ['name' => 'US Dollar', 'symbol' => '$', 'is_active' => true]);
         $mealBB = MealType::firstOrCreate(['code' => 'BB'], ['name_en' => 'Bed & Breakfast', 'name_ru' => 'Завтрак', 'name_uz' => 'Nonushta', 'is_active' => true]);
         $transportAir = TransportType::firstOrCreate(['name_en' => 'Air'], ['name_ru' => 'Авиа', 'name_uz' => 'Avia', 'is_active' => true]);
-        $tourType = TourType::firstOrCreate(['name_en' => 'Combined'], ['name_ru' => 'Комбинированный', 'name_uz' => 'Kombinatsiyalangan', 'is_active' => true]);
         $programType = ProgramType::firstOrCreate(['name_en' => 'Standard'], ['name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
         $star3 = HotelCategory::firstOrCreate(['stars' => 3], ['name_en' => '3 Star', 'name_ru' => '3 звезды', 'name_uz' => '3 yulduz', 'is_active' => true]);
 
@@ -225,7 +223,6 @@ class ProductionTourSeeder extends Seeder
             'meal_type_id' => $mealBB->id,
             'transport_type_id' => $transportAir->id,
             'currency_id' => $usd->id,
-            'tour_type_id' => $tourType->id,
             'program_type_id' => $programType->id,
             'is_available' => true,
             'is_hot' => false,

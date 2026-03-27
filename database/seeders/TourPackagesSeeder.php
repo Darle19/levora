@@ -88,7 +88,6 @@ class TourPackagesSeeder extends Seeder
         $cat3 = 3; // 3 stars
         $airplaneId = 1;
         $mealBB = 1; $mealHB = 2; $mealFB = 3; $mealAI = 4; $mealRO = 5;
-        $tourTypeBeach = 1; $tourTypeExcursion = 2; $tourTypeCombined = 3;
         $programStandard = 1;
 
         // ─── RESORTS / DISTRICTS ───
@@ -478,7 +477,6 @@ class TourPackagesSeeder extends Seeder
             $finalPrice = round($baseCost * (1 + $markup / 100), 2);
 
             $tourId = DB::table('tours')->insertGetId([
-                'tour_type_id' => $data['tour_type_id'],
                 'program_type_id' => $data['program_type_id'],
                 'country_id' => $data['country_id'],
                 'resort_id' => $data['resort_id'],
@@ -532,7 +530,6 @@ class TourPackagesSeeder extends Seeder
             foreach ($istanbulHotels as $hotelId) {
                 $flightCost = 250 + 150; // outbound TAS→IST + IST→GYD connecting
                 $createTour([
-                    'tour_type_id' => $tourTypeCombined,
                     'program_type_id' => $programStandard,
                     'country_id' => $turkeyId,
                     'resort_id' => $sultanahmetId,
@@ -558,7 +555,6 @@ class TourPackagesSeeder extends Seeder
             foreach ($bakuHotels as $hotelId) {
                 $flightCost = 250 + 150 + 200; // TAS→IST + IST→GYD + GYD→TAS
                 $createTour([
-                    'tour_type_id' => $tourTypeCombined,
                     'program_type_id' => $programStandard,
                     'country_id' => $azerbaijanId,
                     'resort_id' => $bakuOldCityId,
@@ -590,7 +586,6 @@ class TourPackagesSeeder extends Seeder
             foreach ($baliHotels as $hotel) {
                 $flightCost = 450 + 450; // outbound + return
                 $createTour([
-                    'tour_type_id' => $tourTypeBeach,
                     'program_type_id' => $programStandard,
                     'country_id' => $indonesiaId,
                     'resort_id' => $hotel['resort_id'],
@@ -621,7 +616,6 @@ class TourPackagesSeeder extends Seeder
             foreach ($batumiHotels as $hotel) {
                 $flightCost = 200 + 200; // outbound + return
                 $createTour([
-                    'tour_type_id' => $tourTypeBeach,
                     'program_type_id' => $programStandard,
                     'country_id' => $georgiaId,
                     'resort_id' => $hotel['resort_id'],
@@ -652,7 +646,6 @@ class TourPackagesSeeder extends Seeder
             foreach ($parisHotels as $hotel) {
                 $flightCost = 400 + 380; // TK outbound + HY return
                 $createTour([
-                    'tour_type_id' => $tourTypeExcursion,
                     'program_type_id' => $programStandard,
                     'country_id' => $franceId,
                     'resort_id' => $hotel['resort_id'],

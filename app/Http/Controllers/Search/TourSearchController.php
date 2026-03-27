@@ -76,7 +76,7 @@ class TourSearchController extends Controller
     {
         $tour->load([
             'country', 'resort', 'hotel', 'hotel.category', 'hotel.currency',
-            'tourType', 'programType', 'transportType',
+            'programType', 'transportType',
             'departureCity', 'currency', 'mealType',
             'tourPrices.roomType', 'tourPrices.currency',
             'flights.airline', 'flights.fromAirport', 'flights.toAirport', 'flights.currency',

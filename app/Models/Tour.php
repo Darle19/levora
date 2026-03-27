@@ -14,7 +14,6 @@ class Tour extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tour_type_id',
         'program_type_id',
         'country_id',
         'resort_id',
@@ -55,11 +54,6 @@ class Tour extends Model
             'adults' => 'integer',
             'children' => 'integer',
         ];
-    }
-
-    public function tourType(): BelongsTo
-    {
-        return $this->belongsTo(TourType::class);
     }
 
     public function programType(): BelongsTo

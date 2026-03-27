@@ -25,13 +25,10 @@ class ToursTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'tourType', 'programType', 'country', 'resort', 'hotel',
+                'programType', 'country', 'resort', 'hotel',
                 'transportType', 'departureCity', 'currency', 'mealType',
             ]))
             ->columns([
-                TextColumn::make('tourType.name_en')
-                    ->label('Tour Type')
-                    ->searchable(),
                 TextColumn::make('programType.name_en')
                     ->label('Program')
                     ->searchable(),
@@ -95,9 +92,6 @@ class ToursTable
                 SelectFilter::make('country_id')
                     ->relationship('country', 'name_en')
                     ->label('Country'),
-                SelectFilter::make('tour_type_id')
-                    ->relationship('tourType', 'name_en')
-                    ->label('Tour Type'),
                 TernaryFilter::make('is_available'),
                 TernaryFilter::make('is_hot'),
                 Filter::make('date_range')
