@@ -3,12 +3,11 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Order;
-use App\Models\User;
 use Filament\Widgets\ChartWidget;
 
 class OrdersChartWidget extends ChartWidget
 {
-    protected ?string $heading = 'Orders & Users (Last 30 Days)';
+    protected ?string $heading = 'Revenue & Bookings (Last 6 Months)';
 
     protected static ?int $sort = 2;
 
@@ -17,31 +16,43 @@ class OrdersChartWidget extends ChartWidget
     protected function getData(): array
     {
         $labels = [];
-        $ordersData = [];
-        $usersData = [];
+        $revenueData = [];
+        $bookingData = [];
 
-        for ($i = 29; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $labels[] = $date->format('d M');
-            $ordersData[] = Order::whereDate('created_at', $date)->count();
-            $usersData[] = User::whereDate('created_at', $date)->count();
+        for ($i = 5; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $labels[] = $month->format('M Y');
+
+            $revenueData[] = (float) Order::where('status', 'confirmed')
+                ->whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->sum('total_price');
+
+            $bookingData[] = Order::whereYear('created_at', $month->year)
+                ->whereMonth('created_at', $month->month)
+                ->count();
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Orders',
-                    'data' => $ordersData,
-                    'borderColor' => '#0ea5e9',
-                    'backgroundColor' => 'rgba(14, 165, 233, 0.1)',
-                    'fill' => true,
+                    'label' => 'Revenue ($)',
+                    'data' => $revenueData,
+                    'type' => 'bar',
+                    'backgroundColor' => 'rgba(27, 107, 46, 0.7)',
+                    'borderColor' => '#1B6B2E',
+                    'borderWidth' => 1,
+                    'yAxisID' => 'y',
                 ],
                 [
-                    'label' => 'New Users',
-                    'data' => $usersData,
-                    'borderColor' => '#8b5cf6',
-                    'backgroundColor' => 'rgba(139, 92, 246, 0.1)',
+                    'label' => 'Bookings',
+                    'data' => $bookingData,
+                    'type' => 'line',
+                    'borderColor' => '#366383',
+                    'backgroundColor' => 'rgba(54, 99, 131, 0.1)',
                     'fill' => true,
+                    'tension' => 0.3,
+                    'yAxisID' => 'y1',
                 ],
             ],
             'labels' => $labels,
@@ -50,6 +61,33 @@ class OrdersChartWidget extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line';
+        return 'bar';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'scales' => [
+                'y' => [
+                    'position' => 'left',
+                    'beginAtZero' => true,
+                    'ticks' => [
+                        'callback' => '(value) => "$" + value.toLocaleString()',
+                    ],
+                ],
+                'y1' => [
+                    'position' => 'right',
+                    'beginAtZero' => true,
+                    'grid' => [
+                        'drawOnChartArea' => false,
+                    ],
+                ],
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                ],
+            ],
+        ];
     }
 }

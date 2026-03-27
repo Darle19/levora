@@ -2,12 +2,21 @@
 
 namespace App\Filament\Resources\Tours\Tables;
 
+use App\Services\TourPricingService;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ReplicateAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Filament\Tables\Table;
 
 class ToursTable
@@ -83,14 +92,56 @@ class ToursTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('country_id')
+                    ->relationship('country', 'name_en')
+                    ->label('Country'),
+                SelectFilter::make('tour_type_id')
+                    ->relationship('tourType', 'name_en')
+                    ->label('Tour Type'),
+                TernaryFilter::make('is_available'),
+                TernaryFilter::make('is_hot'),
+                Filter::make('date_range')
+                    ->form([
+                        DatePicker::make('date_from'),
+                        DatePicker::make('date_to'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query
+                        ->when($data['date_from'], fn ($q, $d) => $q->where('date_from', '>=', $d))
+                        ->when($data['date_to'], fn ($q, $d) => $q->where('date_from', '<=', $d))
+                    ),
             ])
             ->recordActions([
                 EditAction::make(),
+                ReplicateAction::make(),
+                Action::make('toggle_availability')
+                    ->label('Toggle Availability')
+                    ->icon('heroicon-o-arrow-path')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->update(['is_available' => ! $record->is_available]);
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    BulkAction::make('activate')
+                        ->label('Activate')
+                        ->icon('heroicon-o-check-circle')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => $records->each->update(['is_available' => true])),
+                    BulkAction::make('deactivate')
+                        ->label('Deactivate')
+                        ->icon('heroicon-o-x-circle')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => $records->each->update(['is_available' => false])),
+                    BulkAction::make('recalculate_prices')
+                        ->label('Recalculate Prices')
+                        ->icon('heroicon-o-calculator')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records) {
+                            $service = app(TourPricingService::class);
+                            $records->each(fn ($tour) => $service->recalculate($tour));
+                        }),
                 ]),
             ]);
     }

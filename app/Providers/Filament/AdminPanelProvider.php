@@ -30,11 +30,13 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->brandName('Levora Admin')
             ->colors([
-                'primary' => Color::Sky,
+                'primary' => Color::hex('#1B6B2E'),
                 'danger' => Color::Rose,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
             ])
+            ->darkMode()
+            ->defaultPaginationPageOption(25)
             ->navigationGroups([
                 'Geography',
                 'Hotels',

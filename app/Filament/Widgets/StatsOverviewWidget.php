@@ -4,16 +4,12 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Agencies\AgencyResource;
 use App\Filament\Resources\Flights\FlightResource;
-use App\Filament\Resources\Hotels\HotelResource;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Filament\Resources\Tours\TourResource;
-use App\Filament\Resources\Users\UserResource;
 use App\Models\Agency;
 use App\Models\Flight;
-use App\Models\Hotel;
 use App\Models\Order;
 use App\Models\Tour;
-use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -23,85 +19,110 @@ class StatsOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $totalUsers = User::count();
-        $newUsersThisMonth = User::where('created_at', '>=', now()->startOfMonth())->count();
+        // Active Tours
+        $activeTours = Tour::where('is_available', true)->count();
+        $upcomingDepartures = Tour::where('is_available', true)
+            ->whereBetween('date_from', [now(), now()->addDays(14)])
+            ->count();
 
-        $totalOrders = Order::count();
-        $pendingOrders = Order::where('status', 'pending')->count();
-        $confirmedOrders = Order::where('status', 'confirmed')->count();
+        // Bookings This Month
+        $confirmedThisMonth = Order::where('status', 'confirmed')
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+        $pendingThisMonth = Order::where('status', 'pending')
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+        $totalBookingsThisMonth = $confirmedThisMonth + $pendingThisMonth;
 
-        $totalRevenue = Order::where('status', 'confirmed')->sum('total_price');
+        // Mini chart for bookings (last 7 days)
+        $bookingChart = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $bookingChart[] = Order::whereDate('created_at', now()->subDays($i))->count();
+        }
+
+        // Monthly Revenue
         $monthlyRevenue = Order::where('status', 'confirmed')
             ->where('created_at', '>=', now()->startOfMonth())
             ->sum('total_price');
+        $lastMonthRevenue = Order::where('status', 'confirmed')
+            ->whereBetween('created_at', [
+                now()->subMonth()->startOfMonth(),
+                now()->subMonth()->endOfMonth(),
+            ])
+            ->sum('total_price');
+        $revenueChange = $lastMonthRevenue > 0
+            ? round((($monthlyRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 1)
+            : ($monthlyRevenue > 0 ? 100 : 0);
+        $revenueIcon = $revenueChange >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down';
+        $revenueColor = $revenueChange >= 0 ? 'success' : 'danger';
 
-        $activeTours = Tour::where('is_available', true)->count();
-        $hotDeals = Tour::where('is_hot', true)->where('is_available', true)->count();
+        // Low Inventory Flights
+        $lowInventoryFlights = Flight::where('is_active', true)
+            ->where('available_seats', '<', 5)
+            ->count();
 
+        // Active Agencies
         $activeAgencies = Agency::where('is_active', true)->count();
 
-        $activeFlights = Flight::where('is_active', true)->count();
-        $activeHotels = Hotel::where('is_active', true)->count();
-
-        // Build mini charts from last 7 days
-        $orderChart = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $orderChart[] = Order::whereDate('created_at', now()->subDays($i))->count();
-        }
-
-        $userChart = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $userChart[] = User::whereDate('created_at', now()->subDays($i))->count();
-        }
+        // Pending Payments
+        $pendingOrders = Order::where('status', 'pending');
+        $pendingCount = $pendingOrders->count();
+        $pendingAmount = $pendingOrders->sum('total_price');
 
         return [
-            Stat::make('Total Users', $totalUsers)
-                ->description($newUsersThisMonth . ' new this month')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->chart($userChart)
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => 'cursor-pointer',
-                    'onclick' => 'window.location.href=\'' . UserResource::getUrl() . '\'',
-                ]),
-
             Stat::make('Active Tours', $activeTours)
-                ->description($hotDeals . ' hot deals')
-                ->descriptionIcon('heroicon-m-fire')
+                ->description($upcomingDepartures . ' departing in next 14 days')
+                ->descriptionIcon('heroicon-m-calendar')
                 ->color('success')
                 ->extraAttributes([
                     'class' => 'cursor-pointer',
                     'onclick' => 'window.location.href=\'' . TourResource::getUrl() . '\'',
                 ]),
 
-            Stat::make('Total Orders', $totalOrders)
-                ->description($pendingOrders . ' pending, ' . $confirmedOrders . ' confirmed')
-                ->chart($orderChart)
+            Stat::make('Bookings This Month', $totalBookingsThisMonth)
+                ->description($confirmedThisMonth . ' confirmed, ' . $pendingThisMonth . ' pending')
+                ->descriptionIcon('heroicon-m-clipboard-document-check')
+                ->chart($bookingChart)
                 ->color('info')
                 ->extraAttributes([
                     'class' => 'cursor-pointer',
                     'onclick' => 'window.location.href=\'' . OrderResource::getUrl() . '\'',
                 ]),
 
-            Stat::make('Revenue', '$' . number_format($totalRevenue, 2))
-                ->description('$' . number_format($monthlyRevenue, 2) . ' this month')
-                ->descriptionIcon('heroicon-m-currency-dollar')
-                ->color('success'),
+            Stat::make('Monthly Revenue', '$' . number_format($monthlyRevenue, 2))
+                ->description(($revenueChange >= 0 ? '+' : '') . $revenueChange . '% from last month')
+                ->descriptionIcon($revenueIcon)
+                ->color($revenueColor)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                    'onclick' => 'window.location.href=\'' . OrderResource::getUrl() . '\'',
+                ]),
+
+            Stat::make('Low Inventory Flights', $lowInventoryFlights)
+                ->description($lowInventoryFlights > 0 ? 'Flights with < 5 seats' : 'All flights well stocked')
+                ->descriptionIcon($lowInventoryFlights > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
+                ->color($lowInventoryFlights > 0 ? 'danger' : 'success')
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                    'onclick' => 'window.location.href=\'' . FlightResource::getUrl() . '\'',
+                ]),
 
             Stat::make('Active Agencies', $activeAgencies)
-                ->description('Registered agencies')
+                ->description('Registered partner agencies')
+                ->descriptionIcon('heroicon-m-building-office')
                 ->color('warning')
                 ->extraAttributes([
                     'class' => 'cursor-pointer',
                     'onclick' => 'window.location.href=\'' . AgencyResource::getUrl() . '\'',
                 ]),
 
-            Stat::make('Flights & Hotels', $activeFlights . ' / ' . $activeHotels)
-                ->description($activeFlights . ' flights, ' . $activeHotels . ' hotels')
-                ->color('info')
+            Stat::make('Pending Payments', $pendingCount)
+                ->description('$' . number_format($pendingAmount, 2) . ' total pending')
+                ->descriptionIcon('heroicon-m-clock')
+                ->color($pendingCount > 0 ? 'warning' : 'success')
                 ->extraAttributes([
                     'class' => 'cursor-pointer',
-                    'onclick' => 'window.location.href=\'' . FlightResource::getUrl() . '\'',
+                    'onclick' => 'window.location.href=\'' . OrderResource::getUrl() . '\'',
                 ]),
         ];
     }

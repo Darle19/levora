@@ -7,6 +7,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Table;
 
@@ -63,7 +65,13 @@ class HotelsTable
                     ->sortable(),
             ])
             ->filters([
-                //
+                SelectFilter::make('resort_id')
+                    ->relationship('resort', 'name_en')
+                    ->label('Resort'),
+                SelectFilter::make('category_id')
+                    ->relationship('category', 'name')
+                    ->label('Category / Stars'),
+                TernaryFilter::make('is_active'),
             ])
             ->recordActions([
                 EditAction::make(),
