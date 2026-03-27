@@ -102,6 +102,19 @@ class ProductionTourSeeder extends Seeder
             ]
         );
 
+        // ── Baku Hotel ──
+        $nobelHotel = Hotel::firstOrCreate(
+            ['name' => 'Nobel Hotel'],
+            [
+                'name_en' => 'Nobel Hotel', 'name_ru' => 'Nobel Hotel', 'name_uz' => 'Nobel Hotel',
+                'description' => 'Hotel in Baku', 'address' => 'Baku, Azerbaijan',
+                'resort_id' => $bakuBoulevard->id, 'hotel_category_id' => $star3->id,
+                'rating' => 3.5, 'is_active' => true,
+                'price_per_person' => 50, 'currency_id' => $usd->id,
+            ]
+        );
+        $nobelHotel->update(['price_per_person' => 50]);
+
         // ── Shared tour defaults ──
         $tourDefaults = [
             'nights' => self::TOTAL_NIGHTS,
