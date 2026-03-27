@@ -226,51 +226,52 @@ class ProductionTourSeeder extends Seeder
         );
         $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
 
-        // ── Generate Istanbul+Baku Tours ──
+        // ── Generate Istanbul+Baku Tours (all Istanbul hotels × all Baku hotels) ──
         $bakuHotels = Hotel::where('resort_id', $bakuBoulevard->id)->where('is_active', true)->get();
         if ($bakuHotels->isEmpty()) {
             $this->command->warn('No Baku hotels found — skipping Istanbul+Baku tours.');
         } else {
-            $defaultIstHotel = $istHotels[1]; // Grand Emir
             $bakuCount = 0;
             $startDate = Carbon::parse(self::SEASON_START);
             $endDate = Carbon::parse(self::SEASON_END);
 
             while ($startDate->lte($endDate)) {
-                foreach ($bakuHotels as $bakuHotel) {
-                    $exists = Tour::where('date_from', $startDate->format('Y-m-d'))
-                        ->where('hotel_id', $bakuHotel->id)
-                        ->whereHas('stays', fn ($q) => $q->where('hotel_id', $defaultIstHotel->id))
-                        ->exists();
-                    if ($exists) { continue; }
+                foreach ($istHotels as $istHotel) {
+                    foreach ($bakuHotels as $bakuHotel) {
+                        $exists = Tour::where('date_from', $startDate->format('Y-m-d'))
+                            ->where('hotel_id', $bakuHotel->id)
+                            ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
+                            ->exists();
+                        if ($exists) { continue; }
 
-                    $tour = Tour::create(array_merge($tourDefaults, [
-                        'date_from' => $startDate->format('Y-m-d'),
-                        'date_to' => $startDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
-                        'departure_city_id' => $tashkent->id,
-                        'country_id' => $azerbaijan->id,
-                        'hotel_id' => $bakuHotel->id,
-                        'resort_id' => $bakuBoulevard->id,
-                    ]));
+                        $tour = Tour::create(array_merge($tourDefaults, [
+                            'date_from' => $startDate->format('Y-m-d'),
+                            'date_to' => $startDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
+                            'departure_city_id' => $tashkent->id,
+                            'country_id' => $azerbaijan->id,
+                            'hotel_id' => $bakuHotel->id,
+                            'resort_id' => $bakuBoulevard->id,
+                        ]));
 
-                    TourStay::create([
-                        'tour_id' => $tour->id, 'city_id' => $istanbul->id,
-                        'resort_id' => $sultanahmet->id, 'hotel_id' => $defaultIstHotel->id,
-                        'nights' => self::ISTANBUL_NIGHTS, 'stay_order' => 1, 'meal_type_id' => $mealBB->id,
-                    ]);
-                    TourStay::create([
-                        'tour_id' => $tour->id, 'city_id' => $baku->id,
-                        'resort_id' => $bakuBoulevard->id, 'hotel_id' => $bakuHotel->id,
-                        'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
-                    ]);
+                        TourStay::create([
+                            'tour_id' => $tour->id, 'city_id' => $istanbul->id,
+                            'resort_id' => $istHotel->resort_id, 'hotel_id' => $istHotel->id,
+                            'nights' => self::ISTANBUL_NIGHTS, 'stay_order' => 1, 'meal_type_id' => $mealBB->id,
+                        ]);
+                        TourStay::create([
+                            'tour_id' => $tour->id, 'city_id' => $baku->id,
+                            'resort_id' => $bakuBoulevard->id, 'hotel_id' => $bakuHotel->id,
+                            'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
+                        ]);
 
-                    // Attach flights: TAS→IST outbound, GYD→TAS return (+7 days)
-                    $this->attachFlight($tour, $allFlights, 'TAS-IST', $startDate, 'outbound', 1);
-                    $returnDate = $startDate->copy()->addDays(self::TOTAL_NIGHTS);
-                    $this->attachFlight($tour, $allFlights, 'GYD-TAS', $returnDate, 'return', 2);
+                        // Attach flights: TAS→IST outbound, GYD→TAS return (+7 days)
+                        $this->attachFlight($tour, $allFlights, 'TAS-IST', $startDate, 'outbound', 1);
+                        $returnDate = $startDate->copy()->addDays(self::TOTAL_NIGHTS);
+                        $this->attachFlight($tour, $allFlights, 'GYD-TAS', $returnDate, 'return', 2);
 
-                    $pricingService->recalculate($tour);
-                    $bakuCount++;
+                        $pricingService->recalculate($tour);
+                        $bakuCount++;
+                    }
                 }
                 $startDate->addWeek();
             }
