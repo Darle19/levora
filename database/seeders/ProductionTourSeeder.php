@@ -146,6 +146,30 @@ class ProductionTourSeeder extends Seeder
             ['TAS-IST', $tasAirport, $istAirport, '2026-06-15', 230, 230, '08:00', '11:30'],
             ['TAS-IST', $tasAirport, $istAirport, '2026-06-22', 230, 230, '08:00', '11:30'],
             ['TAS-IST', $tasAirport, $istAirport, '2026-06-29', 230, 230, '08:00', '11:30'],
+            // IST→NCE outbound (prices to be updated daily via admin)
+            ['IST-NCE', $istAirport, $nceAirport, '2026-04-15', 150, 150, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-04-22', 150, 150, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-04-29', 150, 150, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-05-06', 160, 160, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-05-13', 160, 160, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-05-20', 160, 160, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-05-27', 160, 160, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-06-03', 170, 170, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-06-10', 170, 170, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-06-17', 170, 170, '10:00', '12:30'],
+            ['IST-NCE', $istAirport, $nceAirport, '2026-06-24', 170, 170, '10:00', '12:30'],
+            // NCE→IST return
+            ['NCE-IST', $nceAirport, $istAirport, '2026-04-19', 140, 140, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-04-26', 140, 140, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-05-03', 140, 140, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-05-10', 150, 150, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-05-17', 150, 150, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-05-24', 150, 150, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-05-31', 150, 150, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-06-07', 160, 160, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-06-14', 160, 160, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-06-21', 160, 160, '13:00', '17:30'],
+            ['NCE-IST', $nceAirport, $istAirport, '2026-06-28', 160, 160, '13:00', '17:30'],
             // GYD→TAS return
             ['GYD-TAS', $gydAirport, $tasAirport, '2026-04-20', 180, 180, '14:00', '18:30'],
             ['GYD-TAS', $gydAirport, $tasAirport, '2026-04-27', 180, 180, '14:00', '18:30'],
@@ -207,7 +231,8 @@ class ProductionTourSeeder extends Seeder
             'is_hot' => false,
         ];
 
-        // ── Generate Istanbul+Nice Tours (flights: TAS→IST outbound, no return yet) ──
+        // ── Generate Istanbul+Nice Tours ──
+        // Flight legs: TAS→IST (day 0), IST→NCE (day 2), NCE→IST (day 6), IST→TAS (day 7)
         $niceCount = $this->generateRoute(
             istanbulHotels: $istHotels,
             destinationHotel: $niceHotel,
@@ -221,8 +246,11 @@ class ProductionTourSeeder extends Seeder
             mealTypeId: $mealBB->id,
             pricingService: $pricingService,
             allFlights: $allFlights,
-            outboundRouteKey: 'TAS-IST',
-            returnRouteKey: null, // Nice return flights TBD
+            flightLegs: [
+                ['route' => 'TAS-IST', 'day_offset' => 0, 'direction' => 'outbound', 'leg' => 1],
+                ['route' => 'IST-NCE', 'day_offset' => 2, 'direction' => 'outbound', 'leg' => 2],
+                ['route' => 'NCE-IST', 'day_offset' => 6, 'direction' => 'return', 'leg' => 3],
+            ],
         );
         $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
 
@@ -264,10 +292,11 @@ class ProductionTourSeeder extends Seeder
                             'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
                         ]);
 
-                        // Attach flights: TAS→IST outbound, GYD→TAS return (+7 days)
-                        $this->attachFlight($tour, $allFlights, 'TAS-IST', $startDate, 'outbound', 1);
-                        $returnDate = $startDate->copy()->addDays(self::TOTAL_NIGHTS);
-                        $this->attachFlight($tour, $allFlights, 'GYD-TAS', $returnDate, 'return', 2);
+                        // Attach flights: TAS→IST (day 0), GYD→TAS (day 7)
+                        $this->attachFlightLegs($tour, $allFlights, $startDate, [
+                            ['route' => 'TAS-IST', 'day_offset' => 0, 'direction' => 'outbound', 'leg' => 1],
+                            ['route' => 'GYD-TAS', 'day_offset' => self::TOTAL_NIGHTS, 'direction' => 'return', 'leg' => 2],
+                        ]);
 
                         $pricingService->recalculate($tour);
                         $bakuCount++;
@@ -294,8 +323,7 @@ class ProductionTourSeeder extends Seeder
         int $mealTypeId,
         TourPricingService $pricingService,
         array $allFlights = [],
-        ?string $outboundRouteKey = null,
-        ?string $returnRouteKey = null,
+        array $flightLegs = [],
     ): int {
         $start = Carbon::parse(self::SEASON_START);
         $end = Carbon::parse(self::SEASON_END);
@@ -329,14 +357,7 @@ class ProductionTourSeeder extends Seeder
                     'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealTypeId,
                 ]);
 
-                // Attach flights if available
-                if ($outboundRouteKey) {
-                    $this->attachFlight($tour, $allFlights, $outboundRouteKey, $start, 'outbound', 1);
-                }
-                if ($returnRouteKey) {
-                    $returnDate = $start->copy()->addDays(self::TOTAL_NIGHTS);
-                    $this->attachFlight($tour, $allFlights, $returnRouteKey, $returnDate, 'return', 2);
-                }
+                $this->attachFlightLegs($tour, $allFlights, $start, $flightLegs);
 
                 $pricingService->recalculate($tour);
                 $count++;
@@ -347,16 +368,23 @@ class ProductionTourSeeder extends Seeder
         return $count;
     }
 
-    private function attachFlight(Tour $tour, array $allFlights, string $routeKey, Carbon $date, string $direction, int $legOrder): void
+    /**
+     * Attach multiple flight legs to a tour.
+     * Each leg: ['route' => 'IST-NCE', 'day_offset' => 2, 'direction' => 'outbound', 'leg' => 2]
+     */
+    private function attachFlightLegs(Tour $tour, array $allFlights, Carbon $departureDate, array $legs): void
     {
-        $key = $routeKey . '-' . $date->format('Y-m-d');
-        $flight = $allFlights[$key] ?? null;
+        foreach ($legs as $leg) {
+            $flightDate = $departureDate->copy()->addDays($leg['day_offset']);
+            $key = $leg['route'] . '-' . $flightDate->format('Y-m-d');
+            $flight = $allFlights[$key] ?? null;
 
-        if ($flight && !$tour->flights()->where('flight_id', $flight->id)->exists()) {
-            $tour->flights()->attach($flight->id, [
-                'direction' => $direction,
-                'leg_order' => $legOrder,
-            ]);
+            if ($flight && ! $tour->flights()->where('flight_id', $flight->id)->exists()) {
+                $tour->flights()->attach($flight->id, [
+                    'direction' => $leg['direction'],
+                    'leg_order' => $leg['leg'],
+                ]);
+            }
         }
     }
 }
