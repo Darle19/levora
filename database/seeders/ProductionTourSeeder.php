@@ -14,25 +14,36 @@ use App\Models\Tour;
 use App\Models\TourStay;
 use App\Models\TourType;
 use App\Models\TransportType;
+use App\Services\TourPricingService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds real tour data for production: Istanbul hotels + Istanbul-Nice / Istanbul-Baku tours.
+ * Seeds real tour data for production.
+ * Prices are calculated via TourPricingService from DB hotel/flight rates.
  * Safe to run multiple times — uses firstOrCreate everywhere.
  */
 class ProductionTourSeeder extends Seeder
 {
+    private const ISTANBUL_NIGHTS = 2;
+    private const DESTINATION_NIGHTS = 4;
+    private const TOTAL_NIGHTS = 7;
+    private const DEFAULT_ADULTS = 2;
+    private const DEFAULT_CHILDREN = 0;
+    private const SEASON_START = '2026-04-01';
+    private const SEASON_END = '2026-06-30';
+
     public function run(): void
     {
-        // ── Ensure reference data exists ──
+        $pricingService = app(TourPricingService::class);
+
+        // ── Reference data ──
         $usd = Currency::firstOrCreate(['code' => 'USD'], ['name' => 'US Dollar', 'symbol' => '$', 'is_active' => true]);
         $mealBB = MealType::firstOrCreate(['code' => 'BB'], ['name_en' => 'Bed & Breakfast', 'name_ru' => 'Завтрак', 'name_uz' => 'Nonushta', 'is_active' => true]);
         $transportAir = TransportType::firstOrCreate(['name_en' => 'Air'], ['name_ru' => 'Авиа', 'name_uz' => 'Avia', 'is_active' => true]);
         $tourType = TourType::firstOrCreate(['name_en' => 'Combined'], ['name_ru' => 'Комбинированный', 'name_uz' => 'Kombinatsiyalangan', 'is_active' => true]);
         $programType = ProgramType::firstOrCreate(['name_en' => 'Standard'], ['name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
         $star3 = HotelCategory::firstOrCreate(['stars' => 3], ['name_en' => '3 Star', 'name_ru' => '3 звезды', 'name_uz' => '3 yulduz', 'is_active' => true]);
-        $star4 = HotelCategory::firstOrCreate(['stars' => 4], ['name_en' => '4 Star', 'name_ru' => '4 звезды', 'name_uz' => '4 yulduz', 'is_active' => true]);
 
         // ── Countries ──
         $uzbekistan = Country::firstOrCreate(['name_en' => 'Uzbekistan'], ['code' => 'UZ', 'name_ru' => 'Узбекистан', 'name_uz' => 'O\'zbekiston', 'is_active' => true, 'order' => 0]);
@@ -52,15 +63,15 @@ class ProductionTourSeeder extends Seeder
         $niceStade = Resort::firstOrCreate(['name_en' => 'Nice Stade'], ['name_ru' => 'Ницца Стад', 'name_uz' => 'Nice Stade', 'city_id' => $nice->id, 'country_id' => $france->id, 'is_active' => true, 'order' => 1]);
         $bakuBoulevard = Resort::firstOrCreate(['name_en' => 'Baku Boulevard'], ['name_ru' => 'Бакинский бульвар', 'name_uz' => 'Boku bulvari', 'city_id' => $baku->id, 'country_id' => $azerbaijan->id, 'is_active' => true, 'order' => 1]);
 
-        // ── Istanbul Hotels ──
+        // ── Istanbul Hotels (prices per ROOM dbl with breakfast) ──
         $istanbulHotels = [
-            ['name' => 'Grand Liza Hotel', 'price' => 45, 'resort' => $fatih],
-            ['name' => 'Grand Emir Hotel', 'price' => 50, 'resort' => $fatih],
-            ['name' => 'All Seasons Hotel Istanbul', 'price' => 55, 'resort' => $fatih],
-            ['name' => 'New Emin Hotel', 'price' => 61, 'resort' => $sultanahmet],
-            ['name' => 'River Hotel', 'price' => 62, 'resort' => $fatih],
-            ['name' => 'Grand Washington Hotel', 'price' => 75, 'resort' => $sultanahmet],
-            ['name' => 'Sorisso Hotel', 'price' => 75, 'resort' => $sultanahmet],
+            ['name' => 'Grand Liza Hotel', 'pricePerRoom' => 45, 'resort' => $fatih],
+            ['name' => 'Grand Emir Hotel', 'pricePerRoom' => 50, 'resort' => $fatih],
+            ['name' => 'All Seasons Hotel Istanbul', 'pricePerRoom' => 55, 'resort' => $fatih],
+            ['name' => 'New Emin Hotel', 'pricePerRoom' => 61, 'resort' => $sultanahmet],
+            ['name' => 'River Hotel', 'pricePerRoom' => 62, 'resort' => $fatih],
+            ['name' => 'Grand Washington Hotel', 'pricePerRoom' => 75, 'resort' => $sultanahmet],
+            ['name' => 'Sorisso Hotel', 'pricePerRoom' => 75, 'resort' => $sultanahmet],
         ];
 
         $istHotels = [];
@@ -72,10 +83,10 @@ class ProductionTourSeeder extends Seeder
                     'description' => 'Hotel in Istanbul', 'address' => 'Istanbul, Turkey',
                     'resort_id' => $h['resort']->id, 'hotel_category_id' => $star3->id,
                     'rating' => 3.5, 'is_active' => true,
-                    'price_per_person' => $h['price'], 'currency_id' => $usd->id,
+                    'price_per_person' => $h['pricePerRoom'], 'currency_id' => $usd->id,
                 ]
             );
-            $hotel->update(['price_per_person' => $h['price']]);
+            $hotel->update(['price_per_person' => $h['pricePerRoom']]);
             $istHotels[] = $hotel;
         }
 
@@ -91,97 +102,137 @@ class ProductionTourSeeder extends Seeder
             ]
         );
 
-        // ── Generate Istanbul+Nice Tours (Apr-Jun, weekly) ──
-        $startDate = Carbon::parse('2026-04-01');
-        $endDate = Carbon::parse('2026-06-30');
-        $niceCount = 0;
+        // ── Shared tour defaults ──
+        $tourDefaults = [
+            'nights' => self::TOTAL_NIGHTS,
+            'adults' => self::DEFAULT_ADULTS,
+            'children' => self::DEFAULT_CHILDREN,
+            'price' => 0, // will be recalculated by TourPricingService
+            'meal_type_id' => $mealBB->id,
+            'transport_type_id' => $transportAir->id,
+            'currency_id' => $usd->id,
+            'tour_type_id' => $tourType->id,
+            'program_type_id' => $programType->id,
+            'is_available' => true,
+            'is_hot' => false,
+        ];
 
-        while ($startDate->lte($endDate)) {
-            foreach ($istHotels as $istHotel) {
-                $exists = Tour::where('date_from', $startDate->format('Y-m-d'))
-                    ->where('hotel_id', $niceHotel->id)
-                    ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
-                    ->exists();
-                if ($exists) { continue; }
-
-                $price = ($istHotel->price_per_person * 2) + ($niceHotel->price_per_person * 4) + 400 + 40;
-
-                $tour = Tour::create([
-                    'date_from' => $startDate->format('Y-m-d'),
-                    'date_to' => $startDate->copy()->addDays(7)->format('Y-m-d'),
-                    'nights' => 7, 'adults' => 2, 'children' => 0, 'price' => $price,
-                    'departure_city_id' => $tashkent->id, 'country_id' => $france->id,
-                    'hotel_id' => $niceHotel->id, 'resort_id' => $niceStade->id,
-                    'meal_type_id' => $mealBB->id, 'transport_type_id' => $transportAir->id,
-                    'currency_id' => $usd->id, 'tour_type_id' => $tourType->id,
-                    'program_type_id' => $programType->id,
-                    'is_available' => true, 'is_hot' => false,
-                ]);
-
-                TourStay::create([
-                    'tour_id' => $tour->id, 'city_id' => $istanbul->id,
-                    'resort_id' => $istHotel->resort_id, 'hotel_id' => $istHotel->id,
-                    'nights' => 2, 'stay_order' => 1, 'meal_type_id' => $mealBB->id,
-                ]);
-                TourStay::create([
-                    'tour_id' => $tour->id, 'city_id' => $nice->id,
-                    'resort_id' => $niceStade->id, 'hotel_id' => $niceHotel->id,
-                    'nights' => 4, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
-                ]);
-                $niceCount++;
-            }
-            $startDate->addWeek();
-        }
+        // ── Generate Istanbul+Nice Tours ──
+        $niceCount = $this->generateRoute(
+            istanbulHotels: $istHotels,
+            destinationHotel: $niceHotel,
+            departureCity: $tashkent,
+            istanbulCity: $istanbul,
+            destinationCity: $nice,
+            destinationCountry: $france,
+            destinationResort: $niceStade,
+            sultanahmet: $sultanahmet,
+            tourDefaults: $tourDefaults,
+            mealTypeId: $mealBB->id,
+            pricingService: $pricingService,
+        );
         $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
 
         // ── Generate Istanbul+Baku Tours ──
         $bakuHotels = Hotel::where('resort_id', $bakuBoulevard->id)->where('is_active', true)->get();
         if ($bakuHotels->isEmpty()) {
             $this->command->warn('No Baku hotels found — skipping Istanbul+Baku tours.');
-            return;
+        } else {
+            $defaultIstHotel = $istHotels[1]; // Grand Emir
+            $bakuCount = 0;
+            $startDate = Carbon::parse(self::SEASON_START);
+            $endDate = Carbon::parse(self::SEASON_END);
+
+            while ($startDate->lte($endDate)) {
+                foreach ($bakuHotels as $bakuHotel) {
+                    $exists = Tour::where('date_from', $startDate->format('Y-m-d'))
+                        ->where('hotel_id', $bakuHotel->id)
+                        ->whereHas('stays', fn ($q) => $q->where('hotel_id', $defaultIstHotel->id))
+                        ->exists();
+                    if ($exists) { continue; }
+
+                    $tour = Tour::create(array_merge($tourDefaults, [
+                        'date_from' => $startDate->format('Y-m-d'),
+                        'date_to' => $startDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
+                        'departure_city_id' => $tashkent->id,
+                        'country_id' => $azerbaijan->id,
+                        'hotel_id' => $bakuHotel->id,
+                        'resort_id' => $bakuBoulevard->id,
+                    ]));
+
+                    TourStay::create([
+                        'tour_id' => $tour->id, 'city_id' => $istanbul->id,
+                        'resort_id' => $sultanahmet->id, 'hotel_id' => $defaultIstHotel->id,
+                        'nights' => self::ISTANBUL_NIGHTS, 'stay_order' => 1, 'meal_type_id' => $mealBB->id,
+                    ]);
+                    TourStay::create([
+                        'tour_id' => $tour->id, 'city_id' => $baku->id,
+                        'resort_id' => $bakuBoulevard->id, 'hotel_id' => $bakuHotel->id,
+                        'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
+                    ]);
+
+                    $pricingService->recalculate($tour);
+                    $bakuCount++;
+                }
+                $startDate->addWeek();
+            }
+            $this->command->info("Created {$bakuCount} Istanbul+Baku tours.");
         }
 
-        $startDate = Carbon::parse('2026-04-01');
-        $defaultIstHotel = $istHotels[1]; // Grand Emir
-        $bakuCount = 0;
+        cache()->forget('tour_filter_options');
+    }
 
-        while ($startDate->lte($endDate)) {
-            foreach ($bakuHotels as $bakuHotel) {
-                $exists = Tour::where('date_from', $startDate->format('Y-m-d'))
-                    ->where('hotel_id', $bakuHotel->id)
-                    ->whereHas('stays', fn ($q) => $q->where('hotel_id', $defaultIstHotel->id))
+    private function generateRoute(
+        array $istanbulHotels,
+        Hotel $destinationHotel,
+        City $departureCity,
+        City $istanbulCity,
+        City $destinationCity,
+        Country $destinationCountry,
+        Resort $destinationResort,
+        Resort $sultanahmet,
+        array $tourDefaults,
+        int $mealTypeId,
+        TourPricingService $pricingService,
+    ): int {
+        $start = Carbon::parse(self::SEASON_START);
+        $end = Carbon::parse(self::SEASON_END);
+        $count = 0;
+
+        while ($start->lte($end)) {
+            foreach ($istanbulHotels as $istHotel) {
+                $exists = Tour::where('date_from', $start->format('Y-m-d'))
+                    ->where('hotel_id', $destinationHotel->id)
+                    ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
                     ->exists();
                 if ($exists) { continue; }
 
-                $price = ($defaultIstHotel->price_per_person * 2) + ($bakuHotel->price_per_person * 4) + 400 + 40;
-
-                $tour = Tour::create([
-                    'date_from' => $startDate->format('Y-m-d'),
-                    'date_to' => $startDate->copy()->addDays(7)->format('Y-m-d'),
-                    'nights' => 7, 'adults' => 2, 'children' => 0, 'price' => $price,
-                    'departure_city_id' => $tashkent->id, 'country_id' => $azerbaijan->id,
-                    'hotel_id' => $bakuHotel->id, 'resort_id' => $bakuBoulevard->id,
-                    'meal_type_id' => $mealBB->id, 'transport_type_id' => $transportAir->id,
-                    'currency_id' => $usd->id, 'tour_type_id' => $tourType->id,
-                    'program_type_id' => $programType->id,
-                    'is_available' => true, 'is_hot' => false,
-                ]);
+                $tour = Tour::create(array_merge($tourDefaults, [
+                    'date_from' => $start->format('Y-m-d'),
+                    'date_to' => $start->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
+                    'departure_city_id' => $departureCity->id,
+                    'country_id' => $destinationCountry->id,
+                    'hotel_id' => $destinationHotel->id,
+                    'resort_id' => $destinationResort->id,
+                ]));
 
                 TourStay::create([
-                    'tour_id' => $tour->id, 'city_id' => $istanbul->id,
-                    'resort_id' => $sultanahmet->id, 'hotel_id' => $defaultIstHotel->id,
-                    'nights' => 2, 'stay_order' => 1, 'meal_type_id' => $mealBB->id,
+                    'tour_id' => $tour->id, 'city_id' => $istanbulCity->id,
+                    'resort_id' => $istHotel->resort_id, 'hotel_id' => $istHotel->id,
+                    'nights' => self::ISTANBUL_NIGHTS, 'stay_order' => 1, 'meal_type_id' => $mealTypeId,
                 ]);
                 TourStay::create([
-                    'tour_id' => $tour->id, 'city_id' => $baku->id,
-                    'resort_id' => $bakuBoulevard->id, 'hotel_id' => $bakuHotel->id,
-                    'nights' => 4, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
+                    'tour_id' => $tour->id, 'city_id' => $destinationCity->id,
+                    'resort_id' => $destinationResort->id, 'hotel_id' => $destinationHotel->id,
+                    'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealTypeId,
                 ]);
-                $bakuCount++;
+
+                $pricingService->recalculate($tour);
+                $count++;
             }
-            $startDate->addWeek();
+            $start->addWeek();
         }
-        $this->command->info("Created {$bakuCount} Istanbul+Baku tours.");
-        cache()->forget('tour_filter_options');
+
+        return $count;
     }
 }
