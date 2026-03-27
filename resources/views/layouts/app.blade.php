@@ -37,6 +37,7 @@
         .input-modern { transition: all 0.2s ease; border: 2px solid #e2e8f0; }
         .input-modern:focus { border-color: #1B6B2E; box-shadow: 0 0 0 3px rgba(27, 107, 46, 0.1); }
     </style>
+    @stack('styles')
 </head>
 <body class="antialiased bg-slate-50 min-h-screen flex flex-col">
     <!-- Top Bar -->

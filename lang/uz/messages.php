@@ -148,6 +148,7 @@ return [
         'group_by_hotel' => 'Mehmonxona bo\'yicha guruhlash',
         'search_hotel' => 'Mehmonxona qidirish...',
         'filters' => 'Filtrlar',
+        'tour_route' => 'Tur',
     ],
 
     // Footer

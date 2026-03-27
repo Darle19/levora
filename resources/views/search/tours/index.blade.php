@@ -1,5 +1,14 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .flatpickr-day.available-date { background: #d4edda; border-color: #1B6B2E; }
+    .flatpickr-day.available-date:hover { background: #1B6B2E; color: #fff; }
+    .flatpickr-day.available-date.selected { background: #1B6B2E; color: #fff; border-color: #145222; }
+</style>
+@endpush
+
 @section('content')
 <style>
     .st { font-family: inherit; font-size: 12px; color: #222; }
@@ -42,14 +51,15 @@
     .st .btn-search:hover { background: #145222; }
     .st .stars { color: #e8a500; font-size: 13px; letter-spacing: -1px; }
 
-    /* Grid layout for search rows */
-    .st .search-row { display: grid; gap: 0; border-bottom: 1px solid #e8e8e8; }
-    .st .search-row-3 { grid-template-columns: repeat(3, 1fr); }
-    .st .search-row-4 { grid-template-columns: repeat(4, 1fr); }
-    .st .search-row-5 { grid-template-columns: repeat(5, 1fr); }
-    .st .search-cell { padding: 8px 12px; }
-    .st .search-cell + .search-cell { border-left: 1px solid #e8e8e8; }
-    .st .field-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; line-height: 1.2; }
+    /* Vertical form layout */
+    .st .form-row { display: flex; flex-wrap: wrap; align-items: center; padding: 4px 8px; border-bottom: 1px solid #e8e8e8; gap: 4px 0; }
+    .st .form-field { display: inline-flex; align-items: center; margin-right: 12px; }
+    .st .form-label { width: 120px; text-align: right; padding-right: 8px; color: #555; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+    .st .form-input { flex: 1; min-width: 100px; max-width: 200px; }
+    .st .form-input select, .st .form-input input { width: 100%; }
+    .st .form-input-short { flex: 0 0 70px; min-width: 70px; max-width: 90px; }
+    .st .form-input-short select, .st .form-input-short input { width: 100%; }
+    .st .form-separator { color: #999; font-size: 12px; margin: 0 4px; flex-shrink: 0; }
     .st .filters-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid #e8e8e8; }
     .st .filters-row > div { padding: 8px 8px; }
     .st .filters-row > div + div { border-left: 1px solid #e8e8e8; }
@@ -108,98 +118,126 @@
 
             <div class="panel" style="border-radius: 0 8px 0 0; margin-bottom:0;">
 
-                {{-- Row 1: Departure City | Country | Tour Route --}}
-                <div class="search-row search-row-3">
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.departure_city') }}</div>
-                        <select id="departure_city_id" name="departure_city_id" required>
-                            <option value="">---</option>
-                            @foreach($cities as $city)
-                                <option value="{{ $city->id }}">{{ $city->name }}</option>
-                            @endforeach
-                        </select>
+                {{-- Row 1: Departure City, Country, Tour Route --}}
+                <div class="form-row">
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.departure_city') }}:</span>
+                        <span class="form-input">
+                            <select id="departure_city_id" name="departure_city_id" required>
+                                <option value="">---</option>
+                                @foreach($cities as $city)
+                                    <option value="{{ $city->id }}">{{ $city->name }}</option>
+                                @endforeach
+                            </select>
+                        </span>
                     </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.country') }}</div>
-                        <select id="country_id" name="country_id" required>
-                            <option value="">---</option>
-                            @foreach($countries as $country)
-                                <option value="{{ $country->id }}">{{ $country->name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.country') }}:</span>
+                        <span class="form-input">
+                            <select id="country_id" name="country_id" required>
+                                <option value="">---</option>
+                                @foreach($countries as $country)
+                                    <option value="{{ $country->id }}">{{ $country->name }}</option>
+                                @endforeach
+                            </select>
+                        </span>
                     </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.tour_route') ?? 'Tour Route' }}</div>
-                        <select name="tour_route">
-                            <option value="">----</option>
-                            @foreach($tourRoutes as $route)
-                                <option value="{{ $route['slug'] }}">{{ $route['label'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                {{-- Row 2: Date From | Date To | Nights From | Nights To --}}
-                <div class="search-row search-row-4">
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.departure_from') }}</div>
-                        <input type="date" id="date_from" name="date_from" value="{{ date('Y-m-d') }}">
-                    </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.departure_till') }}</div>
-                        <input type="date" id="date_to" name="date_to" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
-                    </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.nights_from') }}</div>
-                        <select id="nights_from" name="nights_from">
-                            @for($i = 3; $i <= 21; $i++)
-                                <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.nights_to') ?? 'Nights To' }}</div>
-                        <select id="nights_to" name="nights_to">
-                            @for($i = 3; $i <= 21; $i++)
-                                <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
-                            @endfor
-                        </select>
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.tour_route') ?? 'Tour Route' }}:</span>
+                        <span class="form-input">
+                            <select name="tour_route">
+                                <option value="">----</option>
+                                @foreach($tourRoutes as $route)
+                                    <option value="{{ $route['slug'] }}">{{ $route['label'] }}</option>
+                                @endforeach
+                            </select>
+                        </span>
                     </div>
                 </div>
 
-                {{-- Row 3: Adults | Children | Currency | Price From | Price To --}}
-                <div class="search-row search-row-5">
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.adults') }}</div>
-                        <select id="adults" name="adults">
-                            @for($i = 1; $i <= 6; $i++)
-                                <option value="{{ $i }}" {{ $i == 2 ? 'selected' : '' }}>{{ $i }}</option>
-                            @endfor
-                        </select>
+                {{-- Row 2: Dates and Nights --}}
+                <div class="form-row">
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.departure_from') }}:</span>
+                        <span class="form-input">
+                            <input type="date" id="date_from" name="date_from" value="{{ date('Y-m-d') }}">
+                        </span>
                     </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.children') }}</div>
-                        <select id="children" name="children">
-                            @for($i = 0; $i <= 4; $i++)
-                                <option value="{{ $i }}">{{ $i }}</option>
-                            @endfor
-                        </select>
+                    <div class="form-field">
+                        <span class="form-separator">{{ __('messages.search.departure_till') ?? 'till' }}:</span>
+                        <span class="form-input">
+                            <input type="date" id="date_to" name="date_to" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                        </span>
                     </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.currency') }}</div>
-                        <select id="currency_id" name="currency_id">
-                            @foreach($currencies as $currency)
-                                <option value="{{ $currency->id }}" {{ $currency->code == 'USD' ? 'selected' : '' }}>{{ $currency->code }}</option>
-                            @endforeach
-                        </select>
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.nights_from') }}:</span>
+                        <span class="form-input-short">
+                            <select id="nights_from" name="nights_from">
+                                @for($i = 3; $i <= 21; $i++)
+                                    <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
+                                @endfor
+                            </select>
+                        </span>
                     </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.price_from') ?? 'Price From' }}</div>
-                        <input type="number" name="price_from" min="0" placeholder="">
+                    <div class="form-field">
+                        <span class="form-separator">{{ __('messages.search.nights_to') ?? 'to' }}:</span>
+                        <span class="form-input-short">
+                            <select id="nights_to" name="nights_to">
+                                @for($i = 3; $i <= 21; $i++)
+                                    <option value="{{ $i }}" {{ $i == 7 ? 'selected' : '' }}>{{ $i }}</option>
+                                @endfor
+                            </select>
+                        </span>
                     </div>
-                    <div class="search-cell">
-                        <div class="field-label">{{ __('messages.search.price_to') ?? 'Price To' }}</div>
-                        <input type="number" name="price_to" min="0" placeholder="">
+                </div>
+
+                {{-- Row 3: Adults, Children, Currency --}}
+                <div class="form-row">
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.adults') }}:</span>
+                        <span class="form-input-short">
+                            <select id="adults" name="adults">
+                                @for($i = 1; $i <= 6; $i++)
+                                    <option value="{{ $i }}" {{ $i == 2 ? 'selected' : '' }}>{{ $i }}</option>
+                                @endfor
+                            </select>
+                        </span>
+                    </div>
+                    <div class="form-field">
+                        <span class="form-label" style="width:auto;">{{ __('messages.search.children') }}:</span>
+                        <span class="form-input-short" style="margin-left:8px;">
+                            <select id="children" name="children">
+                                @for($i = 0; $i <= 4; $i++)
+                                    <option value="{{ $i }}">{{ $i }}</option>
+                                @endfor
+                            </select>
+                        </span>
+                    </div>
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.currency') }}:</span>
+                        <span class="form-input-short">
+                            <select id="currency_id" name="currency_id">
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency->id }}" {{ $currency->code == 'USD' ? 'selected' : '' }}>{{ $currency->code }}</option>
+                                @endforeach
+                            </select>
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Row 3b: Price range --}}
+                <div class="form-row">
+                    <div class="form-field">
+                        <span class="form-label">{{ __('messages.search.price_from') ?? 'Price from' }}:</span>
+                        <span class="form-input-short">
+                            <input type="number" name="price_from" min="0" placeholder="">
+                        </span>
+                    </div>
+                    <div class="form-field">
+                        <span class="form-separator">{{ __('messages.search.price_to') ?? 'to' }}:</span>
+                        <span class="form-input-short">
+                            <input type="number" name="price_to" min="0" placeholder="">
+                        </span>
                     </div>
                 </div>
 
@@ -365,10 +403,49 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
     const resortsByCountry = @json($resortsByCountry);
     const hotelsByResort = @json($hotelsByResort);
     const tourRouteFilters = @json(collect($tourRoutes)->keyBy('slug')->map(fn($r) => $r['filters']));
+    const departureDates = @json($departureDates ?? []);
+
+    // Initialize flatpickr with green departure dates
+    (function() {
+        const greenDates = new Set(departureDates);
+
+        const fpConfig = {
+            dateFormat: 'Y-m-d',
+            altInput: true,
+            altFormat: 'd.m.Y',
+            minDate: 'today',
+            disableMobile: true,
+            onDayCreate: function(dObj, dStr, fp, dayElem) {
+                const d = dayElem.dateObj;
+                const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                if (greenDates.has(dateStr)) {
+                    dayElem.classList.add('available-date');
+                }
+            }
+        };
+
+        const fpFrom = flatpickr('#date_from', {
+            ...fpConfig,
+            defaultDate: document.getElementById('date_from').value || 'today',
+            onChange: function(sel) {
+                if (sel[0] && fpTo) fpTo.set('minDate', sel[0]);
+            }
+        });
+
+        const fpTo = flatpickr('#date_to', {
+            ...fpConfig,
+            defaultDate: document.getElementById('date_to').value || null,
+        });
+
+        // Expose for route auto-fill
+        window._fpFrom = fpFrom;
+        window._fpTo = fpTo;
+    })();
 
     // Tour Route → auto-fill all filters
     document.querySelector('select[name="tour_route"]').addEventListener('change', function() {
@@ -385,9 +462,9 @@
             document.getElementById('country_id').value = f.country_id;
         }
 
-        // Dates
-        if (f.date_from) document.getElementById('date_from').value = f.date_from;
-        if (f.date_to) document.getElementById('date_to').value = f.date_to;
+        // Dates (use flatpickr setDate for proper display)
+        if (f.date_from && window._fpFrom) window._fpFrom.setDate(f.date_from);
+        if (f.date_to && window._fpTo) window._fpTo.setDate(f.date_to);
 
         // Nights
         if (f.nights_from) document.getElementById('nights_from').value = f.nights_from;

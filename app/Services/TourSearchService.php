@@ -44,6 +44,14 @@ class TourSearchService
                 ->with(['resort', 'category'])
                 ->get()
                 ->groupBy('resort_id'),
+            'departureDates' => Tour::where('is_available', true)
+                ->whereNotNull('date_from')
+                ->where('date_from', '>=', now()->toDateString())
+                ->distinct()
+                ->pluck('date_from')
+                ->map(fn ($d) => $d->format('Y-m-d'))
+                ->values()
+                ->toArray(),
         ]);
     }
 

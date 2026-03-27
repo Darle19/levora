@@ -148,6 +148,7 @@ return [
         'group_by_hotel' => 'Группировать по отелю',
         'search_hotel' => 'Поиск отелей...',
         'filters' => 'Фильтры',
+        'tour_route' => 'Тур',
     ],
 
     // Footer

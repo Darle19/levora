@@ -36,7 +36,6 @@ class AdminPanelProvider extends PanelProvider
                 'warning' => Color::Amber,
             ])
             ->darkMode()
-            ->defaultPaginationPageOption(25)
             ->navigationGroups([
                 'Geography',
                 'Hotels',
