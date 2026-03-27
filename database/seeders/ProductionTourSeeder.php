@@ -119,10 +119,10 @@ class ProductionTourSeeder extends Seeder
         $nobelHotel->update(['price_per_person' => 50]);
 
         // ── Airports & Airlines ──
-        $tasAirport = Airport::firstOrCreate(['code' => 'TAS'], ['name_en' => 'Tashkent International Airport', 'city_id' => $tashkent->id, 'is_active' => true]);
-        $istAirport = Airport::firstOrCreate(['code' => 'IST'], ['name_en' => 'Istanbul Airport', 'city_id' => $istanbul->id, 'is_active' => true]);
-        $gydAirport = Airport::firstOrCreate(['code' => 'GYD'], ['name_en' => 'Heydar Aliyev International Airport', 'city_id' => $baku->id, 'is_active' => true]);
-        $nceAirport = Airport::firstOrCreate(['code' => 'NCE'], ['name_en' => 'Nice Côte d\'Azur Airport', 'city_id' => $nice->id, 'is_active' => true]);
+        $tasAirport = Airport::firstOrCreate(['code' => 'TAS'], ['name_en' => 'Tashkent International Airport', 'name_ru' => 'Международный аэропорт Ташкент', 'name_uz' => 'Toshkent xalqaro aeroporti', 'city_id' => $tashkent->id, 'is_active' => true]);
+        $istAirport = Airport::firstOrCreate(['code' => 'IST'], ['name_en' => 'Istanbul Airport', 'name_ru' => 'Аэропорт Стамбул', 'name_uz' => 'Istanbul aeroporti', 'city_id' => $istanbul->id, 'is_active' => true]);
+        $gydAirport = Airport::firstOrCreate(['code' => 'GYD'], ['name_en' => 'Heydar Aliyev International Airport', 'name_ru' => 'Международный аэропорт Гейдар Алиев', 'name_uz' => 'Haydar Aliyev xalqaro aeroporti', 'city_id' => $baku->id, 'is_active' => true]);
+        $nceAirport = Airport::firstOrCreate(['code' => 'NCE'], ['name_en' => 'Nice Côte d\'Azur Airport', 'name_ru' => 'Аэропорт Ницца Лазурный Берег', 'name_uz' => 'Nice aeroporti', 'city_id' => $nice->id, 'is_active' => true]);
         $centrumAir = Airline::firstOrCreate(['code' => 'C2'], ['name' => 'Centrum Air', 'is_active' => true]);
 
         // ── Flights: TAS→IST (outbound) and GYD→TAS (return for Baku route) ──
