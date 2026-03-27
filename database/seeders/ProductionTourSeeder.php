@@ -2,9 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\Airline;
+use App\Models\Airport;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Flight;
 use App\Models\Hotel;
 use App\Models\HotelCategory;
 use App\Models\MealType;
@@ -115,6 +118,75 @@ class ProductionTourSeeder extends Seeder
         );
         $nobelHotel->update(['price_per_person' => 50]);
 
+        // ── Airports & Airlines ──
+        $tasAirport = Airport::firstOrCreate(['code' => 'TAS'], ['name_en' => 'Tashkent International Airport', 'city_id' => $tashkent->id, 'country_id' => $uzbekistan->id, 'is_active' => true]);
+        $istAirport = Airport::firstOrCreate(['code' => 'IST'], ['name_en' => 'Istanbul Airport', 'city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true]);
+        $gydAirport = Airport::firstOrCreate(['code' => 'GYD'], ['name_en' => 'Heydar Aliyev International Airport', 'city_id' => $baku->id, 'country_id' => $azerbaijan->id, 'is_active' => true]);
+        $nceAirport = Airport::firstOrCreate(['code' => 'NCE'], ['name_en' => 'Nice Côte d\'Azur Airport', 'city_id' => $nice->id, 'country_id' => $france->id, 'is_active' => true]);
+        $centrumAir = Airline::firstOrCreate(['code' => 'C2'], ['name' => 'Centrum Air', 'is_active' => true]);
+
+        // ── Flights: TAS→IST (outbound) and GYD→TAS (return for Baku route) ──
+        $flightSchedule = [
+            // [route, from_airport, to_airport, date, soft_block_price, hard_block_price, dep_time, arr_time]
+            // TAS→IST outbound
+            ['TAS-IST', $tasAirport, $istAirport, '2026-04-13', 215, 215, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-04-20', 215, 215, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-04-27', 215, 215, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-05-04', 220, 220, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-05-11', 220, 220, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-05-18', 220, 220, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-05-25', 220, 220, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-06-01', 230, 230, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-06-08', 230, 230, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-06-15', 230, 230, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-06-22', 230, 230, '08:00', '11:30'],
+            ['TAS-IST', $tasAirport, $istAirport, '2026-06-29', 230, 230, '08:00', '11:30'],
+            // GYD→TAS return
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-04-20', 180, 180, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-04-27', 180, 180, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-04', 180, 180, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-11', 180, 180, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-18', 180, 180, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-25', 180, 180, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-01', 190, 190, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-08', 190, 190, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-15', 190, 190, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-22', 190, 190, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-29', 190, 190, '14:00', '18:30'],
+            ['GYD-TAS', $gydAirport, $tasAirport, '2026-07-06', 190, 190, '14:00', '18:30'],
+        ];
+
+        $softBlockSeats = 20;
+        $flightsCreated = 0;
+        $allFlights = [];
+
+        foreach ($flightSchedule as [$route, $fromAirport, $toAirport, $date, $softPrice, $hardPrice, $depTime, $arrTime]) {
+            $flight = Flight::firstOrCreate(
+                [
+                    'airline_id' => $centrumAir->id,
+                    'from_airport_id' => $fromAirport->id,
+                    'to_airport_id' => $toAirport->id,
+                    'departure_date' => $date,
+                ],
+                [
+                    'flight_number' => 'C2 ' . str_replace('-', '', $route),
+                    'departure_time' => $depTime,
+                    'arrival_date' => $date,
+                    'arrival_time' => $arrTime,
+                    'currency_id' => $usd->id,
+                    'price_adult' => $softPrice,
+                    'soft_block_price' => $softPrice,
+                    'hard_block_price' => $hardPrice,
+                    'available_seats' => $softBlockSeats,
+                    'class_type' => 'economy',
+                    'is_active' => true,
+                ]
+            );
+            $allFlights[$route . '-' . $date] = $flight;
+            $flightsCreated++;
+        }
+        $this->command->info("Ensured {$flightsCreated} flights exist.");
+
         // ── Shared tour defaults ──
         $tourDefaults = [
             'nights' => self::TOTAL_NIGHTS,
@@ -130,7 +202,7 @@ class ProductionTourSeeder extends Seeder
             'is_hot' => false,
         ];
 
-        // ── Generate Istanbul+Nice Tours ──
+        // ── Generate Istanbul+Nice Tours (flights: TAS→IST outbound, no return yet) ──
         $niceCount = $this->generateRoute(
             istanbulHotels: $istHotels,
             destinationHotel: $niceHotel,
@@ -143,6 +215,9 @@ class ProductionTourSeeder extends Seeder
             tourDefaults: $tourDefaults,
             mealTypeId: $mealBB->id,
             pricingService: $pricingService,
+            allFlights: $allFlights,
+            outboundRouteKey: 'TAS-IST',
+            returnRouteKey: null, // Nice return flights TBD
         );
         $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
 
@@ -184,6 +259,11 @@ class ProductionTourSeeder extends Seeder
                         'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
                     ]);
 
+                    // Attach flights: TAS→IST outbound, GYD→TAS return (+7 days)
+                    $this->attachFlight($tour, $allFlights, 'TAS-IST', $startDate, 'outbound', 1);
+                    $returnDate = $startDate->copy()->addDays(self::TOTAL_NIGHTS);
+                    $this->attachFlight($tour, $allFlights, 'GYD-TAS', $returnDate, 'return', 2);
+
                     $pricingService->recalculate($tour);
                     $bakuCount++;
                 }
@@ -207,6 +287,9 @@ class ProductionTourSeeder extends Seeder
         array $tourDefaults,
         int $mealTypeId,
         TourPricingService $pricingService,
+        array $allFlights = [],
+        ?string $outboundRouteKey = null,
+        ?string $returnRouteKey = null,
     ): int {
         $start = Carbon::parse(self::SEASON_START);
         $end = Carbon::parse(self::SEASON_END);
@@ -240,6 +323,15 @@ class ProductionTourSeeder extends Seeder
                     'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealTypeId,
                 ]);
 
+                // Attach flights if available
+                if ($outboundRouteKey) {
+                    $this->attachFlight($tour, $allFlights, $outboundRouteKey, $start, 'outbound', 1);
+                }
+                if ($returnRouteKey) {
+                    $returnDate = $start->copy()->addDays(self::TOTAL_NIGHTS);
+                    $this->attachFlight($tour, $allFlights, $returnRouteKey, $returnDate, 'return', 2);
+                }
+
                 $pricingService->recalculate($tour);
                 $count++;
             }
@@ -247,5 +339,18 @@ class ProductionTourSeeder extends Seeder
         }
 
         return $count;
+    }
+
+    private function attachFlight(Tour $tour, array $allFlights, string $routeKey, Carbon $date, string $direction, int $legOrder): void
+    {
+        $key = $routeKey . '-' . $date->format('Y-m-d');
+        $flight = $allFlights[$key] ?? null;
+
+        if ($flight && !$tour->flights()->where('flight_id', $flight->id)->exists()) {
+            $tour->flights()->attach($flight->id, [
+                'direction' => $direction,
+                'leg_order' => $legOrder,
+            ]);
+        }
     }
 }
