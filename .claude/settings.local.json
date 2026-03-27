@@ -34,7 +34,17 @@
       "Bash(php \"/c/Users/user/.config/herd/bin/composer.phar\" require barryvdh/laravel-dompdf)",
       "Bash(wc -l c:\\\\Users\\\\user\\\\Herd\\\\malaktour\\\\resources\\\\views\\\\*.blade.php)",
       "Bash(php -r \":*)",
-      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_ed25519_darle19 -o IdentitiesOnly=yes\" git push origin main)"
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_ed25519_darle19 -o IdentitiesOnly=yes\" git push origin main)",
+      "Bash(grep -r \"foreign_key_id\\\\|_id\" database/migrations/*.php)",
+      "Bash(grep -r \"$hidden\\\\|$cast\" C:/Users/user/Herd/malaktour/app/Models)",
+      "Bash(grep -r \"room_type_id\\\\|hotel_category_id\\\\|airline_id\\\\|hotel_amenity_type_id\" database/migrations/*.php)",
+      "Bash(grep -rn \"//.*TODO\\\\|//.*FIXME\\\\|/\\\\*.*TODO\\\\|/\\\\*.*FIXME\" /c/Users/user/Herd/malaktour/app/Services --include=\"*.php\")",
+      "Bash(grep \"hotel_category_id\\\\|airline_id\\\\|room_type_id\\\\|hotel_amenity_type_id\" /c/Users/user/Herd/malaktour/app/Models/*.php)",
+      "Bash(find /c/Users/user/Herd/malaktour/app/Services -type f -name *.php)",
+      "Bash(grep -A2 \"price_per_night\\\\|price_override\" /c/Users/user/Herd/malaktour/app/Models/*.php)",
+      "Bash(grep -n \"decimal\\\\|float\\\\|double\\\\|price\" /c/Users/user/Herd/malaktour/database/migrations/*.php)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:amadeus4dev.github.io)"
     ]
   }
 }
