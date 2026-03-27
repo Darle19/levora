@@ -20,11 +20,14 @@ use Illuminate\Console\Command;
 class UpdateFlightPrices extends Command
 {
     protected $signature = 'flights:update-prices
-        {--route=* : Routes to update (e.g., IST-NCE). Defaults to all.}
+        {--route=* : Routes to update. Defaults to IST-NCE, NCE-IST, IST-GYD, GYD-IST.}
         {--dry-run : Show prices without updating}
         {--force : Skip cache, fetch fresh}';
 
-    protected $description = 'Update flight prices from Google Flights (nonstop, economy + business)';
+    protected $description = 'Update IST↔NCE and IST↔GYD flight prices from Google Flights';
+
+    /** Routes to update by default (outbound only, return prices set manually) */
+    private const DEFAULT_ROUTES = ['IST-NCE', 'IST-GYD'];
 
     public function __construct(
         private readonly GoogleFlightsService $googleFlights,
@@ -38,13 +41,15 @@ class UpdateFlightPrices extends Command
         $dryRun = $this->option('dry-run');
         $force = $this->option('force');
         $routes = $this->option('route');
+        if (empty($routes)) {
+            $routes = self::DEFAULT_ROUTES;
+        }
 
         $query = Flight::where('is_active', true)
             ->where('departure_date', '>=', now()->toDateString())
             ->with(['fromAirport', 'toAirport']);
 
-        if (! empty($routes)) {
-            $query->where(function ($q) use ($routes) {
+        $query->where(function ($q) use ($routes) {
                 foreach ($routes as $route) {
                     [$from, $to] = explode('-', $route);
                     $q->orWhere(function ($sq) use ($from, $to) {
@@ -53,7 +58,6 @@ class UpdateFlightPrices extends Command
                     });
                 }
             });
-        }
 
         $flights = $query->orderBy('departure_date')->get();
 
