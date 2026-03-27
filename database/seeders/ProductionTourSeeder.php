@@ -35,21 +35,22 @@ class ProductionTourSeeder extends Seeder
         $star4 = HotelCategory::firstOrCreate(['stars' => 4], ['name_en' => '4 Star', 'name_ru' => '4 звезды', 'name_uz' => '4 yulduz', 'is_active' => true]);
 
         // ── Countries ──
-        $turkey = Country::firstOrCreate(['name_en' => 'Turkey'], ['name_ru' => 'Турция', 'name_uz' => 'Turkiya', 'is_active' => true, 'order' => 1]);
-        $france = Country::firstOrCreate(['name_en' => 'France'], ['name_ru' => 'Франция', 'name_uz' => 'Frantsiya', 'is_active' => true, 'order' => 2]);
-        $azerbaijan = Country::firstOrCreate(['name_en' => 'Azerbaijan'], ['name_ru' => 'Азербайджан', 'name_uz' => 'Ozarbayjon', 'is_active' => true, 'order' => 3]);
+        $uzbekistan = Country::firstOrCreate(['name_en' => 'Uzbekistan'], ['code' => 'UZ', 'name_ru' => 'Узбекистан', 'name_uz' => 'O\'zbekiston', 'is_active' => true, 'order' => 0]);
+        $turkey = Country::firstOrCreate(['name_en' => 'Turkey'], ['code' => 'TR', 'name_ru' => 'Турция', 'name_uz' => 'Turkiya', 'is_active' => true, 'order' => 1]);
+        $france = Country::firstOrCreate(['name_en' => 'France'], ['code' => 'FR', 'name_ru' => 'Франция', 'name_uz' => 'Frantsiya', 'is_active' => true, 'order' => 2]);
+        $azerbaijan = Country::firstOrCreate(['name_en' => 'Azerbaijan'], ['code' => 'AZ', 'name_ru' => 'Азербайджан', 'name_uz' => 'Ozarbayjon', 'is_active' => true, 'order' => 3]);
 
         // ── Cities ──
-        $tashkent = City::firstOrCreate(['name_en' => 'Tashkent'], ['name_ru' => 'Ташкент', 'name_uz' => 'Toshkent', 'country_id' => null, 'is_active' => true, 'order' => 1]);
+        $tashkent = City::firstOrCreate(['name_en' => 'Tashkent'], ['name_ru' => 'Ташкент', 'name_uz' => 'Toshkent', 'country_id' => $uzbekistan->id, 'is_active' => true, 'order' => 1]);
         $istanbul = City::firstOrCreate(['name_en' => 'Istanbul'], ['name_ru' => 'Стамбул', 'name_uz' => 'Istanbul', 'country_id' => $turkey->id, 'is_active' => true, 'order' => 2]);
         $nice = City::firstOrCreate(['name_en' => 'Nice'], ['name_ru' => 'Ницца', 'name_uz' => 'Nitsa', 'country_id' => $france->id, 'is_active' => true, 'order' => 3]);
         $baku = City::firstOrCreate(['name_en' => 'Baku'], ['name_ru' => 'Баку', 'name_uz' => 'Boku', 'country_id' => $azerbaijan->id, 'is_active' => true, 'order' => 4]);
 
         // ── Resorts ──
-        $sultanahmet = Resort::firstOrCreate(['name_en' => 'Sultanahmet'], ['city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true, 'order' => 1]);
-        $fatih = Resort::firstOrCreate(['name_en' => 'Fatih'], ['city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true, 'order' => 2]);
-        $niceStade = Resort::firstOrCreate(['name_en' => 'Nice Stade'], ['city_id' => $nice->id, 'country_id' => $france->id, 'is_active' => true, 'order' => 1]);
-        $bakuBoulevard = Resort::firstOrCreate(['name_en' => 'Baku Boulevard'], ['city_id' => $baku->id, 'country_id' => $azerbaijan->id, 'is_active' => true, 'order' => 1]);
+        $sultanahmet = Resort::firstOrCreate(['name_en' => 'Sultanahmet'], ['name_ru' => 'Султанахмет', 'name_uz' => 'Sultanahmet', 'city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true, 'order' => 1]);
+        $fatih = Resort::firstOrCreate(['name_en' => 'Fatih'], ['name_ru' => 'Фатих', 'name_uz' => 'Fatih', 'city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true, 'order' => 2]);
+        $niceStade = Resort::firstOrCreate(['name_en' => 'Nice Stade'], ['name_ru' => 'Ницца Стад', 'name_uz' => 'Nice Stade', 'city_id' => $nice->id, 'country_id' => $france->id, 'is_active' => true, 'order' => 1]);
+        $bakuBoulevard = Resort::firstOrCreate(['name_en' => 'Baku Boulevard'], ['name_ru' => 'Бакинский бульвар', 'name_uz' => 'Boku bulvari', 'city_id' => $baku->id, 'country_id' => $azerbaijan->id, 'is_active' => true, 'order' => 1]);
 
         // ── Istanbul Hotels ──
         $istanbulHotels = [
