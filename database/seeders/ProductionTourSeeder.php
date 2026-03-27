@@ -17,6 +17,7 @@ use App\Models\Tour;
 use App\Models\TourStay;
 use App\Models\TourType;
 use App\Models\TransportType;
+use App\Models\Setting;
 use App\Services\TourPricingService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -39,6 +40,10 @@ class ProductionTourSeeder extends Seeder
     public function run(): void
     {
         $pricingService = app(TourPricingService::class);
+
+        // ── Fee settings ──
+        Setting::firstOrCreate(['key' => 'tour_hidden_fee'], ['value' => '60', 'type' => 'number', 'group' => 'pricing', 'label' => 'Hidden Fee per Person ($)']);
+        Setting::firstOrCreate(['key' => 'tour_agent_fee'], ['value' => '50', 'type' => 'number', 'group' => 'pricing', 'label' => 'Agent Fee per Person ($)']);
 
         // ── Reference data ──
         $usd = Currency::firstOrCreate(['code' => 'USD'], ['name' => 'US Dollar', 'symbol' => '$', 'is_active' => true]);

@@ -36,7 +36,8 @@ class PricingSettings extends Page
     public function mount(): void
     {
         $this->form->fill([
-            'tour_markup_percent' => Setting::getValue('tour_markup_percent', '15.00'),
+            'tour_hidden_fee' => Setting::getValue('tour_hidden_fee', '60.00'),
+            'tour_agent_fee' => Setting::getValue('tour_agent_fee', '50.00'),
         ]);
     }
 
@@ -45,12 +46,18 @@ class PricingSettings extends Page
         return $schema
             ->components([
                 Form::make([
-                    TextInput::make('tour_markup_percent')
-                        ->label('Default Tour Markup (%)')
+                    TextInput::make('tour_hidden_fee')
+                        ->label('Hidden Fee per Person ($)')
                         ->numeric()
                         ->step(0.01)
                         ->required()
-                        ->helperText('Applied to all tours that do not have a per-tour markup override'),
+                        ->helperText('Internal fee added to tour price, not visible to agents (default: $60)'),
+                    TextInput::make('tour_agent_fee')
+                        ->label('Agent Fee per Person ($)')
+                        ->numeric()
+                        ->step(0.01)
+                        ->required()
+                        ->helperText('Fee visible to agents, added to tour price (default: $50)'),
                 ])
                     ->livewireSubmitHandler('save')
                     ->footer([
@@ -68,7 +75,8 @@ class PricingSettings extends Page
     {
         $data = $this->form->getState();
 
-        Setting::setValue('tour_markup_percent', $data['tour_markup_percent']);
+        Setting::setValue('tour_hidden_fee', $data['tour_hidden_fee']);
+        Setting::setValue('tour_agent_fee', $data['tour_agent_fee']);
 
         Notification::make()
             ->success()

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use App\Models\Tour;
 
 class TourPricingService
@@ -12,38 +13,44 @@ class TourPricingService
 
     /**
      * Calculate and persist the price for a single tour.
+     *
+     * Formula (per person):
+     *   SUM(flight ticket prices)
+     * + SUM(hotel_price_per_room / 2 × nights_in_city)
+     * + SUM(city transfer fees)
+     * + hidden_fee (admin setting, default $60)
+     * + agent_fee (admin setting, default $50)
      */
     public function recalculate(Tour $tour): ?string
     {
-        $tour->loadMissing(['hotel', 'flights', 'tourPrices', 'stays', 'stays.hotel', 'stays.currency']);
+        $tour->loadMissing([
+            'hotel', 'flights', 'tourPrices',
+            'stays', 'stays.hotel', 'stays.currency',
+            'additionalServices',
+        ]);
+
         $targetCurrencyId = $tour->currency_id;
 
-        $activeTourPrices = $tour->tourPrices->where('is_active', true);
-        if ($activeTourPrices->isNotEmpty()) {
-            $lowestAdultPrice = $activeTourPrices->min('price_adult');
-            $lowestTourPrice = $activeTourPrices->firstWhere('price_adult', $lowestAdultPrice);
-            $hotelPrice = $this->currencyConverter->convert(
-                (string) $lowestAdultPrice,
-                $lowestTourPrice->currency_id,
-                $targetCurrencyId,
-            );
-        } else {
-            $hotelPrice = $this->getHotelPrice($tour, $targetCurrencyId);
-        }
-
         $flightPrice = $this->getFlightPrice($tour, $targetCurrencyId);
-        $baseCost = bcadd($hotelPrice ?? '0', $flightPrice, 2);
+        $hotelPrice = $this->getHotelPricePerPerson($tour, $targetCurrencyId);
+        $transferPrice = $this->getTransferPrice($tour, $targetCurrencyId);
+        $hiddenFee = (string) Setting::getValue('tour_hidden_fee', 60);
+        $agentFee = (string) Setting::getValue('tour_agent_fee', 50);
 
-        if (bccomp($baseCost, '0', 2) <= 0) {
+        $total = '0';
+        $total = bcadd($total, $flightPrice, 2);
+        $total = bcadd($total, $hotelPrice ?? '0', 2);
+        $total = bcadd($total, $transferPrice, 2);
+        $total = bcadd($total, $hiddenFee, 2);
+        $total = bcadd($total, $agentFee, 2);
+
+        if (bccomp($total, '0', 2) <= 0) {
             return null;
         }
 
-        $markupPercent = (string) $tour->getEffectiveMarkupPercent();
-        $finalPrice = $this->applyMarkup($baseCost, $markupPercent);
+        $tour->updateQuietly(['price' => $total]);
 
-        $tour->updateQuietly(['price' => $finalPrice]);
-
-        return $finalPrice;
+        return $total;
     }
 
     /**
@@ -51,9 +58,9 @@ class TourPricingService
      */
     public function recalculateForHotel(int $hotelId): void
     {
-        Tour::where('hotel_id', $hotelId)->each(
-            fn (Tour $tour) => $this->recalculate($tour)
-        );
+        Tour::where('hotel_id', $hotelId)
+            ->orWhereHas('stays', fn ($q) => $q->where('hotel_id', $hotelId))
+            ->each(fn (Tour $tour) => $this->recalculate($tour));
     }
 
     /**
@@ -66,7 +73,7 @@ class TourPricingService
     }
 
     /**
-     * Recalculate ALL tour prices (used when global markup changes).
+     * Recalculate ALL tour prices (used when fees change).
      */
     public function recalculateAll(): int
     {
@@ -81,31 +88,41 @@ class TourPricingService
     }
 
     /**
-     * Get the price breakdown for display in admin/frontend.
+     * Get the price breakdown for display.
      */
     public function getBreakdown(Tour $tour): array
     {
-        $tour->loadMissing(['hotel', 'flights', 'stays', 'stays.hotel', 'stays.currency']);
+        $tour->loadMissing([
+            'hotel', 'flights', 'stays', 'stays.hotel', 'stays.currency',
+            'additionalServices',
+        ]);
         $targetCurrencyId = $tour->currency_id;
 
-        $hotelPrice = $this->getHotelPrice($tour, $targetCurrencyId) ?? '0';
         $flightPrice = $this->getFlightPrice($tour, $targetCurrencyId);
-        $baseCost = bcadd($hotelPrice, $flightPrice, 2);
-        $markupPercent = (string) $tour->getEffectiveMarkupPercent();
-        $markupAmount = bcdiv(bcmul($baseCost, $markupPercent, 4), '100', 2);
+        $hotelPrice = $this->getHotelPricePerPerson($tour, $targetCurrencyId) ?? '0';
+        $transferPrice = $this->getTransferPrice($tour, $targetCurrencyId);
+        $hiddenFee = (string) Setting::getValue('tour_hidden_fee', 60);
+        $agentFee = (string) Setting::getValue('tour_agent_fee', 50);
+
+        $total = '0';
+        $total = bcadd($total, $flightPrice, 2);
+        $total = bcadd($total, $hotelPrice, 2);
+        $total = bcadd($total, $transferPrice, 2);
+        $total = bcadd($total, $hiddenFee, 2);
+        $total = bcadd($total, $agentFee, 2);
 
         return [
-            'hotel_price' => $hotelPrice,
             'flight_price' => $flightPrice,
-            'base_cost' => $baseCost,
-            'markup_percent' => $markupPercent,
-            'markup_amount' => $markupAmount,
-            'total_price' => bcadd($baseCost, $markupAmount, 2),
+            'hotel_price_per_person' => $hotelPrice,
+            'transfer_price' => $transferPrice,
+            'hidden_fee' => $hiddenFee,
+            'agent_fee' => $agentFee,
+            'total_price' => $total,
         ];
     }
 
     /**
-     * Calculate the booking price based on room type and tourist age categories.
+     * Calculate booking price for specific room type and passengers.
      */
     public function calculateBookingPrice(
         Tour $tour,
@@ -114,7 +131,10 @@ class TourPricingService
         int $children = 0,
         int $infants = 0,
     ): ?array {
-        $tour->loadMissing(['tourPrices', 'flights', 'stays', 'stays.hotel', 'stays.currency']);
+        $tour->loadMissing([
+            'tourPrices', 'flights', 'stays', 'stays.hotel', 'stays.currency',
+            'additionalServices',
+        ]);
 
         $tourPrice = $tour->tourPrices
             ->where('room_type_id', $roomTypeId)
@@ -126,7 +146,11 @@ class TourPricingService
         }
 
         $targetCurrencyId = $tour->currency_id;
+        $hiddenFee = (string) Setting::getValue('tour_hidden_fee', 60);
+        $agentFee = (string) Setting::getValue('tour_agent_fee', 50);
+        $totalPax = $adults + $children + $infants;
 
+        // Hotel costs per room type
         $hotelAdult = $this->currencyConverter->convert(
             (string) $tourPrice->price_adult, $tourPrice->currency_id, $targetCurrencyId
         );
@@ -136,79 +160,70 @@ class TourPricingService
         $hotelInfant = $this->currencyConverter->convert(
             (string) ($tourPrice->price_infant ?? 0), $tourPrice->currency_id, $targetCurrencyId
         );
-
         $hotelTotal = bcadd(
             bcadd(bcmul($hotelAdult, (string) $adults, 2), bcmul($hotelChild, (string) $children, 2), 2),
-            bcmul($hotelInfant, (string) $infants, 2),
-            2
+            bcmul($hotelInfant, (string) $infants, 2), 2
         );
 
+        // Flight costs
         $flightTotal = '0';
-        $flightPerAdult = '0';
         foreach ($tour->flights as $flight) {
-            $adultPrice = $this->currencyConverter->convert(
-                (string) $flight->price_adult, $flight->currency_id, $targetCurrencyId
-            );
-            $childPrice = $this->currencyConverter->convert(
-                (string) ($flight->price_child ?? $flight->price_adult), $flight->currency_id, $targetCurrencyId
-            );
-            $infantPrice = $this->currencyConverter->convert(
-                (string) ($flight->price_infant ?? 0), $flight->currency_id, $targetCurrencyId
-            );
+            $adultPrice = $this->currencyConverter->convert((string) $flight->price_adult, $flight->currency_id, $targetCurrencyId);
+            $childPrice = $this->currencyConverter->convert((string) ($flight->price_child ?? $flight->price_adult), $flight->currency_id, $targetCurrencyId);
+            $infantPrice = $this->currencyConverter->convert((string) ($flight->price_infant ?? 0), $flight->currency_id, $targetCurrencyId);
 
             $flightSegment = bcadd(
                 bcadd(bcmul($adultPrice, (string) $adults, 2), bcmul($childPrice, (string) $children, 2), 2),
-                bcmul($infantPrice, (string) $infants, 2),
-                2
+                bcmul($infantPrice, (string) $infants, 2), 2
             );
             $flightTotal = bcadd($flightTotal, $flightSegment, 2);
-            $flightPerAdult = bcadd($flightPerAdult, $adultPrice, 2);
         }
 
-        $baseCost = bcadd($hotelTotal, $flightTotal, 2);
-        $markupPercent = (string) $tour->getEffectiveMarkupPercent();
-        $markupAmount = bcdiv(bcmul($baseCost, $markupPercent, 4), '100', 2);
-        $total = bcadd($baseCost, $markupAmount, 2);
+        // Transfer costs (per person × all pax)
+        $transferPerPerson = $this->getTransferPrice($tour, $targetCurrencyId);
+        $transferTotal = bcmul($transferPerPerson, (string) $totalPax, 2);
 
-        $perAdultBase = bcadd($hotelAdult, $flightPerAdult, 2);
-        $perAdult = $this->applyMarkup($perAdultBase, $markupPercent);
+        // Fees × all pax
+        $feesTotal = bcmul(bcadd($hiddenFee, $agentFee, 2), (string) $totalPax, 2);
+
+        $total = bcadd(bcadd($hotelTotal, $flightTotal, 2), bcadd($transferTotal, $feesTotal, 2), 2);
+
+        // Per adult: hotel + flights + transfer + fees
+        $flightPerAdult = '0';
+        foreach ($tour->flights as $flight) {
+            $flightPerAdult = bcadd($flightPerAdult, $this->currencyConverter->convert(
+                (string) $flight->price_adult, $flight->currency_id, $targetCurrencyId
+            ), 2);
+        }
+        $perAdult = bcadd(bcadd($hotelAdult, $flightPerAdult, 2), bcadd($transferPerPerson, bcadd($hiddenFee, $agentFee, 2), 2), 2);
 
         return [
             'hotel_total' => $hotelTotal,
             'flight_total' => $flightTotal,
-            'base_cost' => $baseCost,
-            'markup_percent' => $markupPercent,
-            'markup_amount' => $markupAmount,
+            'transfer_total' => $transferTotal,
+            'fees_total' => $feesTotal,
             'total' => $total,
             'per_adult' => $perAdult,
         ];
     }
 
     /**
-     * Apply markup once at the end — no intermediate rounding.
+     * Hotel price per person: room_price / 2 × nights per stay.
      */
-    private function applyMarkup(string $baseCost, string $markupPercent): string
+    private function getHotelPricePerPerson(Tour $tour, ?int $targetCurrencyId): ?string
     {
-        $markupMultiplier = bcadd('1', bcdiv($markupPercent, '100', 6), 6);
-
-        return bcmul($baseCost, $markupMultiplier, 2);
-    }
-
-    private function getHotelPrice(Tour $tour, ?int $targetCurrencyId): ?string
-    {
-        // Multi-stay: sum price_per_person × nights for each stay
         if ($tour->stays->isNotEmpty()) {
             $total = '0';
             foreach ($tour->stays as $stay) {
-                $price = $stay->price_per_person ?? $stay->hotel?->price_per_person;
-                if (! $price) {
+                $roomPrice = $stay->price_per_person ?? $stay->hotel?->price_per_person;
+                if (! $roomPrice) {
                     continue;
                 }
                 $currencyId = $stay->currency_id ?? $stay->hotel?->currency_id;
-                $converted = $this->currencyConverter->convert(
-                    (string) $price, $currencyId, $targetCurrencyId
-                );
-                $stayTotal = bcmul($converted, (string) $stay->nights, 2);
+                $converted = $this->currencyConverter->convert((string) $roomPrice, $currencyId, $targetCurrencyId);
+                // Room price / 2 (dbl room → per person) × nights
+                $perPerson = bcdiv($converted, '2', 2);
+                $stayTotal = bcmul($perPerson, (string) $stay->nights, 2);
                 $total = bcadd($total, $stayTotal, 2);
             }
 
@@ -221,23 +236,49 @@ class TourPricingService
             return null;
         }
 
-        return $this->currencyConverter->convert(
-            (string) $hotel->price_per_person,
-            $hotel->currency_id,
-            $targetCurrencyId,
+        $roomPrice = $this->currencyConverter->convert(
+            (string) $hotel->price_per_person, $hotel->currency_id, $targetCurrencyId
         );
+
+        return bcdiv($roomPrice, '2', 2);
     }
 
+    /**
+     * Sum all flight ticket prices per person (outbound + return).
+     */
     private function getFlightPrice(Tour $tour, ?int $targetCurrencyId): string
     {
         $total = '0';
         foreach ($tour->flights as $flight) {
             $converted = $this->currencyConverter->convert(
-                (string) $flight->price_adult,
-                $flight->currency_id,
-                $targetCurrencyId,
+                (string) $flight->price_adult, $flight->currency_id, $targetCurrencyId
             );
             $total = bcadd($total, $converted, 2);
+        }
+
+        return $total;
+    }
+
+    /**
+     * Sum transfer fees from included additional services (per person).
+     */
+    private function getTransferPrice(Tour $tour, ?int $targetCurrencyId): string
+    {
+        $total = '0';
+        foreach ($tour->additionalServices as $service) {
+            if ($service->service_type !== 'transfer') {
+                continue;
+            }
+            if (! $service->pivot->is_included) {
+                continue;
+            }
+            $price = $service->pivot->price_override ?? $service->price;
+            if ($price) {
+                $converted = $this->currencyConverter->convert(
+                    (string) $price, $service->currency_id, $targetCurrencyId
+                );
+                $total = bcadd($total, $converted, 2);
+            }
         }
 
         return $total;
