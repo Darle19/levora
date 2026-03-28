@@ -143,7 +143,11 @@ class ProductionTourSeeder extends Seeder
                 $exists = DB::table('tours')
                     ->where('date_from', $depDate)
                     ->where('hotel_id', $niceHotelId)
-                    ->where('country_id', $frId)
+                    ->whereExists(function ($q) use ($istH) {
+                        $q->select(DB::raw(1))->from('tour_stays')
+                            ->whereColumn('tour_stays.tour_id', 'tours.id')
+                            ->where('tour_stays.hotel_id', $istH['id']);
+                    })
                     ->exists();
                 if ($exists) { continue; }
 
@@ -210,7 +214,11 @@ class ProductionTourSeeder extends Seeder
                 $exists = DB::table('tours')
                     ->where('date_from', $depDate)
                     ->where('hotel_id', $nobelHotelId)
-                    ->where('country_id', $azId)
+                    ->whereExists(function ($q) use ($istH) {
+                        $q->select(DB::raw(1))->from('tour_stays')
+                            ->whereColumn('tour_stays.tour_id', 'tours.id')
+                            ->where('tour_stays.hotel_id', $istH['id']);
+                    })
                     ->exists();
                 if ($exists) { continue; }
 

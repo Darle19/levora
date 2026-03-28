@@ -5,53 +5,40 @@ namespace App\Services;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\FlightPath;
 use App\Models\Hotel;
 use App\Models\HotelCategory;
 use App\Models\MealType;
-use App\Models\ProgramType;
-use App\Models\Resort;
-use App\Models\Tour;
-use App\Models\TourStay;
-use App\Models\TransportType;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
+/**
+ * Search service for the new architecture:
+ * FlightPath × Hotels = dynamic tour combos (not stored in DB).
+ *
+ * Each "result" = 1 flight_path + 1 hotel per city stay.
+ * Price = flight_path.total_price + SUM(hotel.price/2 × nights) + fees
+ */
 class TourSearchService
 {
     public function getFilterOptions(): array
     {
-        return Cache::remember('tour_filter_options', 1800, fn() => [
+        return Cache::remember('tour_filter_options', 1800, fn () => [
             'countries' => Country::where('is_active', true)->orderBy('order')->get(),
-            'cities' => City::where('is_active', true)
-                ->whereIn('id', Tour::distinct()->pluck('departure_city_id'))
-                ->orderBy('order')
-                ->get(),
-            'tourRoutes' => $this->buildTourRoutes(),
-            'programTypes' => ProgramType::where('is_active', true)->get(),
-            'transportTypes' => TransportType::where('is_active', true)->get(),
+            'cities' => City::where('is_active', true)->orderBy('order')->get(),
+            'tourRoutes' => $this->buildRoutes(),
             'mealTypes' => MealType::where('is_active', true)->get(),
             'hotelCategories' => HotelCategory::where('is_active', true)->orderBy('stars')->get(),
             'currencies' => Currency::where('is_active', true)->get(),
-            'resortsByCountry' => Resort::where('is_active', true)
-                ->with(['country', 'city'])
-                ->orderBy('order')
-                ->get()
-                ->groupBy('country_id'),
-            'hotelsByResort' => Hotel::where('is_active', true)
-                ->with(['resort', 'category'])
-                ->get()
-                ->groupBy('resort_id'),
             'hotelsByCity' => Hotel::where('is_active', true)
                 ->whereNotNull('city_id')
                 ->with('category')
                 ->get()
                 ->groupBy('city_id'),
-            'departureDates' => Tour::where('is_available', true)
-                ->whereNotNull('date_from')
-                ->where('date_from', '>=', now()->toDateString())
+            'departureDates' => FlightPath::where('is_available', true)
+                ->where('departure_date', '>=', now()->toDateString())
                 ->distinct()
-                ->pluck('date_from')
+                ->pluck('departure_date')
                 ->map(fn ($d) => $d->format('Y-m-d'))
                 ->values()
                 ->toArray(),
@@ -59,53 +46,41 @@ class TourSearchService
     }
 
     /**
-     * Build tour route labels from stays (e.g., "Istanbul + Nice", "Batumi").
-     * Returns a collection of ['slug' => 'istanbul-nice', 'label' => 'Istanbul + Nice', 'tour_ids' => [...]].
+     * Build route options from flight_paths.
      */
-    private function buildTourRoutes(): array
+    private function buildRoutes(): array
     {
-        $tours = Tour::with([
-            'stays' => fn ($q) => $q->orderBy('stay_order')->with(['city', 'resort', 'hotel']),
-        ])
-            ->where('is_available', true)
-            ->whereHas('stays')
+        $paths = FlightPath::where('is_available', true)
+            ->with('stays.city')
             ->get();
 
-        $grouped = $tours->groupBy(function ($tour) {
-            return $tour->stays->pluck('city.name_en')->filter()->unique()->implode(' + ');
-        });
-
+        $grouped = $paths->groupBy('route_name');
         $routes = [];
-        foreach ($grouped as $label => $tourGroup) {
-            if (empty($label)) {
-                continue;
-            }
 
-            $slug = str($label)->slug()->toString();
+        foreach ($grouped as $routeName => $pathGroup) {
+            $slug = str($routeName)->slug()->toString();
+            $firstPath = $pathGroup->first();
+            $cityIds = $firstPath->stays->pluck('city_id')->filter()->values()->toArray();
+            $departureCityId = $firstPath->departure_city_id;
 
-            // Country = last stay's country (Nice → France, Bali → Indonesia)
-            $lastStay = $tourGroup->first()->stays->sortByDesc('stay_order')->first();
-            $lastCountryId = $lastStay?->resort?->country_id ?? $lastStay?->city?->country_id ?? $tourGroup->first()->country_id;
-            $departureCityIds = $tourGroup->pluck('departure_city_id')->unique()->filter()->values()->toArray();
-            $resortIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('resort_id'))->unique()->filter()->values()->toArray();
-            $cityIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('city_id'))->unique()->filter()->values()->toArray();
-            $hotelIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('hotel_id'))->unique()->filter()->values()->toArray();
-            $nights = $tourGroup->pluck('nights')->unique()->sort()->values()->toArray();
-            $dateFrom = $tourGroup->min('date_from')?->format('Y-m-d');
-            $dateTo = $tourGroup->max('date_from')?->format('Y-m-d');
+            // Last city determines country
+            $lastCity = $firstPath->stays->sortByDesc('stay_order')->first()?->city;
+            $countryId = $lastCity ? Country::where('name_en', $lastCity->name_en)->value('id') : null;
+
+            $dateFrom = $pathGroup->min('departure_date')?->format('Y-m-d');
+            $dateTo = $pathGroup->max('departure_date')?->format('Y-m-d');
+            $nights = $firstPath->nights;
 
             $routes[] = [
                 'slug' => $slug,
-                'label' => $label,
-                'tour_ids' => $tourGroup->pluck('id')->toArray(),
+                'label' => $routeName,
                 'filters' => [
-                    'country_id' => $lastCountryId,
-                    'departure_city_id' => count($departureCityIds) === 1 ? $departureCityIds[0] : null,
-                    'resort_ids' => $resortIds,
+                    'country_id' => $countryId,
+                    'departure_city_id' => $departureCityId,
                     'city_ids' => $cityIds,
-                    'hotel_ids' => $hotelIds,
-                    'nights_from' => min($nights) ?? null,
-                    'nights_to' => max($nights) ?? null,
+                    'hotel_ids' => Hotel::whereIn('city_id', $cityIds)->where('is_active', true)->pluck('id')->toArray(),
+                    'nights_from' => $nights,
+                    'nights_to' => $nights,
                     'date_from' => $dateFrom,
                     'date_to' => $dateTo,
                 ],
@@ -115,76 +90,35 @@ class TourSearchService
         return $routes;
     }
 
-    public function search(array $filters, string $sortBy = 'price', string $sortDir = 'asc', int $perPage = 20): LengthAwarePaginator
+    /**
+     * Search: returns flight_path × hotel combinations.
+     * Each result is a stdClass with: flight_path, hotels (per stay), price.
+     */
+    public function search(array $filters, string $sortBy = 'price', string $sortDir = 'asc', int $perPage = 20): array
     {
-        $query = Tour::query()->where('is_available', true);
+        $query = FlightPath::query()
+            ->where('is_available', true)
+            ->with(['legs.flight.fromAirport', 'legs.flight.toAirport', 'legs.flight.airline', 'stays.city', 'currency']);
 
-        // Tour route filter (e.g., "istanbul-nice" slug → specific tour IDs)
+        // Route filter
         if (! empty($filters['tour_route'])) {
             $routeSlug = $filters['tour_route'];
-            $allRoutes = $this->buildTourRoutes();
-            $matchedRoute = collect($allRoutes)->firstWhere('slug', $routeSlug);
-            if ($matchedRoute) {
-                $query->whereIn('id', $matchedRoute['tour_ids']);
+            $allRoutes = $this->buildRoutes();
+            $matched = collect($allRoutes)->firstWhere('slug', $routeSlug);
+            if ($matched) {
+                $query->where('route_name', $matched['label']);
             }
         }
 
-        // Country filter (also match tours that have a stay in a city of that country)
-        if (! empty($filters['country_id'])) {
-            $countryId = $filters['country_id'];
-            $query->where(function ($q) use ($countryId) {
-                $q->where('country_id', $countryId)
-                    ->orWhereHas('stays', function ($sq) use ($countryId) {
-                        $sq->whereHas('city', fn ($cq) => $cq->where('country_id', $countryId));
-                    })
-                    ->orWhereHas('stays', function ($sq) use ($countryId) {
-                        $sq->whereHas('resort', fn ($rq) => $rq->where('country_id', $countryId));
-                    });
-            });
-        }
-
-        // Multiple resort filter (check both primary resort and stays)
-        if (! empty($filters['resort_ids'])) {
-            $resortIds = $filters['resort_ids'];
-            $query->where(function ($q) use ($resortIds) {
-                $q->whereIn('resort_id', $resortIds)
-                    ->orWhereHas('stays', fn ($sq) => $sq->whereIn('resort_id', $resortIds));
-            });
-        }
-
-        // Multiple hotel filter (check both primary hotel and stays)
-        if (! empty($filters['hotel_ids'])) {
-            $hotelIds = $filters['hotel_ids'];
-            $query->where(function ($q) use ($hotelIds) {
-                $q->whereIn('hotel_id', $hotelIds)
-                    ->orWhereHas('stays', fn ($sq) => $sq->whereIn('hotel_id', $hotelIds));
-            });
-        }
-
-        // Departure city filter
-        if (! empty($filters['departure_city_id'])) {
-            $query->where('departure_city_id', $filters['departure_city_id']);
-        }
-
-        // Program type filter
-        if (! empty($filters['program_type_id'])) {
-            $query->where('program_type_id', $filters['program_type_id']);
-        }
-
-        // Transport type filter
-        if (! empty($filters['transport_type_id'])) {
-            $query->where('transport_type_id', $filters['transport_type_id']);
-        }
-
-        // Date filters
+        // Date range
         if (! empty($filters['date_from'])) {
-            $query->where('date_from', '>=', $filters['date_from']);
+            $query->where('departure_date', '>=', $filters['date_from']);
         }
         if (! empty($filters['date_to'])) {
-            $query->where('date_from', '<=', $filters['date_to']);
+            $query->where('departure_date', '<=', $filters['date_to']);
         }
 
-        // Nights range
+        // Nights
         if (! empty($filters['nights_from'])) {
             $query->where('nights', '>=', $filters['nights_from']);
         }
@@ -192,112 +126,114 @@ class TourSearchService
             $query->where('nights', '<=', $filters['nights_to']);
         }
 
-        // Travelers
-        if (! empty($filters['adults'])) {
-            $query->where('adults', '>=', $filters['adults']);
-        }
-        if (! empty($filters['children'])) {
-            $query->where('children', '>=', $filters['children']);
+        $flightPaths = $query->orderBy('departure_date')->get();
+
+        // Get hotels per city
+        $hotelFilter = [];
+        if (! empty($filters['hotel_ids'])) {
+            $hotelFilter = $filters['hotel_ids'];
         }
 
-        // Price range
-        if (! empty($filters['price_from'])) {
-            $query->where('price', '>=', $filters['price_from']);
-        }
-        if (! empty($filters['price_to'])) {
-            $query->where('price', '<=', $filters['price_to']);
-        }
+        $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
+        $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
 
-        // Multiple meal type
-        if (! empty($filters['meal_type_ids'])) {
-            $query->whereIn('meal_type_id', $filters['meal_type_ids']);
-        }
+        // Build combos: flight_path × hotels
+        $results = [];
+        foreach ($flightPaths as $fp) {
+            // Get hotels for each stay city
+            $hotelsByCityStay = [];
+            foreach ($fp->stays as $stay) {
+                $cityHotels = Hotel::where('city_id', $stay->city_id)
+                    ->where('is_active', true)
+                    ->when(! empty($hotelFilter), fn ($q) => $q->whereIn('id', $hotelFilter))
+                    ->with('category')
+                    ->get();
+                $hotelsByCityStay[$stay->stay_order] = [
+                    'city' => $stay->city,
+                    'nights' => $stay->nights,
+                    'hotels' => $cityHotels,
+                ];
+            }
 
-        // Multiple hotel category
-        if (! empty($filters['hotel_category_ids'])) {
-            $query->whereHas('hotel', fn($q) => $q->whereIn('hotel_category_id', $filters['hotel_category_ids']));
-        }
+            // Cartesian product of hotels across stays
+            $combos = $this->cartesianHotels($hotelsByCityStay);
 
-        // Boolean filters
-        if (! empty($filters['is_hot'])) {
-            $query->where('is_hot', true);
-        }
-        if (! empty($filters['instant_confirmation'])) {
-            $query->where('instant_confirmation', true);
-        }
-        if (! empty($filters['no_stop_sale'])) {
-            $query->where('no_stop_sale', true);
-        }
+            foreach ($combos as $combo) {
+                // combo = [stay_order => ['hotel' => Hotel, 'nights' => N, 'city' => City], ...]
+                $hotelCost = 0;
+                foreach ($combo as $stayData) {
+                    $hotelCost += ((float) $stayData['hotel']->price_per_person / 2) * $stayData['nights'];
+                }
 
-        // Flight-related filters
-        if (! empty($filters['with_flight'])) {
-            $query->has('flights');
+                $price = (float) $fp->total_price + $hotelCost + $hiddenFee + $agentFee;
+
+                // Min seats across all flight legs
+                $minSeats = $fp->legs->min(fn ($leg) => $leg->flight->available_seats ?? 0);
+
+                $results[] = (object) [
+                    'flight_path' => $fp,
+                    'hotels' => $combo,
+                    'price' => round($price, 2),
+                    'flight_price' => (float) $fp->total_price,
+                    'hotel_cost' => round($hotelCost, 2),
+                    'fees' => $hiddenFee + $agentFee,
+                    'min_seats' => $minSeats,
+                    'currency' => $fp->currency,
+                ];
+            }
         }
 
         // Sort
-        $allowedSorts = ['price', 'date_from', 'nights', 'hotel_name'];
-        $sortField = in_array($sortBy, $allowedSorts) ? $sortBy : 'price';
+        usort($results, function ($a, $b) use ($sortBy, $sortDir) {
+            $valA = match ($sortBy) {
+                'price' => $a->price,
+                'date_from' => $a->flight_path->departure_date->timestamp,
+                'nights' => $a->flight_path->nights,
+                default => $a->price,
+            };
+            $valB = match ($sortBy) {
+                'price' => $b->price,
+                'date_from' => $b->flight_path->departure_date->timestamp,
+                'nights' => $b->flight_path->nights,
+                default => $b->price,
+            };
+            return $sortDir === 'asc' ? $valA <=> $valB : $valB <=> $valA;
+        });
 
-        if ($sortField === 'hotel_name') {
-            $query->join('hotels', 'tours.hotel_id', '=', 'hotels.id')
-                ->orderBy('hotels.name', $sortDir)
-                ->select('tours.*');
-        } else {
-            $query->orderBy($sortField, $sortDir);
+        // Price filter (after calculation)
+        if (! empty($filters['price_from'])) {
+            $results = array_filter($results, fn ($r) => $r->price >= (float) $filters['price_from']);
+        }
+        if (! empty($filters['price_to'])) {
+            $results = array_filter($results, fn ($r) => $r->price <= (float) $filters['price_to']);
         }
 
-        return $query->with([
-            'country', 'resort', 'hotel', 'hotel.category', 'hotel.currency',
-            'programType', 'transportType',
-            'departureCity', 'currency', 'mealType',
-            'tourPrices.roomType', 'tourPrices.currency',
-            'flights.currency',
-            'stays.hotel', 'stays.city', 'stays.resort',
-        ])
-            ->paginate($perPage)
-            ->withQueryString();
+        return array_values($results);
     }
 
     /**
-     * Get available departure dates for a given country and departure city.
+     * Cartesian product of hotels across stays.
+     * Input: [1 => ['city'=>..., 'nights'=>2, 'hotels'=>[H1,H2]], 2 => ['city'=>..., 'nights'=>4, 'hotels'=>[H3]]]
+     * Output: [[1=>['hotel'=>H1,'nights'=>2,'city'=>...], 2=>['hotel'=>H3,'nights'=>4,'city'=>...]], [1=>['hotel'=>H2,...], 2=>['hotel'=>H3,...]], ...]
      */
-    public function getAvailableDates(?int $countryId, ?int $departureCityId): array
+    private function cartesianHotels(array $hotelsByCityStay): array
     {
-        $query = Tour::query()->where('is_available', true)->whereNotNull('date_from');
+        $result = [[]];
 
-        if ($countryId) {
-            $query->where('country_id', $countryId);
-        }
-        if ($departureCityId) {
-            $query->where('departure_city_id', $departureCityId);
-        }
-
-        return $query->distinct()
-            ->pluck('date_from')
-            ->map(fn($d) => $d->format('Y-m-d'))
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Get available nights range for given filters.
-     */
-    public function getNightsRange(?int $countryId, ?string $dateFrom): array
-    {
-        $query = Tour::query()->where('is_available', true);
-
-        if ($countryId) {
-            $query->where('country_id', $countryId);
-        }
-        if ($dateFrom) {
-            $query->where('date_from', $dateFrom);
+        foreach ($hotelsByCityStay as $stayOrder => $data) {
+            $newResult = [];
+            foreach ($result as $combo) {
+                foreach ($data['hotels'] as $hotel) {
+                    $newResult[] = $combo + [$stayOrder => [
+                        'hotel' => $hotel,
+                        'nights' => $data['nights'],
+                        'city' => $data['city'],
+                    ]];
+                }
+            }
+            $result = $newResult;
         }
 
-        $min = (int) $query->min('nights') ?: 3;
-        $max = (int) $query->max('nights') ?: 21;
-
-        return ['min' => $min, 'max' => $max];
+        return $result;
     }
 }

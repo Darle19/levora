@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Search;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TourSearchRequest;
 use App\Models\Banner;
-use App\Models\Tour;
+use App\Models\FlightPath;
 use App\Services\TourSearchService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -16,9 +16,6 @@ class TourSearchController extends Controller
         private TourSearchService $searchService,
     ) {}
 
-    /**
-     * Display tour search page.
-     */
     public function index(): View
     {
         $filters = $this->searchService->getFilterOptions();
@@ -27,61 +24,46 @@ class TourSearchController extends Controller
         return view('search.tours.index', array_merge($filters, ['banners' => $banners]));
     }
 
-    /**
-     * Search for tours (POST form submission).
-     */
     public function search(TourSearchRequest $request): View|JsonResponse
     {
         $filters = $request->validated();
         $sortBy = $request->input('sort_by', 'price');
         $sortDir = $request->input('sort_dir', 'asc');
-        $groupByHotel = $request->boolean('group_by_hotel');
 
-        $tours = $this->searchService->search($filters, $sortBy, $sortDir);
+        $results = $this->searchService->search($filters, $sortBy, $sortDir);
 
         $filterOptions = $this->searchService->getFilterOptions();
 
         $data = array_merge($filterOptions, [
-            'tours' => $tours,
-            'groupByHotel' => $groupByHotel,
+            'results' => $results,
             'currentFilters' => $filters,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
         ]);
 
-        // Return JSON for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'resultsHtml' => view('search.tours._results_table', $data)->render(),
-                'paginationHtml' => view('search.tours._pagination', ['tours' => $tours])->render(),
-                'total' => $tours->total(),
+                'paginationHtml' => '',
+                'total' => count($results),
             ]);
         }
 
         return view('search.tours.results', $data);
     }
 
-    /**
-     * GET results route for bookmarkable searches.
-     */
     public function results(TourSearchRequest $request): View|JsonResponse
     {
         return $this->search($request);
     }
 
-    /**
-     * Display tour details.
-     */
-    public function show(Tour $tour): View
+    public function show(FlightPath $flightPath): View
     {
-        $tour->load([
-            'country', 'resort', 'hotel', 'hotel.category', 'hotel.currency',
-            'programType', 'transportType',
-            'departureCity', 'currency', 'mealType',
-            'tourPrices.roomType', 'tourPrices.currency',
-            'flights.airline', 'flights.fromAirport', 'flights.toAirport', 'flights.currency',
+        $flightPath->load([
+            'legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport',
+            'stays.city', 'currency', 'departureCity',
         ]);
 
-        return view('search.tours.show', compact('tour'));
+        return view('search.tours.show', compact('flightPath'));
     }
 }
