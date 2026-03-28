@@ -3,9 +3,23 @@
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-    .flatpickr-day.available-date { background: #d4edda; border-color: #1B6B2E; }
-    .flatpickr-day.available-date:hover { background: #1B6B2E; color: #fff; }
-    .flatpickr-day.available-date.selected { background: #1B6B2E; color: #fff; border-color: #145222; }
+    /* Calendar seat availability colors */
+    .flatpickr-day.seats-green { background: #c8e6c9; border-color: #4caf50; }
+    .flatpickr-day.seats-green:hover { background: #4caf50; color: #fff; }
+    .flatpickr-day.seats-green.selected { background: #2e7d32; color: #fff; }
+    .flatpickr-day.seats-yellow { background: #fff9c4; border-color: #fbc02d; }
+    .flatpickr-day.seats-yellow:hover { background: #fbc02d; color: #000; }
+    .flatpickr-day.seats-yellow.selected { background: #f9a825; color: #000; }
+    .flatpickr-day.seats-red { background: #ffcdd2; border-color: #e53935; }
+    .flatpickr-day.seats-red:hover { background: #e53935; color: #fff; }
+    .flatpickr-day.seats-red.selected { background: #c62828; color: #fff; }
+    /* Calendar legend */
+    .cal-legend { display: flex; gap: 12px; align-items: center; font-size: 11px; color: #555; padding: 4px 0; }
+    .cal-legend-item { display: flex; align-items: center; gap: 4px; }
+    .cal-legend-dot { width: 12px; height: 12px; border-radius: 2px; }
+    .cal-legend-dot.green { background: #c8e6c9; border: 1px solid #4caf50; }
+    .cal-legend-dot.yellow { background: #fff9c4; border: 1px solid #fbc02d; }
+    .cal-legend-dot.red { background: #ffcdd2; border: 1px solid #e53935; }
 </style>
 @endpush
 
@@ -188,6 +202,15 @@
                                 @endfor
                             </select>
                         </span>
+                    </div>
+                </div>
+
+                {{-- Calendar legend --}}
+                <div class="form-row" style="padding:2px 8px; border-bottom:1px solid #e8e8e8;">
+                    <div class="cal-legend">
+                        <span class="cal-legend-item"><span class="cal-legend-dot green"></span> есть места</span>
+                        <span class="cal-legend-item"><span class="cal-legend-dot yellow"></span> мало мест</span>
+                        <span class="cal-legend-item"><span class="cal-legend-dot red"></span> нет мест</span>
                     </div>
                 </div>
 
@@ -415,10 +438,11 @@
     @endphp
     const citiesWithHotels = @json($citiesWithHotels);
 
-    // Initialize flatpickr with green departure dates
-    (function() {
-        const greenDates = new Set(departureDates);
+    // Date → seat availability map (green >10, yellow 1-10, red 0)
+    const dateSeats = @json($dateSeats ?? []);
 
+    // Initialize flatpickr with seat-colored departure dates
+    (function() {
         const fpConfig = {
             dateFormat: 'Y-m-d',
             altInput: true,
@@ -428,8 +452,11 @@
             onDayCreate: function(dObj, dStr, fp, dayElem) {
                 const d = dayElem.dateObj;
                 const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                if (greenDates.has(dateStr)) {
-                    dayElem.classList.add('available-date');
+                const seats = dateSeats[dateStr];
+                if (seats !== undefined) {
+                    if (seats > 10) dayElem.classList.add('seats-green');
+                    else if (seats > 0) dayElem.classList.add('seats-yellow');
+                    else dayElem.classList.add('seats-red');
                 }
             }
         };

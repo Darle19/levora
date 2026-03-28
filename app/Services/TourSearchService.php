@@ -42,6 +42,7 @@ class TourSearchService
                 ->map(fn ($d) => $d->format('Y-m-d'))
                 ->values()
                 ->toArray(),
+            'dateSeats' => $this->buildDateSeats(),
         ]);
     }
 
@@ -235,5 +236,29 @@ class TourSearchService
         }
 
         return $result;
+    }
+
+    /**
+     * Build date → min seats map for calendar coloring.
+     * Green (>10), Yellow (1-10), Red (0).
+     */
+    private function buildDateSeats(): array
+    {
+        $paths = FlightPath::where('is_available', true)
+            ->where('departure_date', '>=', now()->toDateString())
+            ->with('legs.flight')
+            ->get();
+
+        $dateSeats = [];
+        foreach ($paths as $fp) {
+            $date = $fp->departure_date->format('Y-m-d');
+            $minSeats = $fp->legs->min(fn ($leg) => $leg->flight->available_seats ?? 0);
+            // Keep minimum across all paths for the same date
+            if (! isset($dateSeats[$date]) || $minSeats < $dateSeats[$date]) {
+                $dateSeats[$date] = $minSeats;
+            }
+        }
+
+        return $dateSeats;
     }
 }

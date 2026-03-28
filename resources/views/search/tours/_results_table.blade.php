@@ -59,11 +59,13 @@
             </tr>
         </thead>
         <tbody>
+            @php $pax = max(1, (int) ($currentFilters['adults'] ?? 2)); @endphp
             @foreach($results as $i => $result)
                 @php
                     $fp = $result->flight_path;
                     $isStop = $result->min_seats <= 0;
                     $rowClass = $isStop ? 'row-stop' : ($i % 2 === 0 ? 'row-even' : 'row-odd');
+                    $totalPrice = $result->price * $pax;
 
                     // Availability bars
                     $s = $result->min_seats;
@@ -124,9 +126,12 @@
 
                     {{-- Price --}}
                     <td style="text-align:right;">
-                        <span class="price-val {{ $isStop ? '' : '' }}" title="Flight: ${{ number_format($result->flight_price, 0) }} + Hotels: ${{ number_format($result->hotel_cost, 0) }} + Fees: ${{ number_format($result->fees, 0) }}">
-                            {{ number_format($result->price, 0) }} {{ $result->currency->code ?? 'USD' }}
+                        <span class="price-val" title="{{ $pax }} × ${{ number_format($result->price, 0) }}/person (Flight: ${{ number_format($result->flight_price, 0) }} + Hotels: ${{ number_format($result->hotel_cost, 0) }} + Fees: ${{ number_format($result->fees, 0) }})">
+                            {{ number_format($totalPrice, 0) }} {{ $result->currency->code ?? 'USD' }}
                         </span>
+                        @if($pax > 1)
+                            <span style="font-size:10px; color:#888; display:block;">{{ $pax }} × {{ number_format($result->price, 0) }}/чел</span>
+                        @endif
                         @if($isStop)
                             <span class="stop-label">no seats</span>
                         @endif
