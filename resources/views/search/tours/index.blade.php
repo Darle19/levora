@@ -320,9 +320,7 @@
                     <label><input type="checkbox" name="direct_flight" value="1"> {{ __('messages.search.direct_flight') }}</label>
                     <label><input type="checkbox" name="is_hot" value="1"> {{ __('messages.search.hot_deals_only') }}</label>
                     <span class="separator"></span>
-                    @foreach($transportTypes as $type)
-                        <label><input type="checkbox" name="transport_type_ids[]" value="{{ $type->id }}"> {{ $type->name }}</label>
-                    @endforeach
+                    <label><input type="checkbox" name="transport_type_ids[]" value="1"> ✈ Air</label>
                 </div>
 
             </div>
@@ -405,8 +403,8 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-    const resortsByCountry = @json($resortsByCountry);
-    const hotelsByResort = @json($hotelsByResort);
+    const resortsByCountry = @json($resortsByCountry ?? []);
+    const hotelsByResort = @json($hotelsByResort ?? []);
     const hotelsByCity = @json($hotelsByCity ?? []);
     const tourRouteFilters = @json(collect($tourRoutes)->keyBy('slug')->map(fn($r) => $r['filters']));
     const departureDates = @json($departureDates ?? []);
