@@ -49,7 +49,16 @@ class ProductionTourSeeder extends Seeder
         $mealBB = MealType::firstOrCreate(['code' => 'BB'], ['name_en' => 'Bed & Breakfast', 'name_ru' => 'Завтрак', 'name_uz' => 'Nonushta', 'is_active' => true]);
         $transportAir = TransportType::firstOrCreate(['name_en' => 'Air'], ['name_ru' => 'Авиа', 'name_uz' => 'Avia', 'is_active' => true]);
         $programType = ProgramType::firstOrCreate(['name_en' => 'Standard'], ['name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
-        $star3 = HotelCategory::firstOrCreate(['stars' => 3], ['name_en' => '3 Star', 'name_ru' => '3 звезды', 'name_uz' => '3 yulduz', 'is_active' => true]);
+        $star3 = HotelCategory::firstOrCreate(['stars' => 3], ['name' => '3 stars', 'is_active' => true]);
+        $tourType = DB::table('tour_types')->first();
+        if (! $tourType) {
+            $tourTypeId = DB::table('tour_types')->insertGetId([
+                'name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart',
+                'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        } else {
+            $tourTypeId = $tourType->id;
+        }
 
         // ── Countries ──
         $uzbekistan = Country::firstOrCreate(['name_en' => 'Uzbekistan'], ['code' => 'UZ', 'name_ru' => 'Узбекистан', 'name_uz' => 'O\'zbekiston', 'is_active' => true, 'order' => 0]);
@@ -219,10 +228,11 @@ class ProductionTourSeeder extends Seeder
             'nights' => self::TOTAL_NIGHTS,
             'adults' => self::DEFAULT_ADULTS,
             'children' => self::DEFAULT_CHILDREN,
-            'price' => 0, // will be recalculated by TourPricingService
+            'price' => 0,
             'meal_type_id' => $mealBB->id,
             'transport_type_id' => $transportAir->id,
             'currency_id' => $usd->id,
+            'tour_type_id' => $tourTypeId,
             'program_type_id' => $programType->id,
             'is_available' => true,
             'is_hot' => false,
