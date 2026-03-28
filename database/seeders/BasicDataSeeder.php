@@ -93,9 +93,13 @@ class BasicDataSeeder extends Seeder
         $uz_airways = \App\Models\Airline::create(['name' => 'Uzbekistan Airways', 'code' => 'HY', 'is_active' => true]);
         $turkish_airlines = \App\Models\Airline::create(['name' => 'Turkish Airlines', 'code' => 'TK', 'is_active' => true]);
 
-        // Sample Tours
+        // Tour Types
+        $tourTypeStd = \App\Models\TourType::create(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
+
+        // Sample Tours (use raw DB because tour_type_id not in model fillable but NOT NULL in DB)
         for ($i = 1; $i <= 10; $i++) {
-            \App\Models\Tour::create([
+            \Illuminate\Support\Facades\DB::table('tours')->insert([
+                'tour_type_id' => $tourTypeStd->id,
                 'program_type_id' => $standard->id,
                 'country_id' => $turkey->id,
                 'resort_id' => $antalya->id,
@@ -113,7 +117,9 @@ class BasicDataSeeder extends Seeder
                 'is_available' => true,
                 'is_hot' => $i <= 3,
                 'instant_confirmation' => true,
-                'no_stop_sale' => true
+                'no_stop_sale' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
 
