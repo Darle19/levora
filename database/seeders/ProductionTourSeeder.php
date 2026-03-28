@@ -251,27 +251,32 @@ class ProductionTourSeeder extends Seeder
         );
         $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
 
-        // ── Generate Istanbul+Baku Tours (all Istanbul hotels × all Baku hotels) ──
+        // ── Generate Istanbul+Baku Tours ──
+        // Tours created ONLY on TAS→IST flight dates (not arbitrary weekly)
         $bakuHotels = Hotel::where('resort_id', $bakuBoulevard->id)->where('is_active', true)->get();
         if ($bakuHotels->isEmpty()) {
             $this->command->warn('No Baku hotels found — skipping Istanbul+Baku tours.');
         } else {
             $bakuCount = 0;
-            $startDate = Carbon::parse(self::SEASON_START);
-            $endDate = Carbon::parse(self::SEASON_END);
 
-            while ($startDate->lte($endDate)) {
+            // Get actual TAS→IST departure dates from flights
+            $tasIstDates = collect($allFlights)
+                ->filter(fn ($f, $k) => str_starts_with($k, 'TAS-IST-'))
+                ->map(fn ($f) => $f->departure_date)
+                ->values();
+
+            foreach ($tasIstDates as $departureDate) {
                 foreach ($istHotels as $istHotel) {
                     foreach ($bakuHotels as $bakuHotel) {
-                        $exists = Tour::where('date_from', $startDate->format('Y-m-d'))
+                        $exists = Tour::where('date_from', $departureDate->format('Y-m-d'))
                             ->where('hotel_id', $bakuHotel->id)
                             ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
                             ->exists();
                         if ($exists) { continue; }
 
                         $tour = Tour::create(array_merge($tourDefaults, [
-                            'date_from' => $startDate->format('Y-m-d'),
-                            'date_to' => $startDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
+                            'date_from' => $departureDate->format('Y-m-d'),
+                            'date_to' => $departureDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
                             'departure_city_id' => $tashkent->id,
                             'country_id' => $azerbaijan->id,
                             'hotel_id' => $bakuHotel->id,
@@ -290,7 +295,7 @@ class ProductionTourSeeder extends Seeder
                         ]);
 
                         // Attach flights: TAS→IST (day 0), GYD→TAS (day 7)
-                        $this->attachFlightLegs($tour, $allFlights, $startDate, [
+                        $this->attachFlightLegs($tour, $allFlights, $departureDate, [
                             ['route' => 'TAS-IST', 'day_offset' => 0, 'direction' => 'outbound', 'leg' => 1],
                             ['route' => 'GYD-TAS', 'day_offset' => self::TOTAL_NIGHTS, 'direction' => 'return', 'leg' => 2],
                         ]);
@@ -299,7 +304,6 @@ class ProductionTourSeeder extends Seeder
                         $bakuCount++;
                     }
                 }
-                $startDate->addWeek();
             }
             $this->command->info("Created {$bakuCount} Istanbul+Baku tours.");
         }
@@ -307,6 +311,10 @@ class ProductionTourSeeder extends Seeder
         cache()->forget('tour_filter_options');
     }
 
+    /**
+     * Generate tours based on actual TAS→IST flight dates (not arbitrary weekly ranges).
+     * Creates: departureDates × istanbulHotels × destinationHotel combinations.
+     */
     private function generateRoute(
         array $istanbulHotels,
         Hotel $destinationHotel,
@@ -322,21 +330,25 @@ class ProductionTourSeeder extends Seeder
         array $allFlights = [],
         array $flightLegs = [],
     ): int {
-        $start = Carbon::parse(self::SEASON_START);
-        $end = Carbon::parse(self::SEASON_END);
+        // Get actual departure dates from TAS→IST flights
+        $departureDates = collect($allFlights)
+            ->filter(fn ($f, $k) => str_starts_with($k, 'TAS-IST-'))
+            ->map(fn ($f) => $f->departure_date)
+            ->values();
+
         $count = 0;
 
-        while ($start->lte($end)) {
+        foreach ($departureDates as $departureDate) {
             foreach ($istanbulHotels as $istHotel) {
-                $exists = Tour::where('date_from', $start->format('Y-m-d'))
+                $exists = Tour::where('date_from', $departureDate->format('Y-m-d'))
                     ->where('hotel_id', $destinationHotel->id)
                     ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
                     ->exists();
                 if ($exists) { continue; }
 
                 $tour = Tour::create(array_merge($tourDefaults, [
-                    'date_from' => $start->format('Y-m-d'),
-                    'date_to' => $start->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
+                    'date_from' => $departureDate->format('Y-m-d'),
+                    'date_to' => $departureDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
                     'departure_city_id' => $departureCity->id,
                     'country_id' => $destinationCountry->id,
                     'hotel_id' => $destinationHotel->id,
@@ -354,12 +366,11 @@ class ProductionTourSeeder extends Seeder
                     'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealTypeId,
                 ]);
 
-                $this->attachFlightLegs($tour, $allFlights, $start, $flightLegs);
+                $this->attachFlightLegs($tour, $allFlights, $departureDate, $flightLegs);
 
                 $pricingService->recalculate($tour);
                 $count++;
             }
-            $start->addWeek();
         }
 
         return $count;
