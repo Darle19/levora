@@ -65,7 +65,7 @@ class TourSearchService
 
             // Last city determines country
             $lastCity = $firstPath->stays->sortByDesc('stay_order')->first()?->city;
-            $countryId = $lastCity ? Country::where('name_en', $lastCity->name_en)->value('id') : null;
+            $countryId = $lastCity?->country_id;
 
             $dateFrom = $pathGroup->min('departure_date')?->format('Y-m-d');
             $dateTo = $pathGroup->max('departure_date')?->format('Y-m-d');
