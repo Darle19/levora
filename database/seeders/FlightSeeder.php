@@ -100,7 +100,89 @@ class FlightSeeder extends Seeder
             $created++;
         }
 
-        $this->command->info("Created {$created} flights (TAS→IST + GYD→TAS).");
+        // ── IST→NCE flights (Turkish Airlines, nonstop, prices from RapidAPI) ──
+        $frId = $this->ensureCountry('France', 'Франция', 'FR');
+        $niceId = $this->ensureCity('Nice', 'Ницца', $frId);
+        $nceId = $this->ensureAirport('NCE', 'Nice Côte d\'Azur Airport', 'Аэропорт Ницца', $niceId);
+        $tkId = $this->ensureAirline('TK', 'Turkish Airlines');
+
+        // IST→NCE: +2 days after TAS→IST departure
+        $istNceDates = [
+            ['2026-04-15', 232], ['2026-04-22', 232], ['2026-04-29', 232],
+            ['2026-05-06', 232], ['2026-05-13', 232], ['2026-05-20', 232], ['2026-05-27', 232],
+            ['2026-06-03', 232], ['2026-06-10', 232], ['2026-06-17', 232], ['2026-06-24', 232], ['2026-07-01', 232],
+        ];
+
+        foreach ($istNceDates as [$date, $price]) {
+            if ($this->flightExists($tkId, $istId, $nceId, $date)) { continue; }
+            DB::table('flights')->insert([
+                'airline_id' => $tkId, 'from_airport_id' => $istId, 'to_airport_id' => $nceId,
+                'flight_number' => 'TK 1813', 'departure_date' => $date,
+                'departure_time' => '06:55', 'arrival_date' => $date, 'arrival_time' => '08:55',
+                'price_adult' => $price, 'currency_id' => $usdId, 'available_seats' => 50,
+                'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+
+        // NCE→IST: +6 days after TAS→IST departure
+        $nceIstDates = [
+            ['2026-04-19', 179], ['2026-04-26', 179], ['2026-05-03', 179],
+            ['2026-05-10', 179], ['2026-05-17', 179], ['2026-05-24', 179], ['2026-05-31', 179],
+            ['2026-06-07', 179], ['2026-06-14', 179], ['2026-06-21', 179], ['2026-06-28', 179], ['2026-07-05', 179],
+        ];
+
+        foreach ($nceIstDates as [$date, $price]) {
+            if ($this->flightExists($tkId, $nceId, $istId, $date)) { continue; }
+            DB::table('flights')->insert([
+                'airline_id' => $tkId, 'from_airport_id' => $nceId, 'to_airport_id' => $istId,
+                'flight_number' => 'TK 1814', 'departure_date' => $date,
+                'departure_time' => '10:45', 'arrival_date' => $date, 'arrival_time' => '14:45',
+                'price_adult' => $price, 'currency_id' => $usdId, 'available_seats' => 50,
+                'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+
+        // ── IST→GYD flights (Turkish Airlines, nonstop) ──
+        $istGydDates = [
+            ['2026-04-15', 291], ['2026-04-22', 291], ['2026-04-29', 291],
+            ['2026-05-06', 291], ['2026-05-13', 291], ['2026-05-20', 291], ['2026-05-27', 291],
+            ['2026-06-03', 291], ['2026-06-10', 291], ['2026-06-17', 291], ['2026-06-24', 291], ['2026-07-01', 291],
+        ];
+
+        foreach ($istGydDates as [$date, $price]) {
+            if ($this->flightExists($tkId, $istId, $gydId, $date)) { continue; }
+            DB::table('flights')->insert([
+                'airline_id' => $tkId, 'from_airport_id' => $istId, 'to_airport_id' => $gydId,
+                'flight_number' => 'TK 338', 'departure_date' => $date,
+                'departure_time' => '06:45', 'arrival_date' => $date, 'arrival_time' => '10:30',
+                'price_adult' => $price, 'currency_id' => $usdId, 'available_seats' => 50,
+                'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+
+        // GYD→IST: +6 days after TAS→IST departure
+        $gydIstDates = [
+            ['2026-04-19', 179], ['2026-04-26', 179], ['2026-05-03', 179],
+            ['2026-05-10', 179], ['2026-05-17', 179], ['2026-05-24', 179], ['2026-05-31', 179],
+            ['2026-06-07', 179], ['2026-06-14', 179], ['2026-06-21', 179], ['2026-06-28', 179], ['2026-07-05', 179],
+        ];
+
+        foreach ($gydIstDates as [$date, $price]) {
+            if ($this->flightExists($tkId, $gydId, $istId, $date)) { continue; }
+            DB::table('flights')->insert([
+                'airline_id' => $tkId, 'from_airport_id' => $gydId, 'to_airport_id' => $istId,
+                'flight_number' => 'TK 339', 'departure_date' => $date,
+                'departure_time' => '11:30', 'arrival_date' => $date, 'arrival_time' => '13:30',
+                'price_adult' => $price, 'currency_id' => $usdId, 'available_seats' => 50,
+                'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+
+        $this->command->info("Created {$created} flights (TAS→IST + GYD→TAS + IST↔NCE + IST↔GYD).");
     }
 
     private function ensureCurrency(string $code, string $nameEn, string $nameRu, string $symbol): int

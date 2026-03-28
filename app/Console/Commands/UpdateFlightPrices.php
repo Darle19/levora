@@ -3,34 +3,33 @@
 namespace App\Console\Commands;
 
 use App\Models\Flight;
-use App\Services\GoogleFlightsService;
+use App\Services\RapidApiFlightService;
 use App\Services\TourPricingService;
 use Illuminate\Console\Command;
 
 /**
- * Fetch latest nonstop flight prices from Google Flights (economy + business).
- * Updates local flight records and recalculates tour prices.
+ * Fetch latest nonstop flight prices from RapidAPI Google Flights Scraper.
+ * Updates IST↔NCE and IST↔GYD flights, then recalculates tour prices.
  *
  * Usage:
- *   php artisan flights:update-prices                    # update all active routes
- *   php artisan flights:update-prices --route=IST-NCE    # specific route
- *   php artisan flights:update-prices --dry-run           # preview only
- *   php artisan flights:update-prices --force             # skip cache
+ *   php artisan flights:update-prices              # update default routes
+ *   php artisan flights:update-prices --route=IST-NCE  # specific route
+ *   php artisan flights:update-prices --dry-run    # preview only
+ *   php artisan flights:update-prices --force      # skip cache
  */
 class UpdateFlightPrices extends Command
 {
     protected $signature = 'flights:update-prices
-        {--route=* : Routes to update. Defaults to IST-NCE, NCE-IST, IST-GYD, GYD-IST.}
+        {--route=* : Routes to update (e.g., IST-NCE). Defaults to IST-NCE,NCE-IST,IST-GYD,GYD-IST.}
         {--dry-run : Show prices without updating}
         {--force : Skip cache, fetch fresh}';
 
-    protected $description = 'Update IST↔NCE and IST↔GYD flight prices from Google Flights';
+    protected $description = 'Update flight prices from RapidAPI Google Flights';
 
-    /** Routes to update by default (outbound only, return prices set manually) */
-    private const DEFAULT_ROUTES = ['IST-NCE', 'IST-GYD'];
+    private const DEFAULT_ROUTES = ['IST-NCE', 'NCE-IST', 'IST-GYD', 'GYD-IST'];
 
     public function __construct(
-        private readonly GoogleFlightsService $googleFlights,
+        private readonly RapidApiFlightService $flightService,
         private readonly TourPricingService $pricingService,
     ) {
         parent::__construct();
@@ -45,24 +44,25 @@ class UpdateFlightPrices extends Command
             $routes = self::DEFAULT_ROUTES;
         }
 
+        // Get flights matching routes
         $query = Flight::where('is_active', true)
             ->where('departure_date', '>=', now()->toDateString())
             ->with(['fromAirport', 'toAirport']);
 
         $query->where(function ($q) use ($routes) {
-                foreach ($routes as $route) {
-                    [$from, $to] = explode('-', $route);
-                    $q->orWhere(function ($sq) use ($from, $to) {
-                        $sq->whereHas('fromAirport', fn ($aq) => $aq->where('code', $from))
-                            ->whereHas('toAirport', fn ($aq) => $aq->where('code', $to));
-                    });
-                }
-            });
+            foreach ($routes as $route) {
+                [$from, $to] = explode('-', $route);
+                $q->orWhere(function ($sq) use ($from, $to) {
+                    $sq->whereHas('fromAirport', fn ($aq) => $aq->where('code', $from))
+                        ->whereHas('toAirport', fn ($aq) => $aq->where('code', $to));
+                });
+            }
+        });
 
         $flights = $query->orderBy('departure_date')->get();
 
         if ($flights->isEmpty()) {
-            $this->warn('No active future flights found.');
+            $this->warn('No active future flights found for routes: ' . implode(', ', $routes));
             return self::SUCCESS;
         }
 
@@ -72,9 +72,8 @@ class UpdateFlightPrices extends Command
         });
 
         $this->info("Checking {$grouped->count()} route+date combinations...");
-        $this->newLine();
 
-        $headers = ['Route', 'Date', 'Old Price', 'Economy', 'Business', 'Status'];
+        $headers = ['Route', 'Date', 'Old Price', 'New Price', 'Airline', 'Status'];
         $rows = [];
         $updated = 0;
         $failed = 0;
@@ -87,45 +86,32 @@ class UpdateFlightPrices extends Command
             $firstFlight = $flightGroup->first();
             $oldPrice = $firstFlight->price_adult;
 
-            // Fetch both classes
+            // Fetch from RapidAPI
             $result = $force
-                ? $this->googleFlights->searchAllClassesFresh($from, $to, $date)
-                : $this->googleFlights->searchAllClasses($from, $to, $date);
+                ? $this->flightService->searchFresh($from, $to, $date)
+                : $this->flightService->searchCheapest($from, $to, $date);
 
-            $econPrice = $result['economy'];
-            $bizPrice = $result['business'];
-            $status = '—';
+            if ($result && $result['price'] > 0) {
+                $newPrice = $result['price'];
+                $airline = $result['airline'] ?? '?';
 
-            if ($econPrice && ! $dryRun) {
-                foreach ($flightGroup as $flight) {
-                    $flight->update([
-                        'price_adult' => $econPrice,
-                        'soft_block_price' => $econPrice,
-                        'hard_block_price' => $bizPrice ?? $econPrice,
-                    ]);
-                    $tourIds = $tourIds->merge($flight->tours()->pluck('tours.id'));
-                    $updated++;
+                if (! $dryRun) {
+                    foreach ($flightGroup as $flight) {
+                        $flight->update(['price_adult' => $newPrice]);
+                        $tourIds = $tourIds->merge($flight->tours()->pluck('tours.id'));
+                        $updated++;
+                    }
                 }
-                $diff = $econPrice - $oldPrice;
-                $arrow = $diff > 0 ? '↑' : ($diff < 0 ? '↓' : '=');
-                $status = $dryRun ? 'preview' : "updated {$arrow}";
-            } elseif ($econPrice && $dryRun) {
-                $status = 'preview';
+
+                $diff = $newPrice - $oldPrice;
+                $arrow = $diff > 1 ? '↑' : ($diff < -1 ? '↓' : '=');
+                $rows[] = [$route, $date, '$' . number_format($oldPrice, 0), '$' . number_format($newPrice, 0), $airline, $dryRun ? 'preview' : "updated {$arrow}"];
             } else {
                 $failed++;
-                $status = 'no data';
+                $rows[] = [$route, $date, '$' . number_format($oldPrice, 0), '—', '—', 'no data'];
             }
 
-            $rows[] = [
-                $route,
-                $date,
-                '$' . number_format($oldPrice, 0),
-                $econPrice ? '$' . number_format($econPrice, 0) : '—',
-                $bizPrice ? '$' . number_format($bizPrice, 0) : '—',
-                $status,
-            ];
-
-            // Rate limit: 1 sec between route+date combos
+            // Rate limit: 1 sec between requests
             sleep(1);
         }
 
@@ -146,9 +132,8 @@ class UpdateFlightPrices extends Command
 
         $this->newLine();
         $this->info("Updated: {$updated} | Failed: {$failed}");
-
         if ($dryRun) {
-            $this->warn('Dry run — no changes made. Remove --dry-run to update.');
+            $this->warn('Dry run — no changes made.');
         }
 
         return self::SUCCESS;

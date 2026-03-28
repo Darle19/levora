@@ -113,12 +113,35 @@ class ProductionTourSeeder extends Seeder
             ->get()
             ->keyBy(fn ($f) => $f->departure_date);
 
+        // ── Lookup IST↔NCE and IST↔GYD flights (keyed by departure_date) ──
+        $nceAirportId = DB::table('airports')->where('code', 'NCE')->value('id');
+
+        $istNceFlights = DB::table('flights')
+            ->where('from_airport_id', $istAirportId)->where('to_airport_id', $nceAirportId)
+            ->where('is_active', true)->get()->keyBy(fn ($f) => $f->departure_date);
+
+        $nceIstFlights = DB::table('flights')
+            ->where('from_airport_id', $nceAirportId)->where('to_airport_id', $istAirportId)
+            ->where('is_active', true)->get()->keyBy(fn ($f) => $f->departure_date);
+
+        $istGydFlights = DB::table('flights')
+            ->where('from_airport_id', $istAirportId)->where('to_airport_id', $gydAirportId)
+            ->where('is_active', true)->get()->keyBy(fn ($f) => $f->departure_date);
+
+        $gydIstFlights = DB::table('flights')
+            ->where('from_airport_id', $gydAirportId)->where('to_airport_id', $istAirportId)
+            ->where('is_active', true)->get()->keyBy(fn ($f) => $f->departure_date);
+
         // ── Generate Istanbul+Nice tours ──
         $niceCount = 0;
         foreach ($tasIstFlights as $outbound) {
+            $depDate = $outbound->departure_date;
+            $istNceDate = date('Y-m-d', strtotime($depDate . ' +2 days'));  // IST→NCE: day+2
+            $nceIstDate = date('Y-m-d', strtotime($depDate . ' +6 days'));  // NCE→IST: day+6
+
             foreach ($istHotelIds as $istH) {
                 $exists = DB::table('tours')
-                    ->where('date_from', $outbound->departure_date)
+                    ->where('date_from', $depDate)
                     ->where('hotel_id', $niceHotelId)
                     ->where('country_id', $frId)
                     ->exists();
@@ -135,8 +158,8 @@ class ProductionTourSeeder extends Seeder
                     'nights' => self::TOTAL_NIGHTS,
                     'price' => 0,
                     'currency_id' => $usdId,
-                    'date_from' => $outbound->departure_date,
-                    'date_to' => date('Y-m-d', strtotime($outbound->departure_date . ' +' . self::TOTAL_NIGHTS . ' days')),
+                    'date_from' => $depDate,
+                    'date_to' => date('Y-m-d', strtotime($depDate . ' +' . self::TOTAL_NIGHTS . ' days')),
                     'adults' => 2,
                     'children' => 0,
                     'meal_type_id' => $mealBBId,
@@ -152,10 +175,22 @@ class ProductionTourSeeder extends Seeder
                     ['tour_id' => $tourId, 'stay_order' => 2, 'city_id' => $niceId, 'resort_id' => $niceStadeId, 'hotel_id' => $niceHotelId, 'nights' => self::DEST_NIGHTS, 'meal_type_id' => $mealBBId, 'created_at' => now(), 'updated_at' => now()],
                 ]);
 
-                // Attach outbound flight TAS→IST
+                // Attach flights: TAS→IST (leg 1), IST→NCE (leg 2), NCE→IST (leg 3)
                 DB::table('tour_flight')->insert([
                     'tour_id' => $tourId, 'flight_id' => $outbound->id, 'direction' => 'outbound', 'leg_order' => 1,
                 ]);
+                $istNceFlight = $istNceFlights[$istNceDate] ?? null;
+                if ($istNceFlight) {
+                    DB::table('tour_flight')->insert([
+                        'tour_id' => $tourId, 'flight_id' => $istNceFlight->id, 'direction' => 'outbound', 'leg_order' => 2,
+                    ]);
+                }
+                $nceIstFlight = $nceIstFlights[$nceIstDate] ?? null;
+                if ($nceIstFlight) {
+                    DB::table('tour_flight')->insert([
+                        'tour_id' => $tourId, 'flight_id' => $nceIstFlight->id, 'direction' => 'return', 'leg_order' => 3,
+                    ]);
+                }
 
                 $niceCount++;
             }
@@ -165,13 +200,15 @@ class ProductionTourSeeder extends Seeder
         // ── Generate Istanbul+Baku tours ──
         $bakuCount = 0;
         foreach ($tasIstFlights as $outbound) {
-            // Find matching GYD→TAS return flight (+7 days)
-            $returnDate = date('Y-m-d', strtotime($outbound->departure_date . ' +' . self::TOTAL_NIGHTS . ' days'));
+            $depDate = $outbound->departure_date;
+            $istGydDate = date('Y-m-d', strtotime($depDate . ' +2 days'));  // IST→GYD: day+2
+            $gydIstDate = date('Y-m-d', strtotime($depDate . ' +6 days'));  // GYD→IST: day+6
+            $returnDate = date('Y-m-d', strtotime($depDate . ' +' . self::TOTAL_NIGHTS . ' days'));
             $returnFlight = $gydTasFlights[$returnDate] ?? null;
 
             foreach ($istHotelIds as $istH) {
                 $exists = DB::table('tours')
-                    ->where('date_from', $outbound->departure_date)
+                    ->where('date_from', $depDate)
                     ->where('hotel_id', $nobelHotelId)
                     ->where('country_id', $azId)
                     ->exists();
@@ -188,7 +225,7 @@ class ProductionTourSeeder extends Seeder
                     'nights' => self::TOTAL_NIGHTS,
                     'price' => 0,
                     'currency_id' => $usdId,
-                    'date_from' => $outbound->departure_date,
+                    'date_from' => $depDate,
                     'date_to' => $returnDate,
                     'adults' => 2,
                     'children' => 0,
@@ -205,13 +242,25 @@ class ProductionTourSeeder extends Seeder
                     ['tour_id' => $tourId, 'stay_order' => 2, 'city_id' => $bakuId, 'resort_id' => $bakuBlvdId, 'hotel_id' => $nobelHotelId, 'nights' => self::DEST_NIGHTS, 'meal_type_id' => $mealBBId, 'created_at' => now(), 'updated_at' => now()],
                 ]);
 
-                // Attach flights
+                // Attach flights: TAS→IST (leg 1), IST→GYD (leg 2), GYD→IST (leg 3), GYD→TAS (leg 4)
                 DB::table('tour_flight')->insert([
                     'tour_id' => $tourId, 'flight_id' => $outbound->id, 'direction' => 'outbound', 'leg_order' => 1,
                 ]);
+                $istGydFlight = $istGydFlights[$istGydDate] ?? null;
+                if ($istGydFlight) {
+                    DB::table('tour_flight')->insert([
+                        'tour_id' => $tourId, 'flight_id' => $istGydFlight->id, 'direction' => 'outbound', 'leg_order' => 2,
+                    ]);
+                }
+                $gydIstFlight = $gydIstFlights[$gydIstDate] ?? null;
+                if ($gydIstFlight) {
+                    DB::table('tour_flight')->insert([
+                        'tour_id' => $tourId, 'flight_id' => $gydIstFlight->id, 'direction' => 'return', 'leg_order' => 3,
+                    ]);
+                }
                 if ($returnFlight) {
                     DB::table('tour_flight')->insert([
-                        'tour_id' => $tourId, 'flight_id' => $returnFlight->id, 'direction' => 'return', 'leg_order' => 2,
+                        'tour_id' => $tourId, 'flight_id' => $returnFlight->id, 'direction' => 'return', 'leg_order' => 4,
                     ]);
                 }
 

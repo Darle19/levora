@@ -41,4 +41,8 @@ return [
         'password' => env('NEOINSURANCE_PASSWORD'),
     ],
 
+    'rapidapi' => [
+        'key' => env('RAPIDAPI_KEY'),
+    ],
+
 ];
