@@ -2,407 +2,267 @@
 
 namespace Database\Seeders;
 
-use App\Models\Airline;
-use App\Models\Airport;
-use App\Models\City;
-use App\Models\Country;
-use App\Models\Currency;
-use App\Models\Flight;
-use App\Models\Hotel;
-use App\Models\HotelCategory;
-use App\Models\MealType;
-use App\Models\ProgramType;
-use App\Models\Resort;
-use App\Models\Tour;
-use App\Models\TourStay;
-use App\Models\TransportType;
-use App\Models\Setting;
 use App\Services\TourPricingService;
-use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Seeds real tour data for production.
- * Prices are calculated via TourPricingService from DB hotel/flight rates.
- * Safe to run multiple times — uses firstOrCreate everywhere.
+ * Creates tours from existing flights + hotels.
+ * Requires: FlightSeeder (flights), BasicDataSeeder (reference data) to run first.
+ * Uses raw DB queries — no Eloquent model dependencies.
  */
 class ProductionTourSeeder extends Seeder
 {
-    private const ISTANBUL_NIGHTS = 2;
-    private const DESTINATION_NIGHTS = 4;
+    private const IST_NIGHTS = 2;
+    private const DEST_NIGHTS = 4;
     private const TOTAL_NIGHTS = 7;
-    private const DEFAULT_ADULTS = 2;
-    private const DEFAULT_CHILDREN = 0;
-    private const SEASON_START = '2026-04-01';
-    private const SEASON_END = '2026-06-30';
 
     public function run(): void
     {
-        $pricingService = app(TourPricingService::class);
+        // ── Settings ──
+        $this->ensureSetting('tour_hidden_fee', '60', 'number', 'pricing');
+        $this->ensureSetting('tour_agent_fee', '50', 'number', 'pricing');
 
-        // ── Fee settings ──
-        Setting::firstOrCreate(['key' => 'tour_hidden_fee'], ['value' => '60', 'type' => 'number', 'group' => 'pricing', 'label' => 'Hidden Fee per Person ($)']);
-        Setting::firstOrCreate(['key' => 'tour_agent_fee'], ['value' => '50', 'type' => 'number', 'group' => 'pricing', 'label' => 'Agent Fee per Person ($)']);
-
-        // ── Reference data ──
-        $usd = Currency::firstOrCreate(['code' => 'USD'], ['name_en' => 'US Dollar', 'name_ru' => 'Доллар США', 'name_uz' => 'AQSh dollari', 'symbol' => '$', 'is_active' => true]);
-        $mealBB = MealType::firstOrCreate(['code' => 'BB'], ['name_en' => 'Bed & Breakfast', 'name_ru' => 'Завтрак', 'name_uz' => 'Nonushta', 'is_active' => true]);
-        $transportAir = TransportType::firstOrCreate(['name_en' => 'Air'], ['name_ru' => 'Авиа', 'name_uz' => 'Avia', 'is_active' => true]);
-        $programType = ProgramType::firstOrCreate(['name_en' => 'Standard'], ['name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
-        $star3 = HotelCategory::firstOrCreate(['stars' => 3], ['name' => '3 stars', 'is_active' => true]);
-        $tourType = DB::table('tour_types')->first();
-        if (! $tourType) {
-            $tourTypeId = DB::table('tour_types')->insertGetId([
-                'name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart',
-                'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
-            ]);
-        } else {
-            $tourTypeId = $tourType->id;
+        // ── Reference data IDs ──
+        $usdId = DB::table('currencies')->where('code', 'USD')->value('id');
+        if (! $usdId) {
+            $this->command->error('USD currency not found. Run: php artisan db:seed first.');
+            return;
         }
 
+        $mealBBId = $this->ensureRow('meal_types', ['code' => 'BB'], ['name_en' => 'Bed & Breakfast', 'name_ru' => 'Завтрак']);
+        $transportId = $this->ensureRow('transport_types', ['name_en' => 'Airplane'], ['name_ru' => 'Авиа']);
+        $programId = $this->ensureRow('program_types', ['name_en' => 'Standard'], ['name_ru' => 'Стандарт']);
+        $tourTypeId = $this->ensureRow('tour_types', ['name_en' => 'Standard'], ['name_ru' => 'Стандарт']);
+        $star3Id = $this->ensureRow('hotel_categories', ['stars' => 3], ['name' => '3 stars']);
+
         // ── Countries ──
-        $uzbekistan = Country::firstOrCreate(['name_en' => 'Uzbekistan'], ['code' => 'UZ', 'name_ru' => 'Узбекистан', 'name_uz' => 'O\'zbekiston', 'is_active' => true, 'order' => 0]);
-        $turkey = Country::firstOrCreate(['name_en' => 'Turkey'], ['code' => 'TR', 'name_ru' => 'Турция', 'name_uz' => 'Turkiya', 'is_active' => true, 'order' => 1]);
-        $france = Country::firstOrCreate(['name_en' => 'France'], ['code' => 'FR', 'name_ru' => 'Франция', 'name_uz' => 'Frantsiya', 'is_active' => true, 'order' => 2]);
-        $azerbaijan = Country::firstOrCreate(['name_en' => 'Azerbaijan'], ['code' => 'AZ', 'name_ru' => 'Азербайджан', 'name_uz' => 'Ozarbayjon', 'is_active' => true, 'order' => 3]);
+        $trId = DB::table('countries')->where('name_en', 'Turkey')->value('id')
+            ?? $this->ensureRow('countries', ['name_en' => 'Turkey'], ['name_ru' => 'Турция', 'code' => 'TR']);
+        $frId = DB::table('countries')->where('name_en', 'France')->value('id')
+            ?? $this->ensureRow('countries', ['name_en' => 'France'], ['name_ru' => 'Франция', 'code' => 'FR']);
+        $azId = DB::table('countries')->where('name_en', 'Azerbaijan')->value('id')
+            ?? $this->ensureRow('countries', ['name_en' => 'Azerbaijan'], ['name_ru' => 'Азербайджан', 'code' => 'AZ']);
 
         // ── Cities ──
-        $tashkent = City::firstOrCreate(['name_en' => 'Tashkent'], ['name_ru' => 'Ташкент', 'name_uz' => 'Toshkent', 'country_id' => $uzbekistan->id, 'is_active' => true, 'order' => 1]);
-        $istanbul = City::firstOrCreate(['name_en' => 'Istanbul'], ['name_ru' => 'Стамбул', 'name_uz' => 'Istanbul', 'country_id' => $turkey->id, 'is_active' => true, 'order' => 2]);
-        $nice = City::firstOrCreate(['name_en' => 'Nice'], ['name_ru' => 'Ницца', 'name_uz' => 'Nitsa', 'country_id' => $france->id, 'is_active' => true, 'order' => 3]);
-        $baku = City::firstOrCreate(['name_en' => 'Baku'], ['name_ru' => 'Баку', 'name_uz' => 'Boku', 'country_id' => $azerbaijan->id, 'is_active' => true, 'order' => 4]);
+        $tashkentId = DB::table('cities')->where('name_en', 'Tashkent')->value('id');
+        $istanbulId = DB::table('cities')->where('name_en', 'Istanbul')->value('id')
+            ?? $this->ensureRow('cities', ['name_en' => 'Istanbul'], ['name_ru' => 'Стамбул', 'country_id' => $trId]);
+        $niceId = $this->ensureRow('cities', ['name_en' => 'Nice'], ['name_ru' => 'Ницца', 'country_id' => $frId]);
+        $bakuId = DB::table('cities')->where('name_en', 'Baku')->value('id')
+            ?? $this->ensureRow('cities', ['name_en' => 'Baku'], ['name_ru' => 'Баку', 'country_id' => $azId]);
+
+        if (! $tashkentId) {
+            $this->command->error('Tashkent city not found. Run: php artisan db:seed first.');
+            return;
+        }
 
         // ── Resorts ──
-        $sultanahmet = Resort::firstOrCreate(['name_en' => 'Sultanahmet'], ['name_ru' => 'Султанахмет', 'name_uz' => 'Sultanahmet', 'city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true, 'order' => 1]);
-        $fatih = Resort::firstOrCreate(['name_en' => 'Fatih'], ['name_ru' => 'Фатих', 'name_uz' => 'Fatih', 'city_id' => $istanbul->id, 'country_id' => $turkey->id, 'is_active' => true, 'order' => 2]);
-        $niceStade = Resort::firstOrCreate(['name_en' => 'Nice Stade'], ['name_ru' => 'Ницца Стад', 'name_uz' => 'Nice Stade', 'city_id' => $nice->id, 'country_id' => $france->id, 'is_active' => true, 'order' => 1]);
-        $bakuBoulevard = Resort::firstOrCreate(['name_en' => 'Baku Boulevard'], ['name_ru' => 'Бакинский бульвар', 'name_uz' => 'Boku bulvari', 'city_id' => $baku->id, 'country_id' => $azerbaijan->id, 'is_active' => true, 'order' => 1]);
+        $sultanahmetId = $this->ensureRow('resorts', ['name_en' => 'Sultanahmet'], ['name_ru' => 'Султанахмет', 'country_id' => $trId, 'city_id' => $istanbulId]);
+        $fatihId = $this->ensureRow('resorts', ['name_en' => 'Fatih'], ['name_ru' => 'Фатих', 'country_id' => $trId, 'city_id' => $istanbulId]);
+        $niceStadeId = $this->ensureRow('resorts', ['name_en' => 'Nice Stade'], ['name_ru' => 'Ницца Стад', 'country_id' => $frId, 'city_id' => $niceId]);
+        $bakuBlvdId = $this->ensureRow('resorts', ['name_en' => 'Baku Boulevard'], ['name_ru' => 'Бакинский бульвар', 'country_id' => $azId, 'city_id' => $bakuId]);
 
-        // ── Istanbul Hotels (prices per ROOM dbl with breakfast) ──
-        $istanbulHotels = [
-            ['name' => 'Grand Liza Hotel', 'pricePerRoom' => 45, 'resort' => $fatih],
-            ['name' => 'Grand Emir Hotel', 'pricePerRoom' => 50, 'resort' => $fatih],
-            ['name' => 'All Seasons Hotel Istanbul', 'pricePerRoom' => 55, 'resort' => $fatih],
-            ['name' => 'New Emin Hotel', 'pricePerRoom' => 61, 'resort' => $sultanahmet],
-            ['name' => 'River Hotel', 'pricePerRoom' => 62, 'resort' => $fatih],
-            ['name' => 'Grand Washington Hotel', 'pricePerRoom' => 75, 'resort' => $sultanahmet],
-            ['name' => 'Sorisso Hotel', 'pricePerRoom' => 75, 'resort' => $sultanahmet],
+        // ── Istanbul Hotels (price = per ROOM dbl with breakfast) ──
+        $istHotels = [
+            ['name' => 'Grand Liza Hotel', 'price' => 45, 'resort_id' => $fatihId],
+            ['name' => 'Grand Emir Hotel', 'price' => 50, 'resort_id' => $fatihId],
+            ['name' => 'All Seasons Hotel Istanbul', 'price' => 55, 'resort_id' => $fatihId],
+            ['name' => 'New Emin Hotel', 'price' => 61, 'resort_id' => $sultanahmetId],
+            ['name' => 'River Hotel', 'price' => 62, 'resort_id' => $fatihId],
+            ['name' => 'Grand Washington Hotel', 'price' => 75, 'resort_id' => $sultanahmetId],
+            ['name' => 'Sorisso Hotel', 'price' => 75, 'resort_id' => $sultanahmetId],
         ];
 
-        $istHotels = [];
-        foreach ($istanbulHotels as $h) {
-            $hotel = Hotel::firstOrCreate(
-                ['name' => $h['name']],
-                [
-                    'name_en' => $h['name'], 'name_ru' => $h['name'], 'name_uz' => $h['name'],
-                    'description' => 'Hotel in Istanbul', 'address' => 'Istanbul, Turkey',
-                    'resort_id' => $h['resort']->id, 'hotel_category_id' => $star3->id,
-                    'rating' => 3.5, 'is_active' => true,
-                    'price_per_person' => $h['pricePerRoom'], 'currency_id' => $usd->id,
-                ]
-            );
-            $hotel->update(['price_per_person' => $h['pricePerRoom']]);
-            $istHotels[] = $hotel;
+        $istHotelIds = [];
+        foreach ($istHotels as $h) {
+            $id = $this->ensureHotel($h['name'], $h['resort_id'], $star3Id, $h['price'], $usdId);
+            $istHotelIds[] = ['id' => $id, 'resort_id' => $h['resort_id'], 'price' => $h['price']];
         }
 
         // ── Nice Hotel ──
-        $niceHotel = Hotel::firstOrCreate(
-            ['name' => 'B&B HOTEL Nice Stade Riviera 3 étoiles'],
-            [
-                'name_en' => 'B&B HOTEL Nice Stade Riviera', 'name_ru' => 'B&B HOTEL Nice Stade Riviera', 'name_uz' => 'B&B HOTEL Nice Stade Riviera',
-                'description' => 'Hotel in Nice', 'address' => 'Nice, France',
-                'resort_id' => $niceStade->id, 'hotel_category_id' => $star3->id,
-                'rating' => 3.0, 'is_active' => true,
-                'price_per_person' => 110, 'currency_id' => $usd->id,
-            ]
-        );
+        $niceHotelId = $this->ensureHotel('B&B HOTEL Nice Stade Riviera 3 étoiles', $niceStadeId, $star3Id, 110, $usdId);
 
         // ── Baku Hotel ──
-        $nobelHotel = Hotel::firstOrCreate(
-            ['name' => 'Nobel Hotel'],
-            [
-                'name_en' => 'Nobel Hotel', 'name_ru' => 'Nobel Hotel', 'name_uz' => 'Nobel Hotel',
-                'description' => 'Hotel in Baku', 'address' => 'Baku, Azerbaijan',
-                'resort_id' => $bakuBoulevard->id, 'hotel_category_id' => $star3->id,
-                'rating' => 3.5, 'is_active' => true,
-                'price_per_person' => 50, 'currency_id' => $usd->id,
-            ]
-        );
-        $nobelHotel->update(['price_per_person' => 50]);
+        $nobelHotelId = $this->ensureHotel('Nobel Hotel', $bakuBlvdId, $star3Id, 50, $usdId);
 
-        // ── Airports & Airlines ──
-        $tasAirport = Airport::firstOrCreate(['code' => 'TAS'], ['name_en' => 'Tashkent International Airport', 'name_ru' => 'Международный аэропорт Ташкент', 'name_uz' => 'Toshkent xalqaro aeroporti', 'city_id' => $tashkent->id, 'is_active' => true]);
-        $istAirport = Airport::firstOrCreate(['code' => 'IST'], ['name_en' => 'Istanbul Airport', 'name_ru' => 'Аэропорт Стамбул', 'name_uz' => 'Istanbul aeroporti', 'city_id' => $istanbul->id, 'is_active' => true]);
-        $gydAirport = Airport::firstOrCreate(['code' => 'GYD'], ['name_en' => 'Heydar Aliyev International Airport', 'name_ru' => 'Международный аэропорт Гейдар Алиев', 'name_uz' => 'Haydar Aliyev xalqaro aeroporti', 'city_id' => $baku->id, 'is_active' => true]);
-        $nceAirport = Airport::firstOrCreate(['code' => 'NCE'], ['name_en' => 'Nice Côte d\'Azur Airport', 'name_ru' => 'Аэропорт Ницца Лазурный Берег', 'name_uz' => 'Nice aeroporti', 'city_id' => $nice->id, 'is_active' => true]);
-        $centrumAir = Airline::firstOrCreate(['code' => 'C2'], ['name' => 'Centrum Air', 'is_active' => true]);
+        // ── Get TAS→IST flight dates (tours only on these dates) ──
+        $tasAirportId = DB::table('airports')->where('code', 'TAS')->value('id');
+        $istAirportId = DB::table('airports')->where('code', 'IST')->value('id');
 
-        // ── Flights: TAS→IST (outbound) and GYD→TAS (return for Baku route) ──
-        $flightSchedule = [
-            // [route, from_airport, to_airport, date, soft_block_price, hard_block_price, dep_time, arr_time]
-            // TAS→IST outbound
-            ['TAS-IST', $tasAirport, $istAirport, '2026-04-13', 215, 215, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-04-20', 215, 215, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-04-27', 215, 215, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-05-04', 220, 220, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-05-11', 220, 220, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-05-18', 220, 220, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-05-25', 220, 220, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-06-01', 230, 230, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-06-08', 230, 230, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-06-15', 230, 230, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-06-22', 230, 230, '08:00', '11:30'],
-            ['TAS-IST', $tasAirport, $istAirport, '2026-06-29', 230, 230, '08:00', '11:30'],
-            // IST→NCE outbound (prices to be updated daily via admin)
-            ['IST-NCE', $istAirport, $nceAirport, '2026-04-15', 150, 150, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-04-22', 150, 150, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-04-29', 150, 150, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-05-06', 160, 160, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-05-13', 160, 160, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-05-20', 160, 160, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-05-27', 160, 160, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-06-03', 170, 170, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-06-10', 170, 170, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-06-17', 170, 170, '10:00', '12:30'],
-            ['IST-NCE', $istAirport, $nceAirport, '2026-06-24', 170, 170, '10:00', '12:30'],
-            // NCE→IST return
-            ['NCE-IST', $nceAirport, $istAirport, '2026-04-19', 140, 140, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-04-26', 140, 140, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-05-03', 140, 140, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-05-10', 150, 150, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-05-17', 150, 150, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-05-24', 150, 150, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-05-31', 150, 150, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-06-07', 160, 160, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-06-14', 160, 160, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-06-21', 160, 160, '13:00', '17:30'],
-            ['NCE-IST', $nceAirport, $istAirport, '2026-06-28', 160, 160, '13:00', '17:30'],
-            // GYD→TAS return
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-04-20', 180, 180, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-04-27', 180, 180, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-04', 180, 180, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-11', 180, 180, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-18', 180, 180, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-05-25', 180, 180, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-01', 190, 190, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-08', 190, 190, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-15', 190, 190, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-22', 190, 190, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-06-29', 190, 190, '14:00', '18:30'],
-            ['GYD-TAS', $gydAirport, $tasAirport, '2026-07-06', 190, 190, '14:00', '18:30'],
-        ];
+        $tasIstFlights = DB::table('flights')
+            ->where('from_airport_id', $tasAirportId)
+            ->where('to_airport_id', $istAirportId)
+            ->where('is_active', true)
+            ->orderBy('departure_date')
+            ->get();
 
-        $softBlockSeats = 20;
-        $flightsCreated = 0;
-        $allFlights = [];
-
-        foreach ($flightSchedule as [$route, $fromAirport, $toAirport, $date, $softPrice, $hardPrice, $depTime, $arrTime]) {
-            $flight = Flight::firstOrCreate(
-                [
-                    'airline_id' => $centrumAir->id,
-                    'from_airport_id' => $fromAirport->id,
-                    'to_airport_id' => $toAirport->id,
-                    'departure_date' => $date,
-                ],
-                [
-                    'flight_number' => 'C2 ' . str_replace('-', '', $route),
-                    'departure_time' => $depTime,
-                    'arrival_date' => $date,
-                    'arrival_time' => $arrTime,
-                    'currency_id' => $usd->id,
-                    'price_adult' => $softPrice,
-                    'soft_block_price' => $softPrice,
-                    'hard_block_price' => $hardPrice,
-                    'available_seats' => $softBlockSeats,
-                    'class_type' => 'economy',
-                    'is_active' => true,
-                ]
-            );
-            $allFlights[$route . '-' . $date] = $flight;
-            $flightsCreated++;
-        }
-        $this->command->info("Ensured {$flightsCreated} flights exist.");
-
-        // ── Shared tour defaults ──
-        $tourDefaults = [
-            'nights' => self::TOTAL_NIGHTS,
-            'adults' => self::DEFAULT_ADULTS,
-            'children' => self::DEFAULT_CHILDREN,
-            'price' => 0,
-            'meal_type_id' => $mealBB->id,
-            'transport_type_id' => $transportAir->id,
-            'currency_id' => $usd->id,
-            'tour_type_id' => $tourTypeId,
-            'program_type_id' => $programType->id,
-            'is_available' => true,
-            'is_hot' => false,
-        ];
-
-        // ── Generate Istanbul+Nice Tours ──
-        // Flight legs: TAS→IST (day 0), IST→NCE (day 2), NCE→IST (day 6), IST→TAS (day 7)
-        $niceCount = $this->generateRoute(
-            istanbulHotels: $istHotels,
-            destinationHotel: $niceHotel,
-            departureCity: $tashkent,
-            istanbulCity: $istanbul,
-            destinationCity: $nice,
-            destinationCountry: $france,
-            destinationResort: $niceStade,
-            sultanahmet: $sultanahmet,
-            tourDefaults: $tourDefaults,
-            mealTypeId: $mealBB->id,
-            pricingService: $pricingService,
-            allFlights: $allFlights,
-            flightLegs: [
-                ['route' => 'TAS-IST', 'day_offset' => 0, 'direction' => 'outbound', 'leg' => 1],
-                ['route' => 'IST-NCE', 'day_offset' => 2, 'direction' => 'outbound', 'leg' => 2],
-                ['route' => 'NCE-IST', 'day_offset' => 6, 'direction' => 'return', 'leg' => 3],
-            ],
-        );
-        $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
-
-        // ── Generate Istanbul+Baku Tours ──
-        // Tours created ONLY on TAS→IST flight dates (not arbitrary weekly)
-        $bakuHotels = Hotel::where('resort_id', $bakuBoulevard->id)->where('is_active', true)->get();
-        if ($bakuHotels->isEmpty()) {
-            $this->command->warn('No Baku hotels found — skipping Istanbul+Baku tours.');
-        } else {
-            $bakuCount = 0;
-
-            // Get actual TAS→IST departure dates from flights
-            $tasIstDates = collect($allFlights)
-                ->filter(fn ($f, $k) => str_starts_with($k, 'TAS-IST-'))
-                ->map(fn ($f) => $f->departure_date)
-                ->values();
-
-            foreach ($tasIstDates as $departureDate) {
-                foreach ($istHotels as $istHotel) {
-                    foreach ($bakuHotels as $bakuHotel) {
-                        $exists = Tour::where('date_from', $departureDate->format('Y-m-d'))
-                            ->where('hotel_id', $bakuHotel->id)
-                            ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
-                            ->exists();
-                        if ($exists) { continue; }
-
-                        $tour = Tour::create(array_merge($tourDefaults, [
-                            'date_from' => $departureDate->format('Y-m-d'),
-                            'date_to' => $departureDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
-                            'departure_city_id' => $tashkent->id,
-                            'country_id' => $azerbaijan->id,
-                            'hotel_id' => $bakuHotel->id,
-                            'resort_id' => $bakuBoulevard->id,
-                        ]));
-
-                        TourStay::create([
-                            'tour_id' => $tour->id, 'city_id' => $istanbul->id,
-                            'resort_id' => $istHotel->resort_id, 'hotel_id' => $istHotel->id,
-                            'nights' => self::ISTANBUL_NIGHTS, 'stay_order' => 1, 'meal_type_id' => $mealBB->id,
-                        ]);
-                        TourStay::create([
-                            'tour_id' => $tour->id, 'city_id' => $baku->id,
-                            'resort_id' => $bakuBoulevard->id, 'hotel_id' => $bakuHotel->id,
-                            'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealBB->id,
-                        ]);
-
-                        // Attach flights: TAS→IST (day 0), GYD→TAS (day 7)
-                        $this->attachFlightLegs($tour, $allFlights, $departureDate, [
-                            ['route' => 'TAS-IST', 'day_offset' => 0, 'direction' => 'outbound', 'leg' => 1],
-                            ['route' => 'GYD-TAS', 'day_offset' => self::TOTAL_NIGHTS, 'direction' => 'return', 'leg' => 2],
-                        ]);
-
-                        $pricingService->recalculate($tour);
-                        $bakuCount++;
-                    }
-                }
-            }
-            $this->command->info("Created {$bakuCount} Istanbul+Baku tours.");
+        if ($tasIstFlights->isEmpty()) {
+            $this->command->error('No TAS→IST flights found. Run: php artisan db:seed --class=FlightSeeder first.');
+            return;
         }
 
-        cache()->forget('tour_filter_options');
-    }
+        $this->command->info("Found {$tasIstFlights->count()} TAS→IST flights.");
 
-    /**
-     * Generate tours based on actual TAS→IST flight dates (not arbitrary weekly ranges).
-     * Creates: departureDates × istanbulHotels × destinationHotel combinations.
-     */
-    private function generateRoute(
-        array $istanbulHotels,
-        Hotel $destinationHotel,
-        City $departureCity,
-        City $istanbulCity,
-        City $destinationCity,
-        Country $destinationCountry,
-        Resort $destinationResort,
-        Resort $sultanahmet,
-        array $tourDefaults,
-        int $mealTypeId,
-        TourPricingService $pricingService,
-        array $allFlights = [],
-        array $flightLegs = [],
-    ): int {
-        // Get actual departure dates from TAS→IST flights
-        $departureDates = collect($allFlights)
-            ->filter(fn ($f, $k) => str_starts_with($k, 'TAS-IST-'))
-            ->map(fn ($f) => $f->departure_date)
-            ->values();
+        // ── GYD→TAS flights for return legs ──
+        $gydAirportId = DB::table('airports')->where('code', 'GYD')->value('id');
+        $gydTasFlights = DB::table('flights')
+            ->where('from_airport_id', $gydAirportId)
+            ->where('to_airport_id', $tasAirportId)
+            ->where('is_active', true)
+            ->get()
+            ->keyBy(fn ($f) => $f->departure_date);
 
-        $count = 0;
-
-        foreach ($departureDates as $departureDate) {
-            foreach ($istanbulHotels as $istHotel) {
-                $exists = Tour::where('date_from', $departureDate->format('Y-m-d'))
-                    ->where('hotel_id', $destinationHotel->id)
-                    ->whereHas('stays', fn ($q) => $q->where('hotel_id', $istHotel->id))
+        // ── Generate Istanbul+Nice tours ──
+        $niceCount = 0;
+        foreach ($tasIstFlights as $outbound) {
+            foreach ($istHotelIds as $istH) {
+                $exists = DB::table('tours')
+                    ->where('date_from', $outbound->departure_date)
+                    ->where('hotel_id', $niceHotelId)
+                    ->where('country_id', $frId)
                     ->exists();
                 if ($exists) { continue; }
 
-                $tour = Tour::create(array_merge($tourDefaults, [
-                    'date_from' => $departureDate->format('Y-m-d'),
-                    'date_to' => $departureDate->copy()->addDays(self::TOTAL_NIGHTS)->format('Y-m-d'),
-                    'departure_city_id' => $departureCity->id,
-                    'country_id' => $destinationCountry->id,
-                    'hotel_id' => $destinationHotel->id,
-                    'resort_id' => $destinationResort->id,
-                ]));
-
-                TourStay::create([
-                    'tour_id' => $tour->id, 'city_id' => $istanbulCity->id,
-                    'resort_id' => $istHotel->resort_id, 'hotel_id' => $istHotel->id,
-                    'nights' => self::ISTANBUL_NIGHTS, 'stay_order' => 1, 'meal_type_id' => $mealTypeId,
+                $tourId = DB::table('tours')->insertGetId([
+                    'tour_type_id' => $tourTypeId,
+                    'program_type_id' => $programId,
+                    'country_id' => $frId,
+                    'resort_id' => $niceStadeId,
+                    'hotel_id' => $niceHotelId,
+                    'transport_type_id' => $transportId,
+                    'departure_city_id' => $tashkentId,
+                    'nights' => self::TOTAL_NIGHTS,
+                    'price' => 0,
+                    'currency_id' => $usdId,
+                    'date_from' => $outbound->departure_date,
+                    'date_to' => date('Y-m-d', strtotime($outbound->departure_date . ' +' . self::TOTAL_NIGHTS . ' days')),
+                    'adults' => 2,
+                    'children' => 0,
+                    'meal_type_id' => $mealBBId,
+                    'is_available' => true,
+                    'is_hot' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
-                TourStay::create([
-                    'tour_id' => $tour->id, 'city_id' => $destinationCity->id,
-                    'resort_id' => $destinationResort->id, 'hotel_id' => $destinationHotel->id,
-                    'nights' => self::DESTINATION_NIGHTS, 'stay_order' => 2, 'meal_type_id' => $mealTypeId,
+
+                // Stays
+                DB::table('tour_stays')->insert([
+                    ['tour_id' => $tourId, 'stay_order' => 1, 'city_id' => $istanbulId, 'resort_id' => $istH['resort_id'], 'hotel_id' => $istH['id'], 'nights' => self::IST_NIGHTS, 'meal_type_id' => $mealBBId, 'created_at' => now(), 'updated_at' => now()],
+                    ['tour_id' => $tourId, 'stay_order' => 2, 'city_id' => $niceId, 'resort_id' => $niceStadeId, 'hotel_id' => $niceHotelId, 'nights' => self::DEST_NIGHTS, 'meal_type_id' => $mealBBId, 'created_at' => now(), 'updated_at' => now()],
                 ]);
 
-                $this->attachFlightLegs($tour, $allFlights, $departureDate, $flightLegs);
+                // Attach outbound flight TAS→IST
+                DB::table('tour_flight')->insert([
+                    'tour_id' => $tourId, 'flight_id' => $outbound->id, 'direction' => 'outbound', 'leg_order' => 1,
+                ]);
 
-                $pricingService->recalculate($tour);
-                $count++;
+                $niceCount++;
             }
         }
+        $this->command->info("Created {$niceCount} Istanbul+Nice tours.");
 
-        return $count;
+        // ── Generate Istanbul+Baku tours ──
+        $bakuCount = 0;
+        foreach ($tasIstFlights as $outbound) {
+            // Find matching GYD→TAS return flight (+7 days)
+            $returnDate = date('Y-m-d', strtotime($outbound->departure_date . ' +' . self::TOTAL_NIGHTS . ' days'));
+            $returnFlight = $gydTasFlights[$returnDate] ?? null;
+
+            foreach ($istHotelIds as $istH) {
+                $exists = DB::table('tours')
+                    ->where('date_from', $outbound->departure_date)
+                    ->where('hotel_id', $nobelHotelId)
+                    ->where('country_id', $azId)
+                    ->exists();
+                if ($exists) { continue; }
+
+                $tourId = DB::table('tours')->insertGetId([
+                    'tour_type_id' => $tourTypeId,
+                    'program_type_id' => $programId,
+                    'country_id' => $azId,
+                    'resort_id' => $bakuBlvdId,
+                    'hotel_id' => $nobelHotelId,
+                    'transport_type_id' => $transportId,
+                    'departure_city_id' => $tashkentId,
+                    'nights' => self::TOTAL_NIGHTS,
+                    'price' => 0,
+                    'currency_id' => $usdId,
+                    'date_from' => $outbound->departure_date,
+                    'date_to' => $returnDate,
+                    'adults' => 2,
+                    'children' => 0,
+                    'meal_type_id' => $mealBBId,
+                    'is_available' => true,
+                    'is_hot' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // Stays
+                DB::table('tour_stays')->insert([
+                    ['tour_id' => $tourId, 'stay_order' => 1, 'city_id' => $istanbulId, 'resort_id' => $istH['resort_id'], 'hotel_id' => $istH['id'], 'nights' => self::IST_NIGHTS, 'meal_type_id' => $mealBBId, 'created_at' => now(), 'updated_at' => now()],
+                    ['tour_id' => $tourId, 'stay_order' => 2, 'city_id' => $bakuId, 'resort_id' => $bakuBlvdId, 'hotel_id' => $nobelHotelId, 'nights' => self::DEST_NIGHTS, 'meal_type_id' => $mealBBId, 'created_at' => now(), 'updated_at' => now()],
+                ]);
+
+                // Attach flights
+                DB::table('tour_flight')->insert([
+                    'tour_id' => $tourId, 'flight_id' => $outbound->id, 'direction' => 'outbound', 'leg_order' => 1,
+                ]);
+                if ($returnFlight) {
+                    DB::table('tour_flight')->insert([
+                        'tour_id' => $tourId, 'flight_id' => $returnFlight->id, 'direction' => 'return', 'leg_order' => 2,
+                    ]);
+                }
+
+                $bakuCount++;
+            }
+        }
+        $this->command->info("Created {$bakuCount} Istanbul+Baku tours.");
+
+        // ── Recalculate all prices ──
+        $pricingService = app(TourPricingService::class);
+        $recalculated = $pricingService->recalculateAll();
+        $this->command->info("Recalculated {$recalculated} tour prices.");
+
+        DB::table('cache')->truncate();
     }
 
-    /**
-     * Attach multiple flight legs to a tour.
-     * Each leg: ['route' => 'IST-NCE', 'day_offset' => 2, 'direction' => 'outbound', 'leg' => 2]
-     */
-    private function attachFlightLegs(Tour $tour, array $allFlights, Carbon $departureDate, array $legs): void
+    private function ensureSetting(string $key, string $value, string $type, string $group): void
     {
-        foreach ($legs as $leg) {
-            $flightDate = $departureDate->copy()->addDays($leg['day_offset']);
-            $key = $leg['route'] . '-' . $flightDate->format('Y-m-d');
-            $flight = $allFlights[$key] ?? null;
-
-            if ($flight && ! $tour->flights()->where('flight_id', $flight->id)->exists()) {
-                $tour->flights()->attach($flight->id, [
-                    'direction' => $leg['direction'],
-                    'leg_order' => $leg['leg'],
-                ]);
-            }
+        if (! DB::table('settings')->where('key', $key)->exists()) {
+            DB::table('settings')->insert([
+                'key' => $key, 'value' => $value, 'type' => $type, 'group' => $group,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
         }
+    }
+
+    private function ensureRow(string $table, array $where, array $extra = []): int
+    {
+        $row = DB::table($table)->where($where)->first();
+        if ($row) {
+            return $row->id;
+        }
+
+        return DB::table($table)->insertGetId(array_merge($where, $extra, [
+            'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]));
+    }
+
+    private function ensureHotel(string $name, int $resortId, int $categoryId, float $price, int $currencyId): int
+    {
+        $row = DB::table('hotels')->where('name', $name)->first();
+        if ($row) {
+            DB::table('hotels')->where('id', $row->id)->update(['price_per_person' => $price]);
+            return $row->id;
+        }
+
+        return DB::table('hotels')->insertGetId([
+            'name' => $name, 'name_en' => $name, 'resort_id' => $resortId,
+            'hotel_category_id' => $categoryId, 'rating' => 3.5, 'is_active' => true,
+            'price_per_person' => $price, 'currency_id' => $currencyId,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 }
