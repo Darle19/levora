@@ -89,7 +89,7 @@ class BasicDataSeeder extends Seeder
         $turkish_airlines = \App\Models\Airline::create(['name' => 'Turkish Airlines', 'code' => 'TK', 'is_active' => true]);
 
         // Tour Types
-        \App\Models\TourType::create(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
+        \Illuminate\Support\Facades\DB::table('tour_types')->insert(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
 
         // No sample tours — real tours created by ProductionTourSeeder
 
