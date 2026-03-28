@@ -454,7 +454,7 @@
             document.getElementById('departure_city_id').value = f.departure_city_id;
         }
 
-        // Country — last destination (Nice → France, Bali → Indonesia)
+        // Country — set visually only (route auto-fill handles cities below)
         if (f.country_id) {
             document.getElementById('country_id').value = f.country_id;
         }
