@@ -467,19 +467,18 @@
         if (f.nights_from) document.getElementById('nights_from').value = f.nights_from;
         if (f.nights_to) document.getElementById('nights_to').value = f.nights_to;
 
-        // Render cities from route, then show hotels by city
+        // Render cities from route — show all cities in this tour's stays
         const rc = document.getElementById('resortsContainer');
         const hc = document.getElementById('hotelsContainer');
         let cityHtml = '';
-        let allCityIds = new Set((f.city_ids || []).map(Number));
+        const routeCityIds = (f.city_ids || []).map(Number);
 
-        // Find city names from countries→cities data
-        const allCities = @json($cities->pluck('name_en', 'id'));
-        for (const [cityId, cityName] of Object.entries(allCities)) {
-            if (allCityIds.has(Number(cityId))) {
-                cityHtml += `<label><input type="checkbox" name="city_ids[]" value="${cityId}" class="resort-checkbox" checked> ${cityName}</label>`;
+        // Show cities from the route + their hotels
+        citiesWithHotels.forEach(c => {
+            if (routeCityIds.includes(Number(c.id))) {
+                cityHtml += `<label><input type="checkbox" name="city_ids[]" value="${c.id}" class="resort-checkbox" checked> ${c.name_en}</label>`;
             }
-        }
+        });
         rc.innerHTML = cityHtml || '<label style="color:#999;padding:20px 0;">No cities</label>';
         document.querySelectorAll('.resort-checkbox').forEach(cb => cb.addEventListener('change', updateHotelsByCity));
         document.getElementById('resorts_all').checked = true;
