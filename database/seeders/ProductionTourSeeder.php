@@ -45,7 +45,7 @@ class ProductionTourSeeder extends Seeder
         Setting::firstOrCreate(['key' => 'tour_agent_fee'], ['value' => '50', 'type' => 'number', 'group' => 'pricing', 'label' => 'Agent Fee per Person ($)']);
 
         // ── Reference data ──
-        $usd = Currency::firstOrCreate(['code' => 'USD'], ['name' => 'US Dollar', 'symbol' => '$', 'is_active' => true]);
+        $usd = Currency::firstOrCreate(['code' => 'USD'], ['name_en' => 'US Dollar', 'name_ru' => 'Доллар США', 'name_uz' => 'AQSh dollari', 'symbol' => '$', 'is_active' => true]);
         $mealBB = MealType::firstOrCreate(['code' => 'BB'], ['name_en' => 'Bed & Breakfast', 'name_ru' => 'Завтрак', 'name_uz' => 'Nonushta', 'is_active' => true]);
         $transportAir = TransportType::firstOrCreate(['name_en' => 'Air'], ['name_ru' => 'Авиа', 'name_uz' => 'Avia', 'is_active' => true]);
         $programType = ProgramType::firstOrCreate(['name_en' => 'Standard'], ['name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
