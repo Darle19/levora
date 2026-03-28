@@ -455,12 +455,12 @@
     @endphp
     const citiesWithHotels = @json($citiesWithHotels);
 
-    // Date → seat availability map (green >10, yellow 1-10, red 0)
-    const dateSeats = @json($dateSeats ?? []);
+    // Active date→seats map — updated when route changes
+    let activeDateSeats = {};
 
-    // Initialize flatpickr with seat-colored departure dates
-    (function() {
-        const fpConfig = {
+    // Flatpickr config builder — uses activeDateSeats for coloring
+    function buildFpConfig() {
+        return {
             dateFormat: 'Y-m-d',
             altInput: true,
             altFormat: 'd.m.Y',
@@ -468,8 +468,8 @@
             disableMobile: true,
             onDayCreate: function(dObj, dStr, fp, dayElem) {
                 const d = dayElem.dateObj;
-                const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                const seats = dateSeats[dateStr];
+                const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                const seats = activeDateSeats[ds];
                 if (seats !== undefined) {
                     if (seats > 10) dayElem.classList.add('seats-green');
                     else if (seats > 0) dayElem.classList.add('seats-yellow');
@@ -477,24 +477,41 @@
                 }
             }
         };
+    }
 
-        const fpFrom = flatpickr('#date_from', {
-            ...fpConfig,
-            defaultDate: document.getElementById('date_from').value || 'today',
-            onChange: function(sel) {
-                if (sel[0] && fpTo) fpTo.set('minDate', sel[0]);
-            }
+    // Initialize flatpickr
+    let fpFrom = flatpickr('#date_from', {
+        ...buildFpConfig(),
+        defaultDate: document.getElementById('date_from').value || 'today',
+        onChange: function(sel) { if (sel[0] && fpTo) fpTo.set('minDate', sel[0]); }
+    });
+    let fpTo = flatpickr('#date_to', {
+        ...buildFpConfig(),
+        defaultDate: document.getElementById('date_to').value || null,
+    });
+    window._fpFrom = fpFrom;
+    window._fpTo = fpTo;
+
+    // Rebuild calendars when route changes (new seat data)
+    function updateCalendarSeats(newDateSeats) {
+        activeDateSeats = newDateSeats || {};
+        // Destroy and recreate to apply new onDayCreate
+        const fromVal = fpFrom.selectedDates[0] || null;
+        const toVal = fpTo.selectedDates[0] || null;
+        fpFrom.destroy();
+        fpTo.destroy();
+        fpFrom = flatpickr('#date_from', {
+            ...buildFpConfig(),
+            defaultDate: fromVal,
+            onChange: function(sel) { if (sel[0] && fpTo) fpTo.set('minDate', sel[0]); }
         });
-
-        const fpTo = flatpickr('#date_to', {
-            ...fpConfig,
-            defaultDate: document.getElementById('date_to').value || null,
+        fpTo = flatpickr('#date_to', {
+            ...buildFpConfig(),
+            defaultDate: toVal,
         });
-
-        // Expose for route auto-fill
         window._fpFrom = fpFrom;
         window._fpTo = fpTo;
-    })();
+    }
 
     // Tour Route → auto-fill all filters
     document.querySelector('select[name="tour_route"]').addEventListener('change', function() {
@@ -506,14 +523,15 @@
             document.getElementById('departure_city_id').value = f.departure_city_id;
         }
 
-        // Country — set visually only (route auto-fill handles cities below)
+        // Country
         if (f.country_id) {
             document.getElementById('country_id').value = f.country_id;
         }
 
-        // Dates (use flatpickr setDate for proper display)
-        if (f.date_from && window._fpFrom) window._fpFrom.setDate(f.date_from);
-        if (f.date_to && window._fpTo) window._fpTo.setDate(f.date_to);
+        // Update calendar with route-specific seat data, then set dates
+        updateCalendarSeats(f.date_seats || {});
+        if (f.date_from) window._fpFrom.setDate(f.date_from);
+        if (f.date_to) window._fpTo.setDate(f.date_to);
 
         // Nights
         if (f.nights_from) document.getElementById('nights_from').value = f.nights_from;

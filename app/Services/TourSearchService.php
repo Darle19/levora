@@ -72,6 +72,14 @@ class TourSearchService
             $dateTo = $pathGroup->max('departure_date')?->format('Y-m-d');
             $nights = $firstPath->nights;
 
+            // Build date → min seats for this route
+            $routeDateSeats = [];
+            foreach ($pathGroup as $fp) {
+                $date = $fp->departure_date->format('Y-m-d');
+                $minSeats = $fp->legs->min(fn ($leg) => $leg->flight->available_seats ?? 0);
+                $routeDateSeats[$date] = $minSeats;
+            }
+
             $routes[] = [
                 'slug' => $slug,
                 'label' => $routeName,
@@ -84,6 +92,7 @@ class TourSearchService
                     'nights_to' => $nights,
                     'date_from' => $dateFrom,
                     'date_to' => $dateTo,
+                    'date_seats' => $routeDateSeats,
                 ],
             ];
         }
