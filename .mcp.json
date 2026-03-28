@@ -15,6 +15,19 @@
             "env": {
                 "SITE_PATH": "C:\\Users\\user\\Herd\\malaktour"
             }
-        }
+        },
+        "RapidAPI Hub - Google Flights Scraper": {
+        "command": "npx",
+        "args": [
+            "mcp-remote",
+            "https://mcp.rapidapi.com",
+            "--header",
+            "x-api-host: google-flights-scraper.p.rapidapi.com",
+            "--header",
+            "x-api-key: 3ff42161d9msh0ecfa8eedf8335cp1c6cd2jsn06128f7395bd"
+        ]
+    }
+    
+
     }
 }

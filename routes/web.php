@@ -11,7 +11,6 @@ use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\Search\CrossingTourSearchController;
 use App\Http\Controllers\Search\ExcursionSearchController;
 use App\Http\Controllers\Search\HotelSearchController;
-use App\Http\Controllers\Search\TicketSearchController;
 use App\Http\Controllers\Search\TourSearchController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,8 +25,7 @@ Route::prefix('search')->name('search.')->group(function () {
     Route::post('/tours', [TourSearchController::class, 'search'])->name('tours.search');
     Route::get('/tours/results', [TourSearchController::class, 'results'])->name('tours.results');
     Route::get('/hotels', [HotelSearchController::class, 'index'])->name('hotels');
-    Route::get('/tickets', [TicketSearchController::class, 'index'])->name('tickets');
-    Route::post('/tickets', [TicketSearchController::class, 'search'])->name('tickets.search');
+    Route::get('/tickets', fn () => redirect()->route('search.tours'))->name('tickets');
     Route::get('/excursions', [ExcursionSearchController::class, 'index'])->name('excursions');
     Route::get('/crossing-tours', [CrossingTourSearchController::class, 'index'])->name('crossing-tours');
 });
