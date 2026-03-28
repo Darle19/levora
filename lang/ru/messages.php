@@ -149,6 +149,7 @@ return [
         'search_hotel' => 'Поиск отелей...',
         'filters' => 'Фильтры',
         'tour_route' => 'Тур',
+        'cities' => 'Города',
     ],
 
     // Footer

@@ -116,6 +116,7 @@ return [
         'tour_preferences' => 'Tour Preferences',
         'tour_type' => 'Tour Type',
         'tour_route' => 'Tour',
+        'cities' => 'Cities',
         'any_type' => 'Any type',
         'program_type' => 'Program Type',
         'any_program' => 'Any program',

@@ -407,6 +407,14 @@
     const tourRouteFilters = @json(collect($tourRoutes)->keyBy('slug')->map(fn($r) => $r['filters']));
     const departureDates = @json($departureDates ?? []);
 
+    // Cities that have hotels (for route auto-fill and country filter)
+    @php
+        $citiesWithHotels = \App\Models\City::whereIn('id', \App\Models\Hotel::where('is_active', true)->whereNotNull('city_id')->distinct()->pluck('city_id'))
+            ->where('is_active', true)
+            ->get(['id', 'name_en', 'country_id']);
+    @endphp
+    const citiesWithHotels = @json($citiesWithHotels);
+
     // Initialize flatpickr with green departure dates
     (function() {
         const greenDates = new Set(departureDates);
@@ -494,14 +502,6 @@
             }
         }, 50);
     });
-
-    // All cities that have hotels
-    @php
-        $citiesWithHotels = \App\Models\City::whereIn('id', \App\Models\Hotel::where('is_active', true)->whereNotNull('city_id')->distinct()->pluck('city_id'))
-            ->where('is_active', true)
-            ->get(['id', 'name_en', 'country_id']);
-    @endphp
-    const citiesWithHotels = @json($citiesWithHotels);
 
     // Country → Cities (show cities that have hotels)
     document.getElementById('country_id').addEventListener('change', function() {
