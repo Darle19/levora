@@ -460,15 +460,12 @@
 
     // Flatpickr config builder — uses activeDateSeats for coloring
     function buildFpConfig() {
-        // Only allow clicking on dates that have flights
-        const enabledDates = Object.keys(activeDateSeats);
         return {
             dateFormat: 'Y-m-d',
             altInput: true,
             altFormat: 'd.m.Y',
             minDate: 'today',
             disableMobile: true,
-            enable: enabledDates.length > 0 ? enabledDates : undefined,
             onDayCreate: function(dObj, dStr, fp, dayElem) {
                 const d = dayElem.dateObj;
                 const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
