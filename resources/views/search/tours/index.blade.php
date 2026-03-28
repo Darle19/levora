@@ -403,8 +403,6 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-    const resortsByCountry = @json($resortsByCountry ?? []);
-    const hotelsByResort = @json($hotelsByResort ?? []);
     const hotelsByCity = @json($hotelsByCity ?? []);
     const tourRouteFilters = @json(collect($tourRoutes)->keyBy('slug')->map(fn($r) => $r['filters']));
     const departureDates = @json($departureDates ?? []);
@@ -498,6 +496,13 @@
         }, 50);
     });
 
+    // All cities that have hotels (keyed by city_id)
+    const citiesWithHotels = @json(
+        \App\Models\City::whereIn('id', \App\Models\Hotel::where('is_active', true)->whereNotNull('city_id')->distinct()->pluck('city_id'))
+            ->where('is_active', true)
+            ->get(['id', 'name_en', 'country_id'])
+    );
+
     // Country → Cities (show cities that have hotels)
     document.getElementById('country_id').addEventListener('change', function() {
         const countryId = this.value;
@@ -507,16 +512,10 @@
             document.getElementById('hotelsContainer').innerHTML = '<label style="color:#999;text-align:center;padding:20px 0;">Select a country first</label>';
             return;
         }
-        // Find cities that have hotels in this country (via resorts)
-        const resorts = resortsByCountry[countryId] || [];
-        const cityNames = {};
-        resorts.forEach(r => {
-            if (r.city) cityNames[r.city.id] = r.city.name_en || r.city.name;
-        });
-        const cities = Object.entries(cityNames);
+        const cities = citiesWithHotels.filter(c => c.country_id == countryId);
         if (!cities.length) { rc.innerHTML = '<label style="color:#999;padding:20px 0;">No cities</label>'; return; }
-        rc.innerHTML = cities.map(([id, name]) => `
-            <label><input type="checkbox" name="city_ids[]" value="${id}" class="resort-checkbox"> ${name}</label>
+        rc.innerHTML = cities.map(c => `
+            <label><input type="checkbox" name="city_ids[]" value="${c.id}" class="resort-checkbox"> ${c.name_en}</label>
         `).join('');
         document.querySelectorAll('.resort-checkbox').forEach(cb => cb.addEventListener('change', updateHotelsByCity));
         updateResortsAllCheckbox();
