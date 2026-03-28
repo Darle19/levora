@@ -474,7 +474,7 @@
         let allCityIds = new Set((f.city_ids || []).map(Number));
 
         // Find city names from countries→cities data
-        const allCities = @json(\App\Models\City::where('is_active', true)->pluck('name_en', 'id'));
+        const allCities = @json($cities->pluck('name_en', 'id'));
         for (const [cityId, cityName] of Object.entries(allCities)) {
             if (allCityIds.has(Number(cityId))) {
                 cityHtml += `<label><input type="checkbox" name="city_ids[]" value="${cityId}" class="resort-checkbox" checked> ${cityName}</label>`;
@@ -496,12 +496,13 @@
         }, 50);
     });
 
-    // All cities that have hotels (keyed by city_id)
-    const citiesWithHotels = @json(
-        \App\Models\City::whereIn('id', \App\Models\Hotel::where('is_active', true)->whereNotNull('city_id')->distinct()->pluck('city_id'))
+    // All cities that have hotels
+    @php
+        $citiesWithHotels = \App\Models\City::whereIn('id', \App\Models\Hotel::where('is_active', true)->whereNotNull('city_id')->distinct()->pluck('city_id'))
             ->where('is_active', true)
-            ->get(['id', 'name_en', 'country_id'])
-    );
+            ->get(['id', 'name_en', 'country_id']);
+    @endphp
+    const citiesWithHotels = @json($citiesWithHotels);
 
     // Country → Cities (show cities that have hotels)
     document.getElementById('country_id').addEventListener('change', function() {
@@ -528,7 +529,7 @@
         if (!sel.length) { hc.innerHTML = '<label style="color:#999;padding:20px 0;">Select cities</label>'; return; }
 
         let html = '';
-        const allCityNames = @json(\App\Models\City::where('is_active', true)->pluck('name_en', 'id'));
+        const allCityNames = @json($cities->pluck('name_en', 'id'));
         sel.forEach(cityId => {
             const hotels = hotelsByCity[cityId] || [];
             const cityName = allCityNames[cityId] || 'City ' + cityId;
