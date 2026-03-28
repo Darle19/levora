@@ -54,11 +54,8 @@ class BasicDataSeeder extends Seeder
         $cairo = \App\Models\City::create(['country_id' => $egypt->id, 'name_en' => 'Cairo', 'name_ru' => 'Каир', 'name_uz' => 'Qohira', 'is_active' => true]);
         $bangkok = \App\Models\City::create(['country_id' => $thailand->id, 'name_en' => 'Bangkok', 'name_ru' => 'Бангкок', 'name_uz' => 'Bangkok', 'is_active' => true]);
 
-        // Resorts
-        $antalya = \App\Models\Resort::create(['country_id' => $turkey->id, 'name_en' => 'Antalya', 'name_ru' => 'Анталия', 'name_uz' => 'Antalya', 'is_active' => true]);
-        $bodrum = \App\Models\Resort::create(['country_id' => $turkey->id, 'name_en' => 'Bodrum', 'name_ru' => 'Бодрум', 'name_uz' => 'Bodrum', 'is_active' => true]);
-        $phuket = \App\Models\Resort::create(['country_id' => $thailand->id, 'name_en' => 'Phuket', 'name_ru' => 'Пхукет', 'name_uz' => 'Phuket', 'is_active' => true]);
-        $sharm = \App\Models\Resort::create(['country_id' => $egypt->id, 'name_en' => 'Sharm El-Sheikh', 'name_ru' => 'Шарм-эль-Шейх', 'name_uz' => 'Sharm El-Shayx', 'is_active' => true]);
+        // Resorts (internal use only — UI shows cities, not resorts)
+        \App\Models\Resort::create(['country_id' => $turkey->id, 'city_id' => $istanbul->id, 'name_en' => 'Istanbul', 'name_ru' => 'Стамбул', 'name_uz' => 'Istanbul', 'is_active' => true]);
 
         // Airports
         \App\Models\Airport::create(['city_id' => $tashkent->id, 'name_en' => 'Tashkent International Airport', 'name_ru' => 'Международный аэропорт Ташкента', 'name_uz' => 'Toshkent xalqaro aeroporti', 'code' => 'TAS', 'is_active' => true]);
@@ -76,10 +73,8 @@ class BasicDataSeeder extends Seeder
         $fb = \App\Models\MealType::create(['code' => 'FB', 'name_en' => 'Full Board', 'name_ru' => 'Полный пансион', 'name_uz' => 'To\'liq pansion', 'is_active' => true]);
         $ai = \App\Models\MealType::create(['code' => 'AI', 'name_en' => 'All Inclusive', 'name_ru' => 'Все включено', 'name_uz' => 'Hammasi kiritilgan', 'is_active' => true]);
 
-        // Hotels
-        $hotel1 = \App\Models\Hotel::create(['resort_id' => $antalya->id, 'hotel_category_id' => $cat5->id, 'name' => 'Grand Paradise Hotel', 'description' => 'Luxury 5-star hotel in Antalya', 'address' => 'Antalya, Turkey', 'rating' => 4.8, 'is_active' => true]);
-        $hotel2 = \App\Models\Hotel::create(['resort_id' => $antalya->id, 'hotel_category_id' => $cat4->id, 'name' => 'Sunset Beach Resort', 'description' => 'Beautiful 4-star resort', 'address' => 'Antalya, Turkey', 'rating' => 4.5, 'is_active' => true]);
-        $hotel3 = \App\Models\Hotel::create(['resort_id' => $phuket->id, 'hotel_category_id' => $cat5->id, 'name' => 'Phuket Paradise Resort', 'description' => 'Luxury resort in Phuket', 'address' => 'Phuket, Thailand', 'rating' => 4.9, 'is_active' => true]);
+        // Hotels (real hotels created by HotelSeeder — just need references for sample tours)
+        // No sample hotels needed here
 
         // Program Types
         $standard = \App\Models\ProgramType::create(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
@@ -94,34 +89,9 @@ class BasicDataSeeder extends Seeder
         $turkish_airlines = \App\Models\Airline::create(['name' => 'Turkish Airlines', 'code' => 'TK', 'is_active' => true]);
 
         // Tour Types
-        $tourTypeStd = \App\Models\TourType::create(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
+        \App\Models\TourType::create(['name_en' => 'Standard', 'name_ru' => 'Стандарт', 'name_uz' => 'Standart', 'is_active' => true]);
 
-        // Sample Tours (use raw DB because tour_type_id not in model fillable but NOT NULL in DB)
-        for ($i = 1; $i <= 10; $i++) {
-            \Illuminate\Support\Facades\DB::table('tours')->insert([
-                'tour_type_id' => $tourTypeStd->id,
-                'program_type_id' => $standard->id,
-                'country_id' => $turkey->id,
-                'resort_id' => $antalya->id,
-                'hotel_id' => $hotel1->id,
-                'transport_type_id' => $plane->id,
-                'departure_city_id' => $tashkent->id,
-                'nights' => 7,
-                'price' => 1200 + ($i * 100),
-                'currency_id' => $usd->id,
-                'date_from' => now()->addDays($i),
-                'date_to' => now()->addMonths(3),
-                'adults' => 2,
-                'children' => 0,
-                'meal_type_id' => $ai->id,
-                'is_available' => true,
-                'is_hot' => $i <= 3,
-                'instant_confirmation' => true,
-                'no_stop_sale' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+        // No sample tours — real tours created by ProductionTourSeeder
 
         // Room Types
         \App\Models\RoomType::create(['code' => 'SGL', 'name_en' => 'Single', 'name_ru' => 'Одноместный', 'name_uz' => 'Bir kishilik', 'max_adults' => 1, 'max_children' => 0, 'is_active' => true]);

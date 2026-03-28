@@ -1,5 +1,7 @@
 @php
-    $seats = $tour->tourPrices->sum('availability');
+    // Availability based on flight seats (min across all legs)
+    $flightSeatsMin = $tour->flights->isNotEmpty() ? $tour->flights->min('available_seats') : 0;
+    $seats = $flightSeatsMin;
     $isStop = !$tour->is_available || $seats <= 0;
     $rowClass = $isStop ? 'row-stop' : ($loop->even ? 'row-even' : 'row-odd');
     $bars = availBars($tour, $seats);

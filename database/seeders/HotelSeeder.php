@@ -45,16 +45,16 @@ class HotelSeeder extends Seeder
 
         $created = 0;
         foreach ($istanbulHotels as $h) {
-            $id = $this->ensureHotel($h['name'], $h['resort_id'], $star3Id, $h['price'], $usdId);
+            $id = $this->ensureHotel($h['name'], $h['resort_id'], $star3Id, $h['price'], $usdId, $istanbulId);
             if ($id) { $created++; }
         }
 
         // ── Nice Hotel ──
-        $this->ensureHotel('B&B HOTEL Nice Stade Riviera 3 étoiles', $niceStadeId, $star3Id, 110, $usdId);
+        $this->ensureHotel('B&B HOTEL Nice Stade Riviera 3 étoiles', $niceStadeId, $star3Id, 110, $usdId, $niceId);
         $created++;
 
-        // ── Baku Hotel (2 room types stored via price_per_person = dbl base) ──
-        $this->ensureHotel('Nobel Hotel', $bakuBlvdId, $star3Id, 50, $usdId);
+        // ── Baku Hotel ──
+        $this->ensureHotel('Nobel Hotel', $bakuBlvdId, $star3Id, 50, $usdId, $bakuId);
         $created++;
 
         $this->command->info("Ensured {$created} hotels exist.");
@@ -117,16 +117,19 @@ class HotelSeeder extends Seeder
         ]);
     }
 
-    private function ensureHotel(string $name, int $resortId, int $categoryId, float $price, int $currencyId): int
+    private function ensureHotel(string $name, int $resortId, int $categoryId, float $price, int $currencyId, ?int $cityId = null): int
     {
         $row = DB::table('hotels')->where('name', $name)->first();
         if ($row) {
-            DB::table('hotels')->where('id', $row->id)->update(['price_per_person' => $price]);
+            $update = ['price_per_person' => $price];
+            if ($cityId) { $update['city_id'] = $cityId; }
+            DB::table('hotels')->where('id', $row->id)->update($update);
             return $row->id;
         }
 
         return DB::table('hotels')->insertGetId([
             'name' => $name, 'name_en' => $name, 'resort_id' => $resortId,
+            'city_id' => $cityId,
             'hotel_category_id' => $categoryId, 'rating' => 3.5, 'is_active' => true,
             'price_per_person' => $price, 'currency_id' => $currencyId,
             'created_at' => now(), 'updated_at' => now(),

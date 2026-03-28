@@ -20,6 +20,7 @@ class Hotel extends Model
         'name_uz',
         'name_ru',
         'resort_id',
+        'city_id',
         'hotel_category_id',
         'address',
         'phone',
@@ -55,6 +56,11 @@ class Hotel extends Model
     public function resort(): BelongsTo
     {
         return $this->belongsTo(Resort::class);
+    }
+
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
     }
 
     public function category(): BelongsTo

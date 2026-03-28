@@ -42,6 +42,11 @@ class TourSearchService
                 ->with(['resort', 'category'])
                 ->get()
                 ->groupBy('resort_id'),
+            'hotelsByCity' => Hotel::where('is_active', true)
+                ->whereNotNull('city_id')
+                ->with('category')
+                ->get()
+                ->groupBy('city_id'),
             'departureDates' => Tour::where('is_available', true)
                 ->whereNotNull('date_from')
                 ->where('date_from', '>=', now()->toDateString())
@@ -83,6 +88,7 @@ class TourSearchService
             $lastCountryId = $lastStay?->resort?->country_id ?? $lastStay?->city?->country_id ?? $tourGroup->first()->country_id;
             $departureCityIds = $tourGroup->pluck('departure_city_id')->unique()->filter()->values()->toArray();
             $resortIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('resort_id'))->unique()->filter()->values()->toArray();
+            $cityIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('city_id'))->unique()->filter()->values()->toArray();
             $hotelIds = $tourGroup->flatMap(fn ($t) => $t->stays->pluck('hotel_id'))->unique()->filter()->values()->toArray();
             $nights = $tourGroup->pluck('nights')->unique()->sort()->values()->toArray();
             $dateFrom = $tourGroup->min('date_from')?->format('Y-m-d');
@@ -96,6 +102,7 @@ class TourSearchService
                     'country_id' => $lastCountryId,
                     'departure_city_id' => count($departureCityIds) === 1 ? $departureCityIds[0] : null,
                     'resort_ids' => $resortIds,
+                    'city_ids' => $cityIds,
                     'hotel_ids' => $hotelIds,
                     'nights_from' => min($nights) ?? null,
                     'nights_to' => max($nights) ?? null,
