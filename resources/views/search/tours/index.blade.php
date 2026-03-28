@@ -3,23 +3,40 @@
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-    /* Calendar seat availability colors */
-    .flatpickr-day.seats-green { background: #c8e6c9; border-color: #4caf50; }
-    .flatpickr-day.seats-green:hover { background: #4caf50; color: #fff; }
-    .flatpickr-day.seats-green.selected { background: #2e7d32; color: #fff; }
-    .flatpickr-day.seats-yellow { background: #fff9c4; border-color: #fbc02d; }
-    .flatpickr-day.seats-yellow:hover { background: #fbc02d; color: #000; }
-    .flatpickr-day.seats-yellow.selected { background: #f9a825; color: #000; }
-    .flatpickr-day.seats-red { background: #ffcdd2; border-color: #e53935; }
-    .flatpickr-day.seats-red:hover { background: #e53935; color: #fff; }
-    .flatpickr-day.seats-red.selected { background: #c62828; color: #fff; }
+    /* Calendar — Zebra-style seat availability */
+    .flatpickr-calendar { font-family: inherit; font-size: 11px; background: #f8faff; border: 1px solid #444; border-radius: 0; box-shadow: none; padding: 2px; }
+    .flatpickr-months { background: #f8faff; }
+    .flatpickr-months .flatpickr-month { background: #f8faff; color: #222; }
+    .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month { color: #222; fill: #222; }
+    .flatpickr-months .flatpickr-prev-month:hover, .flatpickr-months .flatpickr-next-month:hover { background: #366383; color: #fff; fill: #fff; }
+    .flatpickr-current-month { font-weight: bold; font-size: 12px; }
+    span.flatpickr-weekday { background: #366383; color: #ecf5fb; font-weight: bold; font-size: 11px; }
+    .flatpickr-day { font-weight: bold; font-size: 11px; border-radius: 0; height: 28px; line-height: 28px; }
+    .flatpickr-day:hover { background: #482424; color: #fff; }
+    .flatpickr-day.selected { background: #5a4b4b !important; color: #fff !important; }
+    .flatpickr-day.nextMonthDay, .flatpickr-day.prevMonthDay { color: #aaa; font-weight: normal; }
+    .flatpickr-day.flatpickr-disabled { color: #aaa; font-weight: normal; background: #fff; }
+
+    /* Seat status colors */
+    .flatpickr-day.seats-green { background: rgb(142, 235, 132); color: #333; }
+    .flatpickr-day.seats-green:hover { background: #482424; color: #fff; }
+    .flatpickr-day.seats-green.selected { background: #5a4b4b !important; color: #fff !important; }
+    .flatpickr-day.seats-yellow { background: rgb(255, 232, 116); color: #333; }
+    .flatpickr-day.seats-yellow:hover { background: #482424; color: #fff; }
+    .flatpickr-day.seats-yellow.selected { background: #5a4b4b !important; color: #fff !important; }
+    .flatpickr-day.seats-red { background: rgb(170, 170, 170); color: #333; }
+    .flatpickr-day.seats-red:hover { background: #482424; color: #fff; }
+    .flatpickr-day.seats-red.selected { background: #5a4b4b !important; color: #fff !important; }
+    /* Default available day (blue like Zebra) */
+    .flatpickr-day.seats-default { background: rgb(173, 198, 245); color: #222; }
+
     /* Calendar legend */
-    .cal-legend { display: flex; gap: 12px; align-items: center; font-size: 11px; color: #555; padding: 4px 0; }
-    .cal-legend-item { display: flex; align-items: center; gap: 4px; }
-    .cal-legend-dot { width: 12px; height: 12px; border-radius: 2px; }
-    .cal-legend-dot.green { background: #c8e6c9; border: 1px solid #4caf50; }
-    .cal-legend-dot.yellow { background: #fff9c4; border: 1px solid #fbc02d; }
-    .cal-legend-dot.red { background: #ffcdd2; border: 1px solid #e53935; }
+    .cal-legend { display: flex; gap: 10px; align-items: center; font-size: 11px; color: #555; padding: 4px 0; }
+    .cal-legend-item { display: flex; align-items: center; gap: 3px; }
+    .cal-legend-dot { width: 16px; height: 16px; display: inline-block; }
+    .cal-legend-dot.green { background: rgb(142, 235, 132); }
+    .cal-legend-dot.yellow { background: rgb(255, 232, 116); }
+    .cal-legend-dot.gray { background: rgb(170, 170, 170); }
 </style>
 @endpush
 
@@ -206,11 +223,11 @@
                 </div>
 
                 {{-- Calendar legend --}}
-                <div class="form-row" style="padding:2px 8px; border-bottom:1px solid #e8e8e8;">
+                <div class="form-row" style="padding:3px 8px; border-bottom:1px solid #e8e8e8;">
                     <div class="cal-legend">
-                        <span class="cal-legend-item"><span class="cal-legend-dot green"></span> есть места</span>
-                        <span class="cal-legend-item"><span class="cal-legend-dot yellow"></span> мало мест</span>
-                        <span class="cal-legend-item"><span class="cal-legend-dot red"></span> нет мест</span>
+                        <span class="cal-legend-item"><span class="cal-legend-dot green"></span> - seats available</span>
+                        <span class="cal-legend-item"><span class="cal-legend-dot yellow"></span> - a few seats</span>
+                        <span class="cal-legend-item"><span class="cal-legend-dot gray"></span> - on request</span>
                     </div>
                 </div>
 
