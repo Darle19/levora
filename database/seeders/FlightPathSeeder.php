@@ -32,8 +32,15 @@ class FlightPathSeeder extends Seeder
             return;
         }
 
-        // Get all TAS→IST flights (these define departure dates)
+        // Get only Centrum Air (C2) TAS→IST flights — block seats, these define departure dates
+        $c2Id = DB::table('airlines')->where('code', 'C2')->value('id');
+        if (! $c2Id) {
+            $this->command->error('Centrum Air airline not found. Run FlightSeeder first.');
+            return;
+        }
+
         $tasIstFlights = DB::table('flights')
+            ->where('airline_id', $c2Id)
             ->where('from_airport_id', $tasId)->where('to_airport_id', $istId)
             ->where('is_active', true)->orderBy('departure_date')->get();
 
