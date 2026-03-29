@@ -495,22 +495,8 @@
     // Rebuild calendars when route changes (new seat data)
     function updateCalendarSeats(newDateSeats) {
         activeDateSeats = newDateSeats || {};
-        // Destroy and recreate to apply new onDayCreate
-        const fromVal = fpFrom.selectedDates[0] || null;
-        const toVal = fpTo.selectedDates[0] || null;
-        fpFrom.destroy();
-        fpTo.destroy();
-        fpFrom = flatpickr('#date_from', {
-            ...buildFpConfig(),
-            defaultDate: fromVal,
-            onChange: function(sel) { if (sel[0] && fpTo) fpTo.set('minDate', sel[0]); }
-        });
-        fpTo = flatpickr('#date_to', {
-            ...buildFpConfig(),
-            defaultDate: toVal,
-        });
-        window._fpFrom = fpFrom;
-        window._fpTo = fpTo;
+        fpFrom.redraw();
+        fpTo.redraw();
     }
 
     // Tour Route → auto-fill all filters
