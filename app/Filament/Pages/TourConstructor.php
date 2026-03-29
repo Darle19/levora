@@ -2,39 +2,37 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Airport;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Flight;
+use App\Models\FlightPath;
 use App\Models\Hotel;
 use App\Models\MealType;
-use App\Models\Resort;
-use App\Models\Tour;
-use App\Models\TourStay;
-use App\Services\TourPricingService;
+use App\Models\Setting;
 use BackedEnum;
 use UnitEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Tour Constructor — generate tours from route template.
+ * Tour Constructor — build flight paths from city pairs + flights.
  *
- * Admin selects: stays (city + hotels), flights, date range.
- * System generates all combinations: date × istanbul_hotel × destination_hotel.
- *
- * @property-read Schema $form
+ * Admin picks: route legs (city A → city B + flight), stays (city + nights).
+ * System creates FlightPath records for each departure date.
  */
 class TourConstructor extends Page
 {
@@ -48,14 +46,13 @@ class TourConstructor extends Page
 
     protected string $view = 'filament.pages.tour-constructor';
 
-    /** @var array<string, mixed>|null */
     public ?array $data = [];
 
     public function mount(): void
     {
         $this->form->fill([
-            'adults' => 2,
-            'children' => 0,
+            'route_name' => '',
+            'nights' => 7,
         ]);
     }
 
@@ -64,121 +61,101 @@ class TourConstructor extends Page
         return $schema
             ->components([
                 Form::make([
-                    Section::make('Route')
+                    Section::make('Route Info')
                         ->schema([
+                            TextInput::make('route_name')
+                                ->label('Route Name')
+                                ->placeholder('Istanbul + Nice')
+                                ->required(),
                             Select::make('departure_city_id')
                                 ->label('Departure City')
                                 ->options(City::where('is_active', true)->pluck('name_en', 'id'))
-                                ->required()
-                                ->live(),
-
-                            Select::make('country_id')
-                                ->label('Destination Country')
-                                ->options(Country::where('is_active', true)->pluck('name_en', 'id'))
-                                ->required()
-                                ->live(),
-
-                            Select::make('meal_type_id')
-                                ->label('Meal Plan')
-                                ->options(MealType::where('is_active', true)->pluck('code', 'id'))
+                                ->required(),
+                            TextInput::make('nights')
+                                ->label('Total Nights')
+                                ->numeric()
+                                ->default(7)
                                 ->required(),
                         ])
                         ->columns(3),
 
-                    Section::make('Stays')
+                    Section::make('Flight Legs')
+                        ->description('Add each flight segment. All flights include baggage.')
+                        ->schema([
+                            Repeater::make('legs')
+                                ->schema([
+                                    Select::make('from_city_id')
+                                        ->label('From City')
+                                        ->options(City::where('is_active', true)->pluck('name_en', 'id'))
+                                        ->required()
+                                        ->live(),
+                                    Select::make('to_city_id')
+                                        ->label('To City')
+                                        ->options(City::where('is_active', true)->pluck('name_en', 'id'))
+                                        ->required()
+                                        ->live(),
+                                    Select::make('direction')
+                                        ->label('Direction')
+                                        ->options(['outbound' => '→ Outbound', 'return' => '← Return'])
+                                        ->default('outbound')
+                                        ->required(),
+                                    TextInput::make('day_offset')
+                                        ->label('Day offset from departure')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->helperText('0 = departure day, 2 = day+2, etc.')
+                                        ->required(),
+                                ])
+                                ->columns(4)
+                                ->defaultItems(1)
+                                ->minItems(1)
+                                ->maxItems(6)
+                                ->reorderable()
+                                ->addActionLabel('+ Add Flight Leg'),
+                        ]),
+
+                    Section::make('City Stays')
+                        ->description('Hotels are selected by the customer at search time.')
                         ->schema([
                             Repeater::make('stays')
                                 ->schema([
                                     Select::make('city_id')
                                         ->label('City')
                                         ->options(City::where('is_active', true)->pluck('name_en', 'id'))
-                                        ->required()
-                                        ->live(),
-
-                                    CheckboxList::make('hotel_ids')
-                                        ->label('Hotels (select all to generate)')
-                                        ->options(function (Get $get) {
-                                            $cityId = $get('city_id');
-                                            if (! $cityId) {
-                                                return [];
-                                            }
-                                            $resortIds = Resort::where('city_id', $cityId)->pluck('id');
-
-                                            return Hotel::whereIn('resort_id', $resortIds)
-                                                ->where('is_active', true)
-                                                ->get()
-                                                ->mapWithKeys(fn ($h) => [$h->id => $h->name . ' ($' . $h->price_per_person . '/room)']);
-                                        })
-                                        ->required()
-                                        ->columns(2),
-
+                                        ->required(),
                                     TextInput::make('nights')
                                         ->label('Nights')
                                         ->numeric()
-                                        ->required()
                                         ->default(2)
-                                        ->minValue(1)
-                                        ->maxValue(30),
+                                        ->required(),
                                 ])
-                                ->columns(1)
+                                ->columns(2)
                                 ->defaultItems(2)
                                 ->minItems(1)
                                 ->maxItems(5)
                                 ->reorderable()
-                                ->addActionLabel('Add Stay'),
+                                ->addActionLabel('+ Add City Stay'),
                         ]),
 
-                    Section::make('Flights')
+                    Section::make('Date Range')
+                        ->description('Flight paths will be created for each matching flight date in this range.')
                         ->schema([
-                            CheckboxList::make('flight_ids')
-                                ->label('Select flights to include')
-                                ->options(function (Get $get) {
-                                    return Flight::where('is_active', true)
-                                        ->where('departure_date', '>=', now()->toDateString())
-                                        ->with(['fromAirport', 'toAirport', 'airline'])
-                                        ->orderBy('departure_date')
-                                        ->get()
-                                        ->mapWithKeys(fn ($f) => [
-                                            $f->id => $f->fromAirport->code . '→' . $f->toAirport->code
-                                                . ' | ' . $f->departure_date->format('d.m.Y')
-                                                . ' | ' . $f->airline->name
-                                                . ' | $' . number_format($f->price_adult, 0),
-                                        ]);
-                                })
-                                ->columns(1)
-                                ->helperText('Tours will be generated for each departure date from the selected flights'),
-                        ]),
-
-                    Section::make('Passengers & Dates')
-                        ->schema([
-                            TextInput::make('adults')
-                                ->label('Adults')
-                                ->numeric()
-                                ->required()
-                                ->default(2)
-                                ->minValue(1),
-
-                            TextInput::make('children')
-                                ->label('Children')
-                                ->numeric()
-                                ->default(0)
-                                ->minValue(0),
-
                             DatePicker::make('date_from')
-                                ->label('Date Range From')
-                                ->helperText('Leave empty to use flight dates'),
-
+                                ->label('From')
+                                ->default(now()->format('Y-m-d'))
+                                ->required(),
                             DatePicker::make('date_to')
-                                ->label('Date Range To')
-                                ->helperText('Leave empty to use flight dates'),
+                                ->label('To')
+                                ->default(now()->addMonths(3)->format('Y-m-d'))
+                                ->required(),
                         ])
-                        ->columns(4),
+                        ->columns(2),
                 ])
                     ->livewireSubmitHandler('generate')
                     ->footer([
                         Actions::make([
                             Action::make('generate')
-                                ->label('Generate Tours')
+                                ->label('Generate Flight Paths')
                                 ->icon(Heroicon::OutlinedBolt)
                                 ->color('success')
                                 ->submit('generate'),
@@ -191,170 +168,154 @@ class TourConstructor extends Page
     public function generate(): void
     {
         $data = $this->form->getState();
-        $pricingService = app(TourPricingService::class);
 
-        $stays = $data['stays'] ?? [];
-        $flightIds = $data['flight_ids'] ?? [];
+        $routeName = $data['route_name'];
         $departureCityId = $data['departure_city_id'];
-        $countryId = $data['country_id'];
-        $mealTypeId = $data['meal_type_id'];
-        $adults = (int) ($data['adults'] ?? 2);
-        $children = (int) ($data['children'] ?? 0);
+        $nights = (int) $data['nights'];
+        $legs = $data['legs'] ?? [];
+        $stays = $data['stays'] ?? [];
+        $dateFrom = $data['date_from'];
+        $dateTo = $data['date_to'];
 
-        if (empty($stays)) {
-            Notification::make()->danger()->title('Add at least one stay')->send();
+        if (empty($legs) || empty($stays)) {
+            Notification::make()->danger()->title('Add at least one leg and one stay.')->send();
             return;
         }
 
-        // Calculate total nights
-        $totalNights = collect($stays)->sum('nights');
+        $usdId = DB::table('currencies')->where('code', 'USD')->value('id');
 
-        // Get selected flights grouped by departure date
-        $flights = Flight::whereIn('id', $flightIds)->orderBy('departure_date')->get();
+        // For each leg, find matching flights in the date range
+        // The first leg's flights define departure dates
+        $firstLeg = $legs[0];
+        $fromAirportId = DB::table('airports')
+            ->whereIn('city_id', [$firstLeg['from_city_id']])
+            ->where('is_active', true)
+            ->value('id');
+        $toAirportId = DB::table('airports')
+            ->whereIn('city_id', [$firstLeg['to_city_id']])
+            ->where('is_active', true)
+            ->value('id');
 
-        // Determine departure dates
-        $departureDates = $flights->pluck('departure_date')->unique()->sort()->values();
-
-        // If date range specified, filter or generate dates
-        if (! empty($data['date_from']) && ! empty($data['date_to'])) {
-            $from = \Carbon\Carbon::parse($data['date_from']);
-            $to = \Carbon\Carbon::parse($data['date_to']);
-
-            if ($departureDates->isNotEmpty()) {
-                $departureDates = $departureDates->filter(fn ($d) => $d->between($from, $to));
-            } else {
-                // Generate weekly dates in range
-                $departureDates = collect();
-                $current = $from->copy();
-                while ($current->lte($to)) {
-                    $departureDates->push($current->copy());
-                    $current->addWeek();
-                }
-            }
-        }
-
-        if ($departureDates->isEmpty()) {
-            Notification::make()->danger()->title('No departure dates found. Select flights or set date range.')->send();
+        if (! $fromAirportId || ! $toAirportId) {
+            Notification::make()->danger()->title('No airports found for first leg cities.')->send();
             return;
         }
 
-        // Build hotel combinations from stays
-        // Each stay has multiple hotel_ids — we need cartesian product
-        $hotelCombinations = $this->buildHotelCombinations($stays);
+        // Get first leg flights in date range — these define departure dates
+        $firstLegFlights = DB::table('flights')
+            ->where('from_airport_id', $fromAirportId)
+            ->where('to_airport_id', $toAirportId)
+            ->where('is_active', true)
+            ->whereBetween('departure_date', [$dateFrom, $dateTo])
+            ->orderBy('departure_date')
+            ->get();
+
+        if ($firstLegFlights->isEmpty()) {
+            Notification::make()->danger()->title('No flights found for first leg in date range.')->send();
+            return;
+        }
+
+        // Index all flights for quick lookup
+        $allFlights = DB::table('flights')
+            ->where('is_active', true)
+            ->get();
+        $flightIndex = [];
+        foreach ($allFlights as $f) {
+            $key = $f->from_airport_id . '-' . $f->to_airport_id . '-' . $f->departure_date;
+            $flightIndex[$key] = $f;
+        }
+
+        // Build airport lookup per city
+        $cityAirport = DB::table('airports')
+            ->where('is_active', true)
+            ->pluck('id', 'city_id')
+            ->toArray();
 
         $created = 0;
-        $skipped = 0;
 
-        foreach ($departureDates as $departureDate) {
-            foreach ($hotelCombinations as $combo) {
-                // combo = [['city_id' => X, 'hotel_id' => Y, 'nights' => Z, 'resort_id' => R], ...]
-                $primaryHotel = Hotel::find($combo[count($combo) - 1]['hotel_id']); // last stay = destination
-                if (! $primaryHotel) {
-                    continue;
-                }
+        foreach ($firstLegFlights as $firstFlight) {
+            $depDate = $firstFlight->departure_date;
 
-                // Check if tour already exists
-                $exists = Tour::where('date_from', $departureDate->format('Y-m-d'))
-                    ->where('hotel_id', $primaryHotel->id)
-                    ->where('departure_city_id', $departureCityId)
-                    ->exists();
+            // Check if path already exists
+            $exists = DB::table('flight_paths')
+                ->where('route_name', $routeName)
+                ->where('departure_date', $depDate)
+                ->exists();
+            if ($exists) { continue; }
 
-                if ($exists) {
-                    $skipped++;
-                    continue;
-                }
+            // Find flights for all legs
+            $legFlights = [];
+            $totalPrice = 0;
+            $allFound = true;
 
-                $tour = Tour::create([
-                    'date_from' => $departureDate->format('Y-m-d'),
-                    'date_to' => $departureDate->copy()->addDays($totalNights)->format('Y-m-d'),
-                    'nights' => $totalNights,
-                    'adults' => $adults,
-                    'children' => $children,
-                    'price' => 0,
-                    'departure_city_id' => $departureCityId,
-                    'country_id' => $countryId,
-                    'hotel_id' => $primaryHotel->id,
-                    'resort_id' => $primaryHotel->resort_id,
-                    'meal_type_id' => $mealTypeId,
-                    'transport_type_id' => 1, // Air
-                    'currency_id' => 1, // USD
-                    'program_type_id' => 1,
-                    'is_available' => true,
-                    'is_hot' => false,
-                ]);
+            foreach ($legs as $i => $leg) {
+                $legFromAirport = $cityAirport[$leg['from_city_id']] ?? null;
+                $legToAirport = $cityAirport[$leg['to_city_id']] ?? null;
+                if (! $legFromAirport || ! $legToAirport) { $allFound = false; break; }
 
-                // Create stays
-                foreach ($combo as $order => $stay) {
-                    TourStay::create([
-                        'tour_id' => $tour->id,
-                        'city_id' => $stay['city_id'],
-                        'resort_id' => $stay['resort_id'],
-                        'hotel_id' => $stay['hotel_id'],
-                        'nights' => $stay['nights'],
-                        'stay_order' => $order + 1,
-                        'meal_type_id' => $mealTypeId,
-                    ]);
-                }
+                $offset = (int) ($leg['day_offset'] ?? 0);
+                $legDate = date('Y-m-d', strtotime($depDate . " +{$offset} days"));
 
-                // Attach flights for this departure date
-                $legOrder = 1;
-                foreach ($flights as $flight) {
-                    if ($flight->departure_date->format('Y-m-d') === $departureDate->format('Y-m-d')
-                        || $flight->departure_date->between($departureDate, $departureDate->copy()->addDays($totalNights))
-                    ) {
-                        if (! $tour->flights()->where('flight_id', $flight->id)->exists()) {
-                            $direction = $legOrder <= intdiv(count($flightIds), 2) + 1 ? 'outbound' : 'return';
-                            $tour->flights()->attach($flight->id, [
-                                'direction' => $direction,
-                                'leg_order' => $legOrder++,
-                            ]);
-                        }
-                    }
-                }
+                $key = $legFromAirport . '-' . $legToAirport . '-' . $legDate;
+                $flight = $flightIndex[$key] ?? null;
 
-                $pricingService->recalculate($tour);
-                $created++;
+                if (! $flight) { $allFound = false; break; }
+
+                $legFlights[] = [
+                    'flight' => $flight,
+                    'direction' => $leg['direction'] ?? 'outbound',
+                    'leg_order' => $i + 1,
+                ];
+                $totalPrice += (float) $flight->price_adult;
             }
+
+            if (! $allFound) { continue; }
+
+            // Create flight path
+            $fpId = DB::table('flight_paths')->insertGetId([
+                'route_name' => $routeName,
+                'departure_date' => $depDate,
+                'departure_city_id' => $departureCityId,
+                'total_price' => $totalPrice,
+                'currency_id' => $usdId,
+                'nights' => $nights,
+                'is_available' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Create legs
+            foreach ($legFlights as $lf) {
+                DB::table('flight_path_legs')->insert([
+                    'flight_path_id' => $fpId,
+                    'flight_id' => $lf['flight']->id,
+                    'leg_order' => $lf['leg_order'],
+                    'direction' => $lf['direction'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // Create stays
+            foreach ($stays as $j => $stay) {
+                DB::table('flight_path_stays')->insert([
+                    'flight_path_id' => $fpId,
+                    'city_id' => $stay['city_id'],
+                    'stay_order' => $j + 1,
+                    'nights' => (int) $stay['nights'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $created++;
         }
 
-        cache()->forget('tour_filter_options');
+        DB::table('cache')->truncate();
 
         Notification::make()
             ->success()
-            ->title("Generated {$created} tours" . ($skipped > 0 ? " ({$skipped} skipped — already exist)" : ''))
+            ->title("Created {$created} flight paths for '{$routeName}'")
             ->send();
-    }
-
-    /**
-     * Build cartesian product of hotel selections across stays.
-     * Input: [['city_id' => 1, 'hotel_ids' => [1,2,3], 'nights' => 2], ...]
-     * Output: [[['city_id'=>1,'hotel_id'=>1,'nights'=>2], ['city_id'=>2,'hotel_id'=>5,'nights'=>4]], ...]
-     */
-    private function buildHotelCombinations(array $stays): array
-    {
-        $result = [[]];
-
-        foreach ($stays as $stay) {
-            $cityId = $stay['city_id'];
-            $nights = (int) $stay['nights'];
-            $hotelIds = $stay['hotel_ids'] ?? [];
-            $newResult = [];
-
-            foreach ($result as $combo) {
-                foreach ($hotelIds as $hotelId) {
-                    $hotel = Hotel::find($hotelId);
-                    $newResult[] = array_merge($combo, [[
-                        'city_id' => $cityId,
-                        'hotel_id' => $hotelId,
-                        'resort_id' => $hotel?->resort_id,
-                        'nights' => $nights,
-                    ]]);
-                }
-            }
-
-            $result = $newResult;
-        }
-
-        return $result;
     }
 }
