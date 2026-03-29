@@ -69,10 +69,11 @@ class FlightPathSeeder extends Seeder
             $gydIstDate = date('Y-m-d', strtotime($depDate . ' +6 days'));
             $returnDate = date('Y-m-d', strtotime($depDate . ' +7 days'));
 
-            // ── Istanbul + Nice ──
+            // ── Istanbul + Nice (TAS→IST→NCE→IST→TAS, 4 legs) ──
             if ($nceId) {
                 $istNce = $flightIndex["IST-NCE-{$istNceDate}"] ?? null;
                 $nceIst = $flightIndex["NCE-IST-{$nceIstDate}"] ?? null;
+                $istTas = $flightIndex["IST-TAS-{$returnDate}"] ?? null;
 
                 $exists = DB::table('flight_paths')
                     ->where('route_name', 'Istanbul + Nice')
@@ -82,7 +83,8 @@ class FlightPathSeeder extends Seeder
                 if (! $exists) {
                     $totalPrice = (float) $tasIst->price_adult
                         + ($istNce ? (float) $istNce->price_adult : 0)
-                        + ($nceIst ? (float) $nceIst->price_adult : 0);
+                        + ($nceIst ? (float) $nceIst->price_adult : 0)
+                        + ($istTas ? (float) $istTas->price_adult : 0);
 
                     $fpId = DB::table('flight_paths')->insertGetId([
                         'route_name' => 'Istanbul + Nice',
@@ -95,7 +97,7 @@ class FlightPathSeeder extends Seeder
                         'created_at' => now(), 'updated_at' => now(),
                     ]);
 
-                    // Legs
+                    // Legs: TAS→IST (1), IST→NCE (2), NCE→IST (3), IST→TAS (4)
                     $legOrder = 1;
                     DB::table('flight_path_legs')->insert([
                         'flight_path_id' => $fpId, 'flight_id' => $tasIst->id,
@@ -112,6 +114,13 @@ class FlightPathSeeder extends Seeder
                     if ($nceIst) {
                         DB::table('flight_path_legs')->insert([
                             'flight_path_id' => $fpId, 'flight_id' => $nceIst->id,
+                            'leg_order' => $legOrder++, 'direction' => 'return',
+                            'created_at' => now(), 'updated_at' => now(),
+                        ]);
+                    }
+                    if ($istTas) {
+                        DB::table('flight_path_legs')->insert([
+                            'flight_path_id' => $fpId, 'flight_id' => $istTas->id,
                             'leg_order' => $legOrder++, 'direction' => 'return',
                             'created_at' => now(), 'updated_at' => now(),
                         ]);

@@ -100,6 +100,26 @@ class FlightSeeder extends Seeder
             $created++;
         }
 
+        // ── IST→TAS return flights (Centrum Air, for Nice route day+7) ──
+        $istTasDates = [
+            ['2026-04-20', 215], ['2026-04-27', 215], ['2026-05-04', 215],
+            ['2026-05-11', 220], ['2026-05-18', 220], ['2026-05-25', 220], ['2026-06-01', 220],
+            ['2026-06-08', 230], ['2026-06-15', 230], ['2026-06-22', 230], ['2026-06-29', 230], ['2026-07-06', 230],
+        ];
+
+        foreach ($istTasDates as [$date, $price]) {
+            if ($this->flightExists($c2Id, $istId, $tasId, $date)) { continue; }
+            DB::table('flights')->insert([
+                'airline_id' => $c2Id, 'from_airport_id' => $istId, 'to_airport_id' => $tasId,
+                'flight_number' => 'C2 502', 'departure_date' => $date,
+                'departure_time' => '22:00', 'arrival_date' => date('Y-m-d', strtotime($date . ' +1 day')), 'arrival_time' => '04:00',
+                'price_adult' => $price, 'soft_block_price' => $price, 'hard_block_price' => $price,
+                'currency_id' => $usdId, 'available_seats' => 20,
+                'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $created++;
+        }
+
         // ── IST→NCE flights (Turkish Airlines, nonstop, prices from RapidAPI) ──
         $frId = $this->ensureCountry('France', 'Франция', 'FR');
         $niceId = $this->ensureCity('Nice', 'Ницца', $frId);
