@@ -39,152 +39,146 @@
     </style>
     @stack('styles')
 </head>
-<body class="antialiased bg-slate-50 min-h-screen flex flex-col">
-    <!-- Top Bar -->
-    <div class="gradient-dark text-white py-2">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-sm">
-            <div class="flex items-center space-x-6">
-                <a href="tel:+998712334455" class="flex items-center hover:text-green-400 transition">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                    </svg>
-                    +998 71 233 44 55
-                </a>
-                <a href="mailto:info@levora.uz" class="flex items-center hover:text-green-400 transition">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
-                    info@levora.uz
-                </a>
-            </div>
-            <div class="flex items-center space-x-4">
-                <!-- Language Selector -->
-                <div class="flex items-center space-x-1 bg-slate-800 rounded-full px-1 py-0.5">
-                    <a href="{{ route('language.switch', 'ru') }}" class="px-3 py-1 rounded-full text-xs font-medium {{ app()->getLocale() == 'ru' ? 'bg-green-600 text-white' : 'text-slate-300 hover:text-white' }} transition">RU</a>
-                    <a href="{{ route('language.switch', 'en') }}" class="px-3 py-1 rounded-full text-xs font-medium {{ app()->getLocale() == 'en' ? 'bg-green-600 text-white' : 'text-slate-300 hover:text-white' }} transition">EN</a>
-                    <a href="{{ route('language.switch', 'uz') }}" class="px-3 py-1 rounded-full text-xs font-medium {{ app()->getLocale() == 'uz' ? 'bg-green-600 text-white' : 'text-slate-300 hover:text-white' }} transition">UZ</a>
+<body class="antialiased min-h-screen flex flex-col" style="font-family: Tahoma, Arial, sans-serif; font-size: 13px; background: #f5f5f5;">
+    <style>
+        /* Header */
+        #header { background: #EBF6FC; width: 100%; }
+        #header-inner { max-width: 1200px; margin: 0 auto; }
+        .high-menu { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
+        .head-logo img { width: 80px; height: 80px; }
+        .head-block { display: flex; align-items: center; border-radius: 8px; padding: 8px 12px; gap: 8px; }
+        .head-block-green { background: rgba(25, 135, 84, 0.1); }
+        .head-block-blue { background: rgba(13, 110, 253, 0.1); }
+        .head-block-red { background: rgba(220, 53, 69, 0.1); }
+        .head-block-title { font-size: 12px; font-weight: 700; }
+        .head-block-green .head-block-title { color: #198754; }
+        .head-block-blue .head-block-title { color: #dc3545; font-size: 14px; font-weight: 400; }
+        .head-block-value { font-size: 13px; font-weight: 550; color: #212529; }
+        .head-block-blue .head-block-value { font-size: 18px; font-weight: 700; color: #198754; }
+        .head-currency { text-align: center; font-size: 12px; }
+        .head-currency .cur-title { color: #0d6efd; font-weight: 500; }
+        .head-currency table { margin: 2px auto; }
+        .head-currency th, .head-currency td { padding: 1px 6px; font-size: 12px; }
+        .head-currency th { font-weight: 700; }
+
+        /* Navigation */
+        .bottom-menu { background: #f5f5f5; border-top: 1px solid #dee2e6; }
+        .bottom-menu-inner { max-width: 1200px; margin: 0 auto; }
+        .bottom-menu ul { display: flex; list-style: none; margin: 0; padding: 0; }
+        .bottom-menu li { position: relative; }
+        .bottom-menu li > a { display: block; padding: 14px 15px; color: #007355; text-decoration: none; font-size: 13px; white-space: nowrap; }
+        .bottom-menu li > a:hover { color: #f36f21; }
+        .bottom-menu li.active > a { color: #000; font-weight: 700; }
+        .bottom-menu li > a .caret { font-size: 10px; margin-left: 2px; }
+        /* Dropdown */
+        .bottom-menu li ul { display: none; position: absolute; top: 100%; left: 0; background: #eee; padding: 6px 0; min-width: 180px; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .bottom-menu li:hover > ul { display: block; }
+        .bottom-menu li ul li a { padding: 6px 20px; font-size: 12px; color: #007355; }
+        .bottom-menu li ul li a:hover { background: #ddd; color: #f36f21; }
+        .bottom-menu .nav-right { margin-left: auto; display: flex; align-items: center; }
+        .lang-switch { display: flex; gap: 2px; padding: 10px 8px; }
+        .lang-switch a { padding: 4px 8px; font-size: 11px; text-decoration: none; color: #007355; border-radius: 3px; }
+        .lang-switch a.active { background: #007355; color: #fff; }
+    </style>
+
+    <div id="header">
+        <div id="header-inner">
+            {{-- Top Bar --}}
+            <div class="high-menu">
+                {{-- Logo --}}
+                <div class="head-logo">
+                    <a href="{{ route('home') }}"><img src="{{ asset('Levora_logo.svg') }}" alt="Levora"></a>
+                </div>
+
+                {{-- Contacts --}}
+                <div class="head-block head-block-green">
+                    <div>
+                        <div class="head-block-title">По вопросам сотрудничества</div>
+                        <div class="head-block-value">+998 71 233 44 55</div>
+                        <div class="head-block-value" style="font-size:12px;">info@levora.uz</div>
+                    </div>
+                </div>
+
+                {{-- Hotline --}}
+                <div class="head-block head-block-blue">
+                    <div>
+                        <div class="head-block-title">Горячая линия</div>
+                        <div class="head-block-value">+998 71 233 44 55</div>
+                    </div>
+                </div>
+
+                {{-- Currency --}}
+                <div style="display:flex; gap:8px;">
+                    <div class="head-block head-block-red head-currency">
+                        <div>
+                            <div class="cur-title">Узбекский сум</div>
+                            <table><tr><th>Date</th><th>$</th></tr><tr><td>{{ date('d.m.Y') }}</td><td>12 850</td></tr></table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Navigation -->
-    <nav class="glass sticky top-0 z-50 shadow-sm border-b border-slate-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <!-- Logo -->
-                <div class="flex items-center">
-                    <a href="{{ route('home') }}" class="flex items-center">
-                        <img src="{{ asset('Levora_logo.svg') }}" alt="Levora" class="h-10 w-auto">
-                    </a>
-                </div>
-
-                <!-- Navigation Links -->
-                <div class="hidden md:flex items-center space-x-1">
-                    @auth
-                    <!-- Claims -->
-                    <a href="{{ route('claims.index') }}" class="nav-link flex items-center px-4 py-2 text-sm font-medium text-slate-700 hover:text-green-700 transition">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        {{ __('messages.nav.claims') }}
-                    </a>
-
-                    <!-- Agency Dropdown -->
-                    <div class="dropdown relative">
-                        <button class="nav-link flex items-center px-4 py-2 text-sm font-medium text-slate-700 hover:text-green-700 transition">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                            </svg>
-                            {{ __('messages.nav.agency') }}
-                            <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div class="dropdown-menu absolute left-0 mt-2 w-56 rounded-2xl shadow-xl bg-white border border-slate-100 py-2 z-50">
-                            <a href="{{ route('agency.profile') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                {{ __('messages.nav.profile') }}
-                            </a>
-                            <a href="{{ route('agency.employees') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                                {{ __('messages.nav.employees') }}
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Dashboard -->
-                    <a href="{{ route('dashboard') }}" class="nav-link flex items-center px-4 py-2 text-sm font-medium text-slate-700 hover:text-green-700 transition">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                        </svg>
-                        {{ __('messages.nav.dashboard') }}
-                    </a>
-                    @endauth
-                </div>
-
-                <!-- Right Side -->
-                <div class="flex items-center space-x-4">
-                    @auth
-                    <!-- User Menu -->
-                    <div class="dropdown relative">
-                        <button class="flex items-center space-x-3 px-3 py-2 rounded-xl hover:bg-slate-100 transition">
-                            <div class="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-white font-semibold text-sm">
-                                {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                            </div>
-                            <div class="hidden lg:block text-left">
-                                <div class="text-sm font-medium text-slate-700">{{ Auth::user()->name }}</div>
-                                <div class="text-xs text-slate-500">{{ Auth::user()->agency->name ?? 'N/A' }}</div>
-                            </div>
-                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div class="dropdown-menu absolute right-0 mt-2 w-56 rounded-2xl shadow-xl bg-white border border-slate-100 py-2 z-50">
-                            <div class="px-4 py-3 border-b border-slate-100">
-                                <div class="text-sm font-medium text-slate-900">{{ Auth::user()->name }}</div>
-                                <div class="text-xs text-slate-500">{{ Auth::user()->email }}</div>
-                            </div>
-                            <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 text-sm text-slate-700 hover:bg-green-50 hover:text-green-700 transition">
-                                <svg class="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                {{ __('messages.nav.dashboard') }}
-                            </a>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition">
-                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                    {{ __('messages.nav.sign_out') }}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    @else
-                    <a href="{{ route('login') }}" class="text-sm font-medium text-slate-700 hover:text-green-700 transition">{{ __('messages.nav.sign_in') }}</a>
-                    <a href="{{ route('register') }}" class="btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold text-white">
-                        {{ __('messages.nav.get_started') }}
-                    </a>
-                    @endauth
-
-                    <!-- Mobile Menu Button -->
-                    <button type="button" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Mobile Menu -->
-        <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white">
-            <div class="px-4 py-4 space-y-2">
+    {{-- Navigation Bar --}}
+    <div class="bottom-menu">
+        <div class="bottom-menu-inner">
+            <ul>
+                <li class="active"><a href="{{ route('search.tours') }}">Search <span class="caret">▾</span></a>
+                    <ul>
+                        <li><a href="{{ route('search.tours') }}">Tour search</a></li>
+                        <li><a href="{{ route('search.hotels') }}">Hotels</a></li>
+                        <li><a href="{{ route('search.tickets') }}">Tickets</a></li>
+                    </ul>
+                </li>
                 @auth
-                <a href="{{ route('claims.index') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.claims') }}</a>
-                <a href="{{ route('dashboard') }}" class="block px-4 py-2 rounded-lg text-slate-700 hover:bg-green-50 hover:text-green-700">{{ __('messages.nav.dashboard') }}</a>
+                <li><a href="{{ route('claims.index') }}">Claims <span class="caret">▾</span></a>
+                    <ul>
+                        <li><a href="{{ route('claims.index') }}">View claims</a></li>
+                    </ul>
+                </li>
+                <li><a href="#">Agency <span class="caret">▾</span></a>
+                    <ul>
+                        <li><a href="{{ route('agency.profile') }}">Agency details</a></li>
+                        <li><a href="{{ route('agency.employees') }}">Employees</a></li>
+                    </ul>
+                </li>
+                <li><a href="{{ route('dashboard') }}">Dashboard</a></li>
                 @endauth
-            </div>
+                <li><a href="#">Info <span class="caret">▾</span></a>
+                    <ul>
+                        <li><a href="/admin/hotels">Hotel catalog</a></li>
+                        <li><a href="/admin/flights">Flight schedule</a></li>
+                    </ul>
+                </li>
+
+                {{-- Right side: language + user --}}
+                <div class="nav-right">
+                    <div class="lang-switch">
+                        <a href="{{ route('language.switch', 'ru') }}" class="{{ app()->getLocale() == 'ru' ? 'active' : '' }}">RU</a>
+                        <a href="{{ route('language.switch', 'en') }}" class="{{ app()->getLocale() == 'en' ? 'active' : '' }}">EN</a>
+                        <a href="{{ route('language.switch', 'uz') }}" class="{{ app()->getLocale() == 'uz' ? 'active' : '' }}">UZ</a>
+                    </div>
+                    @auth
+                    <li><a href="#">{{ Auth::user()->agency->name ?? Auth::user()->name }} <span class="caret">▾</span></a>
+                        <ul>
+                            <li><a href="{{ route('dashboard') }}">{{ Auth::user()->name }}</a></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+                                    @csrf
+                                    <a href="#" onclick="this.closest('form').submit(); return false;" style="display:block;">Sign out</a>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                    @else
+                    <li><a href="{{ route('login') }}">Sign In</a></li>
+                    <li><a href="{{ route('register') }}" style="font-weight:700;">Register</a></li>
+                    @endauth
+                </div>
+            </ul>
         </div>
-    </nav>
+    </div>
 
     <!-- Page Content -->
     <main class="flex-grow">
