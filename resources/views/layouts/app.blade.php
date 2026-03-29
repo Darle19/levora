@@ -39,7 +39,7 @@
     </style>
     @stack('styles')
 </head>
-<body class="antialiased min-h-screen flex flex-col" style="font-family: Tahoma, Arial, sans-serif; font-size: 13px; background: #f5f5f5;">
+<body class="antialiased min-h-screen flex flex-col" style="font-family: Tahoma, Arial, sans-serif; font-size: 13px; background: #f5f5f5; zoom: 1.2;">
     <style>
         /* Header */
         #header { background: #EBF6FC; width: 100%; }
