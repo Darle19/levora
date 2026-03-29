@@ -144,7 +144,9 @@ class FlightSeeder extends Seeder
             $created++;
         }
 
-        // ── IST→GYD flights (Turkish Airlines, nonstop) ──
+        // ── IST→GYD flights (Azerbaijan Airlines J2, one-way, nonstop) ──
+        $j2Id = $this->ensureAirline('J2', 'Azerbaijan Airlines');
+
         $istGydDates = [
             ['2026-04-15', 291], ['2026-04-22', 291], ['2026-04-29', 291],
             ['2026-05-06', 291], ['2026-05-13', 291], ['2026-05-20', 291], ['2026-05-27', 291],
@@ -152,35 +154,18 @@ class FlightSeeder extends Seeder
         ];
 
         foreach ($istGydDates as [$date, $price]) {
-            if ($this->flightExists($tkId, $istId, $gydId, $date)) { continue; }
+            if ($this->flightExists($j2Id, $istId, $gydId, $date)) { continue; }
             DB::table('flights')->insert([
-                'airline_id' => $tkId, 'from_airport_id' => $istId, 'to_airport_id' => $gydId,
-                'flight_number' => 'TK 338', 'departure_date' => $date,
-                'departure_time' => '06:45', 'arrival_date' => $date, 'arrival_time' => '10:30',
+                'airline_id' => $j2Id, 'from_airport_id' => $istId, 'to_airport_id' => $gydId,
+                'flight_number' => 'J2 76', 'departure_date' => $date,
+                'departure_time' => '12:00', 'arrival_date' => $date, 'arrival_time' => '15:50',
                 'price_adult' => $price, 'currency_id' => $usdId, 'available_seats' => 50,
                 'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
             ]);
             $created++;
         }
 
-        // GYD→IST: +6 days after TAS→IST departure
-        $gydIstDates = [
-            ['2026-04-19', 179], ['2026-04-26', 179], ['2026-05-03', 179],
-            ['2026-05-10', 179], ['2026-05-17', 179], ['2026-05-24', 179], ['2026-05-31', 179],
-            ['2026-06-07', 179], ['2026-06-14', 179], ['2026-06-21', 179], ['2026-06-28', 179], ['2026-07-05', 179],
-        ];
-
-        foreach ($gydIstDates as [$date, $price]) {
-            if ($this->flightExists($tkId, $gydId, $istId, $date)) { continue; }
-            DB::table('flights')->insert([
-                'airline_id' => $tkId, 'from_airport_id' => $gydId, 'to_airport_id' => $istId,
-                'flight_number' => 'TK 339', 'departure_date' => $date,
-                'departure_time' => '11:30', 'arrival_date' => $date, 'arrival_time' => '13:30',
-                'price_adult' => $price, 'currency_id' => $usdId, 'available_seats' => 50,
-                'class_type' => 'economy', 'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
-            ]);
-            $created++;
-        }
+        // No GYD→IST flights — Baku tour returns directly GYD→TAS (already created above)
 
         $this->command->info("Created {$created} flights (TAS→IST + GYD→TAS + IST↔NCE + IST↔GYD).");
     }

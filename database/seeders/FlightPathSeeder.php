@@ -127,10 +127,9 @@ class FlightPathSeeder extends Seeder
                 }
             }
 
-            // ── Istanbul + Baku ──
+            // ── Istanbul + Baku (TAS→IST→GYD→TAS, 3 legs, no GYD→IST) ──
             if ($bakuId && $gydId) {
                 $istGyd = $flightIndex["IST-GYD-{$istGydDate}"] ?? null;
-                $gydIst = $flightIndex["GYD-IST-{$gydIstDate}"] ?? null;
                 $gydTas = $flightIndex["GYD-TAS-{$returnDate}"] ?? null;
 
                 $exists = DB::table('flight_paths')
@@ -141,7 +140,6 @@ class FlightPathSeeder extends Seeder
                 if (! $exists) {
                     $totalPrice = (float) $tasIst->price_adult
                         + ($istGyd ? (float) $istGyd->price_adult : 0)
-                        + ($gydIst ? (float) $gydIst->price_adult : 0)
                         + ($gydTas ? (float) $gydTas->price_adult : 0);
 
                     $fpId = DB::table('flight_paths')->insertGetId([
@@ -155,7 +153,7 @@ class FlightPathSeeder extends Seeder
                         'created_at' => now(), 'updated_at' => now(),
                     ]);
 
-                    // Legs
+                    // Legs: TAS→IST (1), IST→GYD (2), GYD→TAS (3)
                     $legOrder = 1;
                     DB::table('flight_path_legs')->insert([
                         'flight_path_id' => $fpId, 'flight_id' => $tasIst->id,
@@ -166,13 +164,6 @@ class FlightPathSeeder extends Seeder
                         DB::table('flight_path_legs')->insert([
                             'flight_path_id' => $fpId, 'flight_id' => $istGyd->id,
                             'leg_order' => $legOrder++, 'direction' => 'outbound',
-                            'created_at' => now(), 'updated_at' => now(),
-                        ]);
-                    }
-                    if ($gydIst) {
-                        DB::table('flight_path_legs')->insert([
-                            'flight_path_id' => $fpId, 'flight_id' => $gydIst->id,
-                            'leg_order' => $legOrder++, 'direction' => 'return',
                             'created_at' => now(), 'updated_at' => now(),
                         ]);
                     }
