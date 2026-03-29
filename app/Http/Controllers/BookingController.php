@@ -3,9 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBookingRequest;
+use App\Models\Country;
+use App\Models\FlightPath;
+use App\Models\Hotel;
+use App\Models\Setting;
 use App\Models\Tour;
 use App\Services\BookingException;
 use App\Services\BookingService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -14,6 +19,62 @@ class BookingController extends Controller
     public function __construct(
         private readonly BookingService $bookingService,
     ) {}
+
+    /**
+     * Booking page from FlightPath + Hotels (new architecture).
+     * URL: /book?fp={flight_path_id}&h={hotel_id1},{hotel_id2}
+     */
+    public function createFromFlightPath(Request $request): View
+    {
+        $fpId = $request->query('fp');
+        $hotelIdStr = $request->query('h', '');
+
+        if (! $fpId) {
+            abort(404, 'Flight path required');
+        }
+
+        $flightPath = FlightPath::with([
+            'legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport',
+            'stays.city', 'currency', 'departureCity',
+        ])->findOrFail($fpId);
+
+        if (! $flightPath->is_available) {
+            abort(404, 'This flight path is no longer available');
+        }
+
+        // Parse hotel IDs from comma-separated string
+        $hotelIds = array_filter(explode(',', $hotelIdStr), fn ($id) => is_numeric($id));
+        $hotels = Hotel::whereIn('id', $hotelIds)->with('category')->get()->keyBy('id');
+
+        // Build stay→hotel mapping
+        $stayHotels = [];
+        foreach ($flightPath->stays as $stay) {
+            $cityHotel = $hotels->first(fn ($h) => $h->city_id === $stay->city_id);
+            $stayHotels[] = [
+                'stay' => $stay,
+                'hotel' => $cityHotel,
+                'nights' => $stay->nights,
+            ];
+        }
+
+        // Calculate price per person
+        $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
+        $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
+        $hotelCost = 0;
+        foreach ($stayHotels as $sh) {
+            if ($sh['hotel']) {
+                $hotelCost += ((float) $sh['hotel']->price_per_person / 2) * $sh['nights'];
+            }
+        }
+        $pricePerPerson = (float) $flightPath->total_price + $hotelCost + $hiddenFee + $agentFee;
+
+        $countries = Country::where('is_active', true)->orderBy('name_en')->get();
+
+        return view('bookings.create_fp', compact(
+            'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
+            'hotelCost', 'hiddenFee', 'agentFee', 'countries'
+        ));
+    }
 
     public function create(Tour $tour): View
     {

@@ -53,6 +53,7 @@ Route::middleware(['auth', 'agency.active'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Booking (requires auth)
+    Route::get('/book', [BookingController::class, 'createFromFlightPath'])->name('bookings.create.fp');
     Route::get('/tours/{tour}/book', [BookingController::class, 'create'])->name('bookings.create');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}/confirmation', [BookingController::class, 'confirmation'])->name('bookings.confirmation');
