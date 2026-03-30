@@ -42,6 +42,10 @@ class AdditionalServiceForm
                             ->label('Mandatory')
                             ->helperText('Included in base tour price')
                             ->default(false),
+                        Toggle::make('is_per_person')
+                            ->label('Per Person')
+                            ->helperText('Price multiplied by number of tourists')
+                            ->default(true),
                         Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
