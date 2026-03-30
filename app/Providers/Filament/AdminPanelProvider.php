@@ -11,7 +11,6 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -28,24 +27,31 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('Levora Admin')
+            ->brandName('Levora')
+            ->brandLogo(asset('Levora_logo.svg'))
+            ->brandLogoHeight('3rem')
+            ->favicon(asset('logo-sm.png'))
+            ->font('DM Sans')
             ->colors([
-                'primary' => Color::hex('#1B6B2E'),
+                'primary' => Color::hex('#0F2B3C'),
+                'info' => Color::hex('#C9A84C'),
                 'danger' => Color::Rose,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
             ])
             ->darkMode()
+            ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
-                'Geography',
-                'Hotels',
                 'Tours & Pricing',
                 'Flights',
+                'Hotels',
+                'Geography',
                 'Finance',
                 'Bookings',
                 'Users',
                 'System',
             ])
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
