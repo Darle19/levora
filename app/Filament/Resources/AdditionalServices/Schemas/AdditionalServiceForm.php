@@ -17,10 +17,20 @@ class AdditionalServiceForm
             ->components([
                 Section::make()
                     ->schema([
+                        Select::make('service_type')
+                            ->label('Type')
+                            ->options([
+                                'transfer' => 'Transfer',
+                                'excursion' => 'Excursion',
+                                'insurance' => 'Insurance',
+                                'other' => 'Other',
+                            ])
+                            ->default('other')
+                            ->required(),
                         Select::make('city_id')
                             ->label('City')
                             ->options(City::where('is_active', true)->pluck('name_en', 'id'))
-                            ->required()
+                            ->placeholder('Global (all cities)')
                             ->searchable(),
                         TextInput::make('name_en')
                             ->label('Name (EN)')
