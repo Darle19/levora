@@ -135,7 +135,6 @@ class EditTourTemplate extends EditRecord
         $skippedExists = 0;
         $skippedNoFlights = 0;
         $missingLegs = [];
-        $processedRoundTrips = []; // track already-searched RT pairs
 
         foreach ($dates as $dateEntry) {
             $baseDate = $dateEntry['date'];
@@ -147,10 +146,9 @@ class EditTourTemplate extends EditRecord
                 continue;
             }
 
-            $legResults = []; // leg_id => ['flight_id' => ?, 'price' => ?, 'direction' => ?, ...]
+            $legResults = [];
             $totalPrice = 0;
             $allFound = true;
-            $processedRoundTrips = [];
 
             foreach ($templateLegs as $leg) {
                 $fromAirportId = $cityAirportId[$leg->departure_city_id];
@@ -183,60 +181,15 @@ class EditTourTemplate extends EditRecord
                         $price = (float) $dbFlight->price_adult;
                     }
                 } elseif ($leg->flight_source === 'rapidapi' && $rapidApi) {
-                    // === RAPIDAPI SEARCH ===
-
-                    // Check if this is a round-trip pair and already processed
-                    if ($leg->round_trip_pair_id && isset($processedRoundTrips[$leg->id])) {
-                        $cached = $processedRoundTrips[$leg->id];
-                        $flightId = $cached['flight_id'];
-                        $price = $cached['price'];
-                    } elseif ($leg->round_trip_pair_id) {
-                        // Round-trip search: find the paired leg
-                        $pairLeg = $templateLegs->firstWhere('id', $leg->round_trip_pair_id);
-                        if ($pairLeg) {
-                            $returnDate = $pairLeg->departureDateFor($baseDate);
-                            $airlineCode = $leg->airline?->code;
-                            $rtResults = $rapidApi->searchRoundTrip(
-                                $fromIata, $toIata, $legDate, $returnDate, $leg->passenger_count, $airlineCode
-                            );
-
-                            // Outbound: cheapest
-                            if (! empty($rtResults['outbound'])) {
-                                $cheapest = $rtResults['outbound'][0];
-                                $price = $cheapest->priceCents / 100;
-                                // Store API flight in flights table for traceability
-                                $flightId = $this->storeApiFlightInDb(
-                                    $cheapest, $fromAirportId, $toAirportId, $usdId
-                                );
-                            }
-
-                            // Cache return leg result
-                            if (! empty($rtResults['return'])) {
-                                $retCheapest = $rtResults['return'][0];
-                                $retPrice = $retCheapest->priceCents / 100;
-                                $retFlightId = $this->storeApiFlightInDb(
-                                    $retCheapest,
-                                    $cityAirportId[$pairLeg->departure_city_id],
-                                    $cityAirportId[$pairLeg->arrival_city_id],
-                                    $usdId
-                                );
-                                $processedRoundTrips[$pairLeg->id] = [
-                                    'flight_id' => $retFlightId,
-                                    'price' => $retPrice,
-                                ];
-                            }
-                        }
-                    } else {
-                        // One-way search
-                        $airlineCode = $leg->airline?->code;
-                        $offers = $rapidApi->search($fromIata, $toIata, $legDate, $leg->passenger_count, $airlineCode);
-                        if (! empty($offers)) {
-                            $cheapest = $offers[0]; // already sorted by cheapest
-                            $price = $cheapest->priceCents / 100;
-                            $flightId = $this->storeApiFlightInDb(
-                                $cheapest, $fromAirportId, $toAirportId, $usdId
-                            );
-                        }
+                    // === RAPIDAPI SEARCH (one-way per leg) ===
+                    $airlineCode = $leg->airline?->code;
+                    $offers = $rapidApi->search($fromIata, $toIata, $legDate, $leg->passenger_count, $airlineCode);
+                    if (! empty($offers)) {
+                        $cheapest = $offers[0];
+                        $price = $cheapest->priceCents / 100;
+                        $flightId = $this->storeApiFlightInDb(
+                            $cheapest, $fromAirportId, $toAirportId, $usdId
+                        );
                     }
                 }
 
