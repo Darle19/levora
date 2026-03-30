@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources\AdditionalServices\Schemas;
 
+use App\Models\City;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -15,43 +15,13 @@ class AdditionalServiceForm
     {
         return $schema
             ->components([
-                Section::make('General')
+                Section::make()
                     ->schema([
-                        Select::make('code')
-                            ->label('Code')
-                            ->options([
-                                'airport_transfer' => 'Airport Transfer',
-                                'city_transfer' => 'City Transfer',
-                                'intercity_transfer' => 'Intercity Transfer',
-                                'excursion' => 'Excursion',
-                                'city_tour' => 'City Tour',
-                                'guide' => 'Guide',
-                                'travel_insurance' => 'Travel Insurance',
-                                'medical_insurance' => 'Medical Insurance',
-                                'visa_support' => 'Visa Support',
-                                'sim_card' => 'SIM Card',
-                                'meal_plan' => 'Meal Plan',
-                                'vip_lounge' => 'VIP Lounge',
-                                'fast_track' => 'Fast Track',
-                                'photo_shoot' => 'Photo Shoot',
-                                'other' => 'Other',
-                            ])
+                        Select::make('city_id')
+                            ->label('City')
+                            ->options(City::where('is_active', true)->pluck('name_en', 'id'))
                             ->required()
                             ->searchable(),
-                        Select::make('service_type')
-                            ->options([
-                                'transfer' => 'Transfer',
-                                'excursion' => 'Excursion',
-                                'insurance' => 'Insurance',
-                                'other' => 'Other',
-                            ])
-                            ->required()
-                            ->default('other'),
-                    ])
-                    ->columns(2),
-
-                Section::make('Names')
-                    ->schema([
                         TextInput::make('name_en')
                             ->label('Name (EN)')
                             ->required()
@@ -62,48 +32,17 @@ class AdditionalServiceForm
                         TextInput::make('name_uz')
                             ->label('Name (UZ)')
                             ->maxLength(255),
-                    ])
-                    ->columns(3),
-
-                Section::make('Descriptions')
-                    ->schema([
-                        Textarea::make('description_en')
-                            ->label('Description (EN)')
-                            ->rows(2),
-                        Textarea::make('description_ru')
-                            ->label('Description (RU)')
-                            ->rows(2),
-                        Textarea::make('description_uz')
-                            ->label('Description (UZ)')
-                            ->rows(2),
-                    ])
-                    ->columns(3)
-                    ->collapsed(),
-
-                Section::make('Pricing')
-                    ->schema([
                         TextInput::make('price')
+                            ->label('Price ($)')
                             ->numeric()
                             ->prefix('$')
-                            ->step(0.01)
                             ->required()
                             ->default(0),
-                        Select::make('currency_id')
-                            ->relationship('currency', 'code')
-                            ->required(),
-                        Toggle::make('is_per_person')
-                            ->label('Per Person')
-                            ->helperText('If enabled, price is multiplied by the number of tourists')
-                            ->default(true),
-                    ])
-                    ->columns(3),
-
-                Section::make('Status')
-                    ->schema([
                         Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
-                    ]),
+                    ])
+                    ->columns(3),
             ]);
     }
 }

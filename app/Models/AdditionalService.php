@@ -11,6 +11,15 @@ class AdditionalService extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $service) {
+            if (empty($service->code)) {
+                $service->code = \Illuminate\Support\Str::slug($service->name_en ?? 'service', '_') . '_' . time();
+            }
+        });
+    }
+
     protected $fillable = [
         'code',
         'city_id',
