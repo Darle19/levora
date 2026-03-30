@@ -45,6 +45,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Use Filament's JS date picker everywhere instead of browser native
+        \Filament\Forms\Components\DatePicker::configureUsing(fn ($component) => $component->native(false)->displayFormat('d M Y'));
+        \Filament\Forms\Components\DateTimePicker::configureUsing(fn ($component) => $component->native(false)->displayFormat('d M Y H:i'));
+
         Hotel::observe(HotelObserver::class);
         Flight::observe(FlightObserver::class);
         Tour::observe(TourObserver::class);
