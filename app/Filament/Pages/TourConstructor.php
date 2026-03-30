@@ -2,14 +2,8 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Airport;
 use App\Models\City;
-use App\Models\Country;
-use App\Models\Flight;
 use App\Models\FlightPath;
-use App\Models\Hotel;
-use App\Models\MealType;
-use App\Models\Setting;
 use BackedEnum;
 use UnitEnum;
 use Filament\Actions\Action;
@@ -17,32 +11,36 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Tour Constructor — build flight paths from city pairs + flights.
+ * Tour Constructor — build tours from cities + dates + flights.
  *
- * Admin picks: route legs (city A → city B + flight), stays (city + nights).
- * System creates FlightPath records for each departure date.
+ * Flow:
+ * 1. Admin picks route name + departure city
+ * 2. Admin adds city stays in visit order (city + nights)
+ * 3. Admin adds departure dates
+ * 4. System derives flight legs from city sequence and finds matching flights
+ * 5. Creates FlightPath records for each date where all flights are found
  */
 class TourConstructor extends Page
 {
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGlobeAlt;
 
     protected static string|UnitEnum|null $navigationGroup = 'Tours & Pricing';
 
-    protected static ?string $title = 'Tour Constructor';
+    protected static ?string $title = 'Tours';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?string $slug = 'tours';
+
+    protected static ?int $navigationSort = 0;
 
     protected string $view = 'filament.pages.tour-constructor';
 
@@ -52,7 +50,6 @@ class TourConstructor extends Page
     {
         $this->form->fill([
             'route_name' => '',
-            'nights' => 7,
         ]);
     }
 
@@ -61,7 +58,7 @@ class TourConstructor extends Page
         return $schema
             ->components([
                 Form::make([
-                    Section::make('Route Info')
+                    Section::make('Route')
                         ->schema([
                             TextInput::make('route_name')
                                 ->label('Route Name')
@@ -71,51 +68,11 @@ class TourConstructor extends Page
                                 ->label('Departure City')
                                 ->options(City::where('is_active', true)->pluck('name_en', 'id'))
                                 ->required(),
-                            TextInput::make('nights')
-                                ->label('Total Nights')
-                                ->numeric()
-                                ->default(7)
-                                ->required(),
                         ])
-                        ->columns(3),
+                        ->columns(2),
 
-                    Section::make('Flight Legs')
-                        ->description('Add each flight segment. All flights include baggage.')
-                        ->schema([
-                            Repeater::make('legs')
-                                ->schema([
-                                    Select::make('from_city_id')
-                                        ->label('From City')
-                                        ->options(City::where('is_active', true)->pluck('name_en', 'id'))
-                                        ->required()
-                                        ->live(),
-                                    Select::make('to_city_id')
-                                        ->label('To City')
-                                        ->options(City::where('is_active', true)->pluck('name_en', 'id'))
-                                        ->required()
-                                        ->live(),
-                                    Select::make('direction')
-                                        ->label('Direction')
-                                        ->options(['outbound' => '→ Outbound', 'return' => '← Return'])
-                                        ->default('outbound')
-                                        ->required(),
-                                    TextInput::make('day_offset')
-                                        ->label('Day offset from departure')
-                                        ->numeric()
-                                        ->default(0)
-                                        ->helperText('0 = departure day, 2 = day+2, etc.')
-                                        ->required(),
-                                ])
-                                ->columns(4)
-                                ->defaultItems(1)
-                                ->minItems(1)
-                                ->maxItems(6)
-                                ->reorderable()
-                                ->addActionLabel('+ Add Flight Leg'),
-                        ]),
-
-                    Section::make('City Stays')
-                        ->description('Hotels are selected by the customer at search time.')
+                    Section::make('Cities')
+                        ->description('Add cities in visit order. System will derive flight legs: Departure → City 1 → City 2 → ... → Departure.')
                         ->schema([
                             Repeater::make('stays')
                                 ->schema([
@@ -134,28 +91,30 @@ class TourConstructor extends Page
                                 ->minItems(1)
                                 ->maxItems(5)
                                 ->reorderable()
-                                ->addActionLabel('+ Add City Stay'),
+                                ->addActionLabel('+ Add City'),
                         ]),
 
-                    Section::make('Date Range')
-                        ->description('Flight paths will be created for each matching flight date in this range.')
+                    Section::make('Dates')
+                        ->description('Add specific departure dates. For each date, the system will look for flights on the correct day offsets.')
                         ->schema([
-                            DatePicker::make('date_from')
-                                ->label('From')
-                                ->default(now()->format('Y-m-d'))
-                                ->required(),
-                            DatePicker::make('date_to')
-                                ->label('To')
-                                ->default(now()->addMonths(3)->format('Y-m-d'))
-                                ->required(),
-                        ])
-                        ->columns(2),
+                            Repeater::make('dates')
+                                ->schema([
+                                    DatePicker::make('date')
+                                        ->label('Departure Date')
+                                        ->required(),
+                                ])
+                                ->columns(1)
+                                ->defaultItems(1)
+                                ->minItems(1)
+                                ->maxItems(30)
+                                ->addActionLabel('+ Add Date'),
+                        ]),
                 ])
                     ->livewireSubmitHandler('generate')
                     ->footer([
                         Actions::make([
                             Action::make('generate')
-                                ->label('Generate Flight Paths')
+                                ->label('Generate Tours')
                                 ->icon(Heroicon::OutlinedBolt)
                                 ->color('success')
                                 ->submit('generate'),
@@ -170,78 +129,90 @@ class TourConstructor extends Page
         $data = $this->form->getState();
 
         $routeName = $data['route_name'];
-        $departureCityId = $data['departure_city_id'];
-        $nights = (int) $data['nights'];
-        $legs = $data['legs'] ?? [];
+        $departureCityId = (int) $data['departure_city_id'];
         $stays = $data['stays'] ?? [];
-        $dateFrom = $data['date_from'];
-        $dateTo = $data['date_to'];
+        $dates = $data['dates'] ?? [];
 
-        if (empty($legs) || empty($stays)) {
-            Notification::make()->danger()->title('Add at least one leg and one stay.')->send();
+        if (empty($stays)) {
+            Notification::make()->danger()->title('Add at least one city.')->send();
+            return;
+        }
+        if (empty($dates)) {
+            Notification::make()->danger()->title('Add at least one departure date.')->send();
             return;
         }
 
-        $usdId = DB::table('currencies')->where('code', 'USD')->value('id');
+        // Derive flight legs from city sequence: departure → city1 → city2 → ... → departure
+        $citySequence = [$departureCityId];
+        foreach ($stays as $stay) {
+            $citySequence[] = (int) $stay['city_id'];
+        }
+        $citySequence[] = $departureCityId; // return to departure
 
-        // For each leg, find matching flights in the date range
-        // The first leg's flights define departure dates
-        $firstLeg = $legs[0];
-        $fromAirportId = DB::table('airports')
-            ->whereIn('city_id', [$firstLeg['from_city_id']])
-            ->where('is_active', true)
-            ->value('id');
-        $toAirportId = DB::table('airports')
-            ->whereIn('city_id', [$firstLeg['to_city_id']])
-            ->where('is_active', true)
-            ->value('id');
-
-        if (! $fromAirportId || ! $toAirportId) {
-            Notification::make()->danger()->title('No airports found for first leg cities.')->send();
-            return;
+        $legs = [];
+        $dayOffset = 0;
+        for ($i = 0; $i < count($citySequence) - 1; $i++) {
+            $legs[] = [
+                'from_city_id' => $citySequence[$i],
+                'to_city_id' => $citySequence[$i + 1],
+                'day_offset' => $dayOffset,
+                'direction' => ($i < count($stays)) ? 'outbound' : 'return',
+            ];
+            // Add nights of current city stay to offset (if it's a stay city, not the last return)
+            if ($i < count($stays)) {
+                $dayOffset += (int) $stays[$i]['nights'];
+            }
         }
 
-        // Get first leg flights in date range — these define departure dates
-        $firstLegFlights = DB::table('flights')
-            ->where('from_airport_id', $fromAirportId)
-            ->where('to_airport_id', $toAirportId)
-            ->where('is_active', true)
-            ->whereBetween('departure_date', [$dateFrom, $dateTo])
-            ->orderBy('departure_date')
-            ->get();
+        $totalNights = array_sum(array_column($stays, 'nights'));
 
-        if ($firstLegFlights->isEmpty()) {
-            Notification::make()->danger()->title('No flights found for first leg in date range.')->send();
-            return;
-        }
-
-        // Index all flights for quick lookup
-        $allFlights = DB::table('flights')
-            ->where('is_active', true)
-            ->get();
-        $flightIndex = [];
-        foreach ($allFlights as $f) {
-            $key = $f->from_airport_id . '-' . $f->to_airport_id . '-' . $f->departure_date;
-            $flightIndex[$key] = $f;
-        }
-
-        // Build airport lookup per city
+        // Build airport lookup: city_id → airport_id
         $cityAirport = DB::table('airports')
             ->where('is_active', true)
             ->pluck('id', 'city_id')
             ->toArray();
 
+        // Check all cities have airports
+        $allCityIds = array_unique(array_column($legs, 'from_city_id') + array_column($legs, 'to_city_id'));
+        $missingAirports = [];
+        foreach ($allCityIds as $cid) {
+            if (! isset($cityAirport[$cid])) {
+                $missingAirports[] = City::find($cid)?->name_en ?? $cid;
+            }
+        }
+        if (! empty($missingAirports)) {
+            Notification::make()->danger()
+                ->title('No airports found for: ' . implode(', ', $missingAirports))
+                ->send();
+            return;
+        }
+
+        // Index all active flights for quick lookup
+        $allFlights = DB::table('flights')->where('is_active', true)->get();
+        $flightIndex = [];
+        foreach ($allFlights as $f) {
+            $key = $f->from_airport_id . '-' . $f->to_airport_id . '-' . $f->departure_date;
+            // Keep cheapest if multiple
+            if (! isset($flightIndex[$key]) || $f->price_adult < $flightIndex[$key]->price_adult) {
+                $flightIndex[$key] = $f;
+            }
+        }
+
+        $usdId = DB::table('currencies')->where('code', 'USD')->value('id');
+
         $created = 0;
+        $skippedExists = 0;
+        $skippedNoFlights = 0;
+        $missingLegs = [];
 
-        foreach ($firstLegFlights as $firstFlight) {
-            $depDate = $firstFlight->departure_date;
+        foreach ($dates as $dateEntry) {
+            $depDate = $dateEntry['date'];
 
-            // Check if path already exists
-            $exists = DB::table('flight_paths')
-                ->where('route_name', $routeName)
-                ->where('departure_date', $depDate)
-                ->exists();
-            if ($exists) { continue; }
+            // Skip if already exists
+            if (DB::table('flight_paths')->where('route_name', $routeName)->where('departure_date', $depDate)->exists()) {
+                $skippedExists++;
+                continue;
+            }
 
             // Find flights for all legs
             $legFlights = [];
@@ -249,27 +220,34 @@ class TourConstructor extends Page
             $allFound = true;
 
             foreach ($legs as $i => $leg) {
-                $legFromAirport = $cityAirport[$leg['from_city_id']] ?? null;
-                $legToAirport = $cityAirport[$leg['to_city_id']] ?? null;
-                if (! $legFromAirport || ! $legToAirport) { $allFound = false; break; }
-
-                $offset = (int) ($leg['day_offset'] ?? 0);
+                $fromAirport = $cityAirport[$leg['from_city_id']];
+                $toAirport = $cityAirport[$leg['to_city_id']];
+                $offset = $leg['day_offset'];
                 $legDate = date('Y-m-d', strtotime($depDate . " +{$offset} days"));
 
-                $key = $legFromAirport . '-' . $legToAirport . '-' . $legDate;
+                $key = $fromAirport . '-' . $toAirport . '-' . $legDate;
                 $flight = $flightIndex[$key] ?? null;
 
-                if (! $flight) { $allFound = false; break; }
+                if (! $flight) {
+                    $allFound = false;
+                    $fromCity = City::find($leg['from_city_id'])?->name_en;
+                    $toCity = City::find($leg['to_city_id'])?->name_en;
+                    $missingLegs[] = "{$fromCity}→{$toCity} on {$legDate}";
+                    break;
+                }
 
                 $legFlights[] = [
                     'flight' => $flight,
-                    'direction' => $leg['direction'] ?? 'outbound',
+                    'direction' => $leg['direction'],
                     'leg_order' => $i + 1,
                 ];
                 $totalPrice += (float) $flight->price_adult;
             }
 
-            if (! $allFound) { continue; }
+            if (! $allFound) {
+                $skippedNoFlights++;
+                continue;
+            }
 
             // Create flight path
             $fpId = DB::table('flight_paths')->insertGetId([
@@ -278,7 +256,7 @@ class TourConstructor extends Page
                 'departure_city_id' => $departureCityId,
                 'total_price' => $totalPrice,
                 'currency_id' => $usdId,
-                'nights' => $nights,
+                'nights' => $totalNights,
                 'is_available' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -313,9 +291,23 @@ class TourConstructor extends Page
 
         DB::table('cache')->truncate();
 
-        Notification::make()
-            ->success()
-            ->title("Created {$created} flight paths for '{$routeName}'")
-            ->send();
+        // Build result message
+        $parts = ["Created {$created} tours for '{$routeName}'."];
+        if ($skippedExists > 0) {
+            $parts[] = "{$skippedExists} skipped (already exist).";
+        }
+        if ($skippedNoFlights > 0) {
+            $parts[] = "{$skippedNoFlights} skipped (no flights).";
+        }
+        if (! empty($missingLegs)) {
+            $unique = array_unique($missingLegs);
+            $parts[] = 'Missing flights: ' . implode(', ', array_slice($unique, 0, 5));
+        }
+
+        $notification = $created > 0
+            ? Notification::make()->success()
+            : Notification::make()->warning();
+
+        $notification->title(implode(' ', $parts))->send();
     }
 }

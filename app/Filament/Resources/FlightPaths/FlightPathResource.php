@@ -29,15 +29,15 @@ class FlightPathResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGlobeAlt;
 
-    protected static ?string $navigationLabel = 'Tours';
+    protected static ?string $navigationLabel = 'Flight Paths';
 
-    protected static ?string $slug = 'tours';
+    protected static ?string $slug = 'flight-paths';
 
-    protected static ?string $pluralModelLabel = 'Tours';
+    protected static ?string $pluralModelLabel = 'Flight Paths';
 
-    protected static ?string $modelLabel = 'Tour';
+    protected static ?string $modelLabel = 'Flight Path';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {
