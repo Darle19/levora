@@ -106,7 +106,7 @@
 </style>
 
 <div class="st">
-    <div style="max-width:1100px; margin:0 auto; padding:40px 10px 10px 10px;">
+    <div style="max-width:1300px; margin:0 auto; padding:40px 10px 10px 10px;">
 
         {{-- Banner Slider --}}
         @if($banners->count())
@@ -116,10 +116,10 @@
                 <div class="banner-slide" style="min-width:100%; flex-shrink:0;">
                     @if($banner->link)
                     <a href="{{ $banner->link }}" target="_blank">
-                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; width:100%; height:300px; object-fit:cover; display:block;">
+                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; width:100%; height:200px; object-fit:cover; display:block;">
                     </a>
                     @else
-                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; width:100%; height:300px; object-fit:cover; display:block;">
+                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; width:100%; height:200px; object-fit:cover; display:block;">
                     @endif
                 </div>
                 @endforeach
