@@ -56,13 +56,15 @@
     }
     .bk .btn-add:hover { background: linear-gradient(to bottom, #f5f5f5, #e5e5e5); }
     .bk .btn-remove { color: #c00; font-size: 11px; cursor: pointer; text-decoration: underline; float: right; background: none; border: none; }
+    .bk .notes-grid { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    .bk .notes-grid label { font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 </style>
 
 <div class="bk" style="max-width: 1100px; margin: 20px auto; padding: 0 10px;">
 
     {{-- ═══ TOUR DESCRIPTION ═══ --}}
     <div class="section">
-        <div class="section-title">Тур</div>
+        <div class="section-title">Тур / Tour</div>
         <div class="section-body">
             <table class="data-table">
                 <thead>
@@ -102,12 +104,21 @@
     <div class="payment-terms">
         <strong>Примите, пожалуйста, во внимание условия оплаты:</strong>
         <ul>
-            <li><strong>Предоплата в размере 30%</strong> должна быть произведена в течение 2 банковских дней с момента подтверждения заявки;</li>
-            <li><strong>Полная оплата (100%)</strong> должна быть произведена не позднее 14 дней до даты вылета;</li>
-            <li>Норма провозимого багажа: Эконом класс — 20 кг багажа (1 место) и 5 кг ручная кладь.</li>
-            <li>При получении подтверждения заявки необходимо проверить правильность данных туристов;</li>
+            <li>Туры с авиаперелетом должны быть оплачены <strong>100%</strong> в течении текущего дня с момента подтверждения заявки (если до даты начала тура от 1 до 10 дней);</li>
+            <li>Туры с авиаперелетом должны быть оплачены <strong>100%</strong> в течении 2х банковских дней с момента подтверждения заявки (если до даты начала тура от 10 до 20 дней);</li>
+            <li>Туры с авиаперелетом должны быть оплачены в размере <strong>30%</strong> в течение 3х банковских дней с момента подтверждения заявки (если до даты начала тура от 20 до 365 дней); Оставшаяся часть оплачивается не позднее 14 дней до даты начала тура.</li>
+            <li>Заявки без авиаперелета (только Отель), должны быть оплачены в размере <strong>30%</strong> в течение 3х банковских дней; Оставшаяся часть — не позднее 14 дней до даты начала тура.</li>
+            <li>В случае отсутствия своевременной оплаты заявка подлежит аннуляции согласно Договору о сотрудничестве.</li>
+            <li>Норма провозимого багажа: Эконом класс — 20 кг багажа (1 место) и 5 кг ручная кладь. Сверх нормы — 100 евро.</li>
+            <li>Доплата за инфанта 50$ в эконом классе и 100$ в бизнес классе.</li>
+            <li>Стоимость услуги выбор места на борту 50$ за пассажира в одну сторону.</li>
+            <li>При получении подтверждения заявки необходимо проверить правильность данных туристов.</li>
             <li>Ответственность за правильность и точность указанной информации несет агентство.</li>
+            <li>Изменения данных о туристах возможны со штрафом 25$ за каждое изменение за 2 и более дней до вылета.</li>
+            <li>Замена туриста производится со штрафом 50$ за 1 человека.</li>
+            <li>Аннуляция резервации или любые изменения ОБЯЗАТЕЛЬНО должны быть отправлены в личный кабинет, а также на электронную почту и телеграм куратора.</li>
         </ul>
+        Спасибо за резервацию, надеемся на дальнейшее сотрудничество.
     </div>
 
     <form action="{{ route('bookings.store') }}" method="POST" id="bookingForm">
@@ -127,7 +138,7 @@
 
         {{-- ═══ ACCOMMODATION ═══ --}}
         <div class="section">
-            <div class="section-title">Проживание</div>
+            <div class="section-title">Проживание / Accommodation</div>
             <div class="section-body">
                 <table class="data-table">
                     <thead>
@@ -153,7 +164,7 @@
                             <td>DBL</td>
                             <td id="{{ $loop->first ? 'paxSummary' : '' }}">2ADL</td>
                             <td><strong>BB</strong></td>
-                            <td>{{ $sh['nights'] }} ночей</td>
+                            <td>{{ $flightPath->departure_date->copy()->addDays($loop->index > 0 ? collect($stayHotels)->take($loop->index)->sum('nights') : 0)->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays(collect($stayHotels)->take($loop->index + 1)->sum('nights'))->format('d.m.Y') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -163,7 +174,7 @@
 
         {{-- ═══ TRANSPORT ═══ --}}
         <div class="section">
-            <div class="section-title">Транспорт</div>
+            <div class="section-title">Транспорт / Transport</div>
             <div class="section-body">
                 <table class="data-table">
                     <thead>
@@ -198,17 +209,97 @@
             </div>
         </div>
 
+        {{-- ═══ ADDITIONAL SERVICES ═══ --}}
+        <div class="section">
+            <div class="section-title">Доп. услуги / Additional Services</div>
+            <div class="section-body">
+                @if(collect($stayServices)->flatMap(fn($s) => $s['mandatory']->merge($s['optional']))->isNotEmpty())
+                    <table class="data-table">
+                        <thead>
+                            <tr><th></th><th>Услуга</th><th>Дата</th><th>Кол-во</th><th style="text-align:right;">Стоимость</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach($stayServices as $si => $ss)
+                            @php
+                                $stayStart = $flightPath->departure_date->copy()->addDays(collect($stayHotels)->take($si)->sum('nights'));
+                            @endphp
+                            @foreach($ss['mandatory'] as $svc)
+                            <tr style="background:#f0fff0;">
+                                <td style="width:30px;">
+                                    <input type="checkbox" checked disabled>
+                                    <input type="hidden" name="services[]" value="{{ $svc->id }}">
+                                </td>
+                                <td>{{ $svc->name_en }} <span style="color:#888; font-size:11px;">({{ $ss['stay']->city->name_en }})</span></td>
+                                <td>{{ $stayStart->format('d.m.Y') }}</td>
+                                <td>{{ $svc->is_per_person ? '<span class="svc-pax">2 ADL</span>' : '—' }}</td>
+                                <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                            </tr>
+                            @endforeach
+                            @foreach($ss['optional'] as $svc)
+                            <tr>
+                                <td style="width:30px;">
+                                    <input type="checkbox" name="services[]" value="{{ $svc->id }}" class="optional-service" data-price="{{ $svc->price }}" data-per-person="{{ $svc->is_per_person ? 1 : 0 }}">
+                                </td>
+                                <td>{{ $svc->name_en }} <span style="color:#888; font-size:11px;">({{ $ss['stay']->city->name_en }})</span></td>
+                                <td>{{ $stayStart->format('d.m.Y') }}</td>
+                                <td>{{ $svc->is_per_person ? '<span class="svc-pax">2 ADL</span>' : '—' }}</td>
+                                <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                            </tr>
+                            @endforeach
+                        @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <p style="color:#888; margin:0;">Нет дополнительных услуг</p>
+                @endif
+            </div>
+        </div>
+
+        {{-- ═══ INSURANCE ═══ --}}
+        <div class="section">
+            <div class="section-title">Страховка / Insurance</div>
+            <div class="section-body">
+                @if(isset($insurances) && $insurances->isNotEmpty())
+                    <table class="data-table">
+                        <thead>
+                            <tr><th></th><th>Наименование</th><th>Период</th><th>Кол-во</th><th style="text-align:right;">Стоимость</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach($insurances as $ins)
+                            <tr>
+                                <td style="width:30px;">
+                                    <input type="checkbox" name="insurances[]" value="{{ $ins->id }}" class="optional-service"
+                                        data-price="{{ $ins->price }}" data-per-person="{{ $ins->is_per_person ? 1 : 0 }}"
+                                        {{ $ins->is_mandatory ? 'checked disabled' : '' }}>
+                                    @if($ins->is_mandatory)
+                                        <input type="hidden" name="insurances[]" value="{{ $ins->id }}">
+                                    @endif
+                                </td>
+                                <td>{{ $ins->name_en }}</td>
+                                <td>{{ $flightPath->departure_date->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}</td>
+                                <td><span class="svc-pax">2 ADL</span></td>
+                                <td style="text-align:right; font-weight:600;">${{ number_format($ins->price, 0) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <p style="color:#888; margin:0;">Нет страховых программ. Добавьте страховки в <a href="/admin/additional-services">Доп. услуги</a> с типом "insurance".</p>
+                @endif
+            </div>
+        </div>
+
         {{-- ═══ TOURISTS ═══ --}}
         <div class="section">
-            <div class="section-title">Туристы</div>
+            <div class="section-title">Информация о туристах / Tourist Info</div>
             <div class="section-body">
                 <div id="tourists-container">
                     <div class="tourist-section" data-index="0">
-                        <div class="tourist-header">Турист 1 (взрослый)</div>
+                        <div class="tourist-header">Tourist info 1</div>
                         <div class="tourist-body">
                             <table class="form-table">
                                 <tr>
-                                    <td class="lbl">Обращение:</td>
+                                    <td class="lbl">MR/MRS/CHD/INF:</td>
                                     <td>
                                         <select name="tourists[0][title]" onchange="updatePax()" style="width:80px;">
                                             <option value="MR">MR</option>
@@ -217,23 +308,34 @@
                                             <option value="INF">INF</option>
                                         </select>
                                     </td>
-                                    <td class="lbl">Пол:</td>
+                                    <td class="lbl">Пол / Sex:</td>
                                     <td>
                                         <select name="tourists[0][gender]" style="width:100px;">
-                                            <option value="male">Мужской</option>
-                                            <option value="female">Женский</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
                                         </select>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="lbl">Фамилия:</td>
-                                    <td><input type="text" name="tourists[0][last_name]" required placeholder="DOE" style="width:180px;"></td>
-                                    <td class="lbl">Имя:</td>
-                                    <td><input type="text" name="tourists[0][first_name]" required placeholder="JOHN" style="width:180px;"></td>
+                                    <td class="lbl">Фамилия / Lastname:</td>
+                                    <td><input type="text" name="tourists[0][last_name]" required placeholder="LASTNAME" style="width:180px;"></td>
+                                    <td class="lbl">Имя / Firstname:</td>
+                                    <td><input type="text" name="tourists[0][first_name]" required placeholder="FIRSTNAME" style="width:180px;"></td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Дата рождения:</td>
                                     <td><input type="date" name="tourists[0][birth_date]" required></td>
+                                    <td class="lbl">Страна рождения:</td>
+                                    <td>
+                                        <select name="tourists[0][birth_country]" style="width:180px;">
+                                            <option value="">—</option>
+                                            @foreach($countries as $c)
+                                                <option value="{{ $c->code }}" {{ $c->code === 'UZ' ? 'selected' : '' }}>{{ $c->name_en }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
                                     <td class="lbl">Гражданство:</td>
                                     <td>
                                         <select name="tourists[0][nationality]" style="width:180px;">
@@ -242,18 +344,56 @@
                                             @endforeach
                                         </select>
                                     </td>
+                                    <td class="lbl">Тип документа:</td>
+                                    <td>
+                                        <select name="tourists[0][document_type]" style="width:180px;">
+                                            <option value="passport">Загранпаспорт</option>
+                                            <option value="id_card">ID карта</option>
+                                            <option value="birth_cert">Свидетельство о рождении</option>
+                                        </select>
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td class="lbl">№ паспорта:</td>
-                                    <td><input type="text" name="tourists[0][passport_number]" required placeholder="AB1234567" style="width:180px;"></td>
-                                    <td class="lbl">Действ. до:</td>
+                                    <td class="lbl">Серия документа:</td>
+                                    <td><input type="text" name="tourists[0][document_series]" placeholder="DOCUMENT SERIES" style="width:180px;"></td>
+                                    <td class="lbl">Номер документа:</td>
+                                    <td><input type="text" name="tourists[0][passport_number]" required placeholder="DOCUMENT NUMBER" style="width:180px;"></td>
+                                </tr>
+                                <tr>
+                                    <td class="lbl">Действ. до / Valid to:</td>
                                     <td><input type="date" name="tourists[0][passport_expiry]" required></td>
+                                    <td class="lbl">Дата выдачи:</td>
+                                    <td><input type="date" name="tourists[0][passport_issued]"></td>
+                                </tr>
+                                <tr>
+                                    <td class="lbl">Кем выдан / Issued by:</td>
+                                    <td colspan="3"><input type="text" name="tourists[0][issued_by]" placeholder="ISSUED BY" style="width:100%;"></td>
                                 </tr>
                             </table>
                         </div>
                     </div>
                 </div>
                 <button type="button" class="btn-add" onclick="addTourist()">+ Добавить туриста</button>
+            </div>
+        </div>
+
+        {{-- ═══ NOTES ═══ --}}
+        <div class="section">
+            <div class="section-title">Примечания / Notes</div>
+            <div class="section-body">
+                <div class="notes-grid">
+                    <label><input type="checkbox" name="notes[]" value="just_married"> just married</label>
+                    <label><input type="checkbox" name="notes[]" value="sea_view"> sea view</label>
+                    <label><input type="checkbox" name="notes[]" value="quiet_place"> quiet place</label>
+                    <label><input type="checkbox" name="notes[]" value="regular_guest"> regular guest</label>
+                    <label><input type="checkbox" name="notes[]" value="cradle"> cradle for the baby</label>
+                    <label><input type="checkbox" name="notes[]" value="twin_bed"> Twin bed</label>
+                    <label><input type="checkbox" name="notes[]" value="birthday"> Birthday</label>
+                    <label><input type="checkbox" name="notes[]" value="high_floor"> high floor</label>
+                </div>
+                <div style="margin-top:8px;">
+                    <textarea name="notes_text" rows="2" placeholder="Дополнительные пожелания..." style="width:100%; font-size:12px; border:1px solid #999; border-radius:3px; padding:4px; resize:vertical;"></textarea>
+                </div>
             </div>
         </div>
 
@@ -278,53 +418,9 @@
             </div>
         </div>
 
-        {{-- ═══ ADDITIONAL SERVICES ═══ --}}
-        @if(collect($stayServices)->flatMap(fn($s) => $s['mandatory']->merge($s['optional']))->isNotEmpty())
-        <div class="section">
-            <div class="section-title">Доп. услуги / Additional Services</div>
-            <div class="section-body">
-                @foreach($stayServices as $ss)
-                    @if($ss['mandatory']->isNotEmpty() || $ss['optional']->isNotEmpty())
-                    <div style="margin-bottom:10px;">
-                        <strong>{{ $ss['stay']->city->name_en ?? '' }} ({{ $ss['stay']->nights }}н)</strong>
-                        <table class="data-table" style="width:100%; margin-top:5px;">
-                            <thead>
-                                <tr><th></th><th>Услуга</th><th style="text-align:right;">Цена</th><th>За чел.</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach($ss['mandatory'] as $svc)
-                                <tr style="background:#f0fff0;">
-                                    <td style="width:30px;">
-                                        <input type="checkbox" name="services[]" value="{{ $svc->id }}" checked disabled>
-                                        <input type="hidden" name="services[]" value="{{ $svc->id }}">
-                                    </td>
-                                    <td>{{ $svc->name_en }} <span style="color:#888; font-size:11px;">(обязательно)</span></td>
-                                    <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
-                                    <td>{{ $svc->is_per_person ? 'да' : 'нет' }}</td>
-                                </tr>
-                                @endforeach
-                                @foreach($ss['optional'] as $svc)
-                                <tr>
-                                    <td style="width:30px;">
-                                        <input type="checkbox" name="services[]" value="{{ $svc->id }}" class="optional-service" data-price="{{ $svc->price }}" data-per-person="{{ $svc->is_per_person ? 1 : 0 }}">
-                                    </td>
-                                    <td>{{ $svc->name_en }}</td>
-                                    <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
-                                    <td>{{ $svc->is_per_person ? 'да' : 'нет' }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @endif
-                @endforeach
-            </div>
-        </div>
-        @endif
-
         {{-- ═══ PRICE ═══ --}}
         <div class="section">
-            <div class="section-title">Стоимость</div>
+            <div class="section-title">Стоимость / Price</div>
             <div class="section-body">
                 <table class="data-table" style="width:auto;">
                     <tr>
@@ -346,20 +442,20 @@
                     </tr>
                     @endif
                     <tr id="optionalServicesRow" style="display:none;">
-                        <td>Доп. услуги</td>
+                        <td>Доп. услуги / Страховка</td>
                         <td style="text-align:right; font-weight:600;">$<span id="optionalServicesCost">0</span></td>
                     </tr>
                 </table>
                 <div class="price-box" style="margin-top:10px; text-align:center;">
                     <div class="price-alt"><span id="touristCount">1</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
-                    <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson, 0) }}</div>
+                    <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson, 0) }} USD</div>
                 </div>
             </div>
         </div>
 
         {{-- ═══ SUBMIT ═══ --}}
         <div style="text-align:center; padding: 15px 0;">
-            <button type="submit" class="btn-search">Оформить заявку</button>
+            <button type="submit" class="btn-search">Оформить заявку / Booking</button>
         </div>
     </form>
 </div>
@@ -371,7 +467,6 @@ let optionalCostPerPerson = 0;
 let optionalCostFlat = 0;
 let touristIndex = 1;
 
-// Optional services checkboxes
 document.querySelectorAll('.optional-service').forEach(cb => {
     cb.addEventListener('change', recalcOptionalServices);
 });
@@ -406,32 +501,48 @@ function addTourist() {
     const idx = touristIndex++;
     const html = `
     <div class="tourist-section" data-index="${idx}">
-        <div class="tourist-header">Турист ${idx + 1} <button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal();">Удалить</button></div>
+        <div class="tourist-header">Tourist info ${idx + 1} <button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal();">Удалить</button></div>
         <div class="tourist-body">
             <table class="form-table">
                 <tr>
-                    <td class="lbl">Обращение:</td>
+                    <td class="lbl">MR/MRS/CHD/INF:</td>
                     <td><select name="tourists[${idx}][title]" onchange="updatePax()" style="width:80px;"><option value="MR">MR</option><option value="MRS">MRS</option><option value="CHD">CHD</option><option value="INF">INF</option></select></td>
-                    <td class="lbl">Пол:</td>
-                    <td><select name="tourists[${idx}][gender]" style="width:100px;"><option value="male">Мужской</option><option value="female">Женский</option></select></td>
+                    <td class="lbl">Пол / Sex:</td>
+                    <td><select name="tourists[${idx}][gender]" style="width:100px;"><option value="male">Male</option><option value="female">Female</option></select></td>
                 </tr>
                 <tr>
-                    <td class="lbl">Фамилия:</td>
-                    <td><input type="text" name="tourists[${idx}][last_name]" required style="width:180px;"></td>
-                    <td class="lbl">Имя:</td>
-                    <td><input type="text" name="tourists[${idx}][first_name]" required style="width:180px;"></td>
+                    <td class="lbl">Фамилия / Lastname:</td>
+                    <td><input type="text" name="tourists[${idx}][last_name]" required placeholder="LASTNAME" style="width:180px;"></td>
+                    <td class="lbl">Имя / Firstname:</td>
+                    <td><input type="text" name="tourists[${idx}][first_name]" required placeholder="FIRSTNAME" style="width:180px;"></td>
                 </tr>
                 <tr>
                     <td class="lbl">Дата рождения:</td>
                     <td><input type="date" name="tourists[${idx}][birth_date]" required></td>
-                    <td class="lbl">Гражданство:</td>
-                    <td><select name="tourists[${idx}][nationality]" style="width:180px;">@foreach($countries as $c)<option value="{{ $c->code }}" {{ $c->code === 'UZ' ? 'selected' : '' }}>{{ $c->name_en }}</option>@endforeach</select></td>
+                    <td class="lbl">Страна рождения:</td>
+                    <td><select name="tourists[${idx}][birth_country]" style="width:180px;"><option value="">—</option>@foreach($countries as $c)<option value="{{ $c->code }}" {{ $c->code === 'UZ' ? 'selected' : '' }}>{{ $c->name_en }}</option>@endforeach</select></td>
                 </tr>
                 <tr>
-                    <td class="lbl">№ паспорта:</td>
-                    <td><input type="text" name="tourists[${idx}][passport_number]" required style="width:180px;"></td>
-                    <td class="lbl">Действ. до:</td>
+                    <td class="lbl">Гражданство:</td>
+                    <td><select name="tourists[${idx}][nationality]" style="width:180px;">@foreach($countries as $c)<option value="{{ $c->code }}" {{ $c->code === 'UZ' ? 'selected' : '' }}>{{ $c->name_en }}</option>@endforeach</select></td>
+                    <td class="lbl">Тип документа:</td>
+                    <td><select name="tourists[${idx}][document_type]" style="width:180px;"><option value="passport">Загранпаспорт</option><option value="id_card">ID карта</option><option value="birth_cert">Свидетельство о рождении</option></select></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Серия документа:</td>
+                    <td><input type="text" name="tourists[${idx}][document_series]" placeholder="DOCUMENT SERIES" style="width:180px;"></td>
+                    <td class="lbl">Номер документа:</td>
+                    <td><input type="text" name="tourists[${idx}][passport_number]" required placeholder="DOCUMENT NUMBER" style="width:180px;"></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Действ. до / Valid to:</td>
                     <td><input type="date" name="tourists[${idx}][passport_expiry]" required></td>
+                    <td class="lbl">Дата выдачи:</td>
+                    <td><input type="date" name="tourists[${idx}][passport_issued]"></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Кем выдан / Issued by:</td>
+                    <td colspan="3"><input type="text" name="tourists[${idx}][issued_by]" placeholder="ISSUED BY" style="width:100%;"></td>
                 </tr>
             </table>
         </div>
@@ -444,7 +555,7 @@ function updateTotal() {
     const count = document.querySelectorAll('.tourist-section').length;
     document.getElementById('touristCount').textContent = count;
     const total = (count * pricePerPerson) + optionalCostFlat;
-    document.getElementById('totalPrice').textContent = '$' + total.toLocaleString('en-US', {maximumFractionDigits: 0});
+    document.getElementById('totalPrice').textContent = '$' + total.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' USD';
 }
 
 function updatePax() {
@@ -457,6 +568,10 @@ function updatePax() {
     });
     const el = document.getElementById('paxSummary');
     if (el) el.textContent = adults + 'ADL' + (children ? '+' + children + 'CHD' : '') + (infants ? '+' + infants + 'INF' : '');
+    // Update all service PAX displays
+    document.querySelectorAll('.svc-pax').forEach(el => {
+        el.textContent = adults + ' ADL' + (children ? '(' + children + ')' : '') + (infants ? '(' + infants + ')' : '');
+    });
 }
 </script>
 @endsection

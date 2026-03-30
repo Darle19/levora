@@ -58,14 +58,24 @@ class BookingController extends Controller
             ];
         }
 
-        // Load additional services per city
+        // Load additional services per city (excluding insurance)
         $cityIds = $flightPath->stays->pluck('city_id')->unique()->toArray();
         $allServices = AdditionalService::where('is_active', true)
             ->whereIn('city_id', $cityIds)
+            ->where('service_type', '!=', 'insurance')
             ->orderBy('city_id')
             ->orderBy('name_en')
             ->get()
             ->groupBy('city_id');
+
+        // Load insurances separately (service_type = 'insurance', any city or global)
+        $insurances = AdditionalService::where('is_active', true)
+            ->where('service_type', 'insurance')
+            ->where(function ($q) use ($cityIds) {
+                $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
+            })
+            ->orderBy('name_en')
+            ->get();
 
         // Build services per stay
         $stayServices = [];
@@ -103,7 +113,7 @@ class BookingController extends Controller
         return view('bookings.create_fp', compact(
             'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
             'hotelCost', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
-            'stayServices', 'countries'
+            'stayServices', 'insurances', 'countries'
         ));
     }
 
