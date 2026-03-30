@@ -44,6 +44,13 @@ class TourConstructor extends Page
 
     protected string $view = 'filament.pages.tour-constructor';
 
+    protected function getFooterWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\ExistingToursTable::class,
+        ];
+    }
+
     public ?array $data = [];
 
     public function mount(): void
