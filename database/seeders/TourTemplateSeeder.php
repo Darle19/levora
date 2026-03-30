@@ -56,7 +56,7 @@ class TourTemplateSeeder extends Seeder
         $t1Id = DB::table('tour_templates')->insertGetId([
             'route_name' => 'Istanbul + Nice',
             'departure_city_id' => $tashkentId,
-            'total_nights' => 6,
+            'total_nights' => 7,
             'is_active' => true,
             'status' => 'active',
             'base_currency' => 'USD',
@@ -70,6 +70,9 @@ class TourTemplateSeeder extends Seeder
              'check_in_date' => null, 'check_out_date' => null,
              'created_at' => now(), 'updated_at' => now()],
             ['tour_template_id' => $t1Id, 'city_id' => $niceId, 'stay_order' => 2, 'nights' => 4,
+             'check_in_date' => null, 'check_out_date' => null,
+             'created_at' => now(), 'updated_at' => now()],
+            ['tour_template_id' => $t1Id, 'city_id' => $istanbulId, 'stay_order' => 3, 'nights' => 1,
              'check_in_date' => null, 'check_out_date' => null,
              'created_at' => now(), 'updated_at' => now()],
         ]);
@@ -104,11 +107,11 @@ class TourTemplateSeeder extends Seeder
         // Link leg 2 ↔ leg 3
         DB::table('tour_template_legs')->where('id', $leg2)->update(['round_trip_pair_id' => $leg3]);
 
-        // Leg 4: IST→TAS day+6 Centrum Air (local_db)
+        // Leg 4: IST→TAS day+7 Centrum Air (local_db) — after 1n transit in IST
         DB::table('tour_template_legs')->insert([
             'tour_template_id' => $t1Id, 'leg_order' => 4,
             'departure_city_id' => $istanbulId, 'arrival_city_id' => $tashkentId,
-            'airline_id' => $c2Id, 'day_offset' => 6,
+            'airline_id' => $c2Id, 'day_offset' => 7,
             'preferred_time_range' => 'any', 'passenger_count' => 1,
             'flight_source' => 'local_db', 'round_trip_pair_id' => null,
             'created_at' => now(), 'updated_at' => now(),
