@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBookingRequest;
+use App\Models\AdditionalService;
 use App\Models\Country;
 use App\Models\FlightPath;
 use App\Models\Hotel;
@@ -57,6 +58,35 @@ class BookingController extends Controller
             ];
         }
 
+        // Load additional services per city
+        $cityIds = $flightPath->stays->pluck('city_id')->unique()->toArray();
+        $allServices = AdditionalService::where('is_active', true)
+            ->whereIn('city_id', $cityIds)
+            ->orderBy('city_id')
+            ->orderBy('name_en')
+            ->get()
+            ->groupBy('city_id');
+
+        // Build services per stay
+        $stayServices = [];
+        $mandatoryServicesCost = 0;
+        foreach ($flightPath->stays as $stay) {
+            $cityServices = $allServices->get($stay->city_id, collect());
+            $mandatory = $cityServices->where('is_mandatory', true);
+            $optional = $cityServices->where('is_mandatory', false);
+
+            foreach ($mandatory as $svc) {
+                $cost = $svc->is_per_person ? (float) $svc->price : (float) $svc->price;
+                $mandatoryServicesCost += $cost;
+            }
+
+            $stayServices[] = [
+                'stay' => $stay,
+                'mandatory' => $mandatory,
+                'optional' => $optional,
+            ];
+        }
+
         // Calculate price per person
         $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
         $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
@@ -66,13 +96,14 @@ class BookingController extends Controller
                 $hotelCost += ((float) $sh['hotel']->price_per_person / 2) * $sh['nights'];
             }
         }
-        $pricePerPerson = (float) $flightPath->total_price + $hotelCost + $hiddenFee + $agentFee;
+        $pricePerPerson = (float) $flightPath->total_price + $hotelCost + $hiddenFee + $agentFee + $mandatoryServicesCost;
 
         $countries = Country::where('is_active', true)->orderBy('name_en')->get();
 
         return view('bookings.create_fp', compact(
             'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
-            'hotelCost', 'hiddenFee', 'agentFee', 'countries'
+            'hotelCost', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
+            'stayServices', 'countries'
         ));
     }
 

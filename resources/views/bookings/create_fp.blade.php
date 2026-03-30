@@ -278,6 +278,50 @@
             </div>
         </div>
 
+        {{-- ═══ ADDITIONAL SERVICES ═══ --}}
+        @if(collect($stayServices)->flatMap(fn($s) => $s['mandatory']->merge($s['optional']))->isNotEmpty())
+        <div class="section">
+            <div class="section-title">Доп. услуги / Additional Services</div>
+            <div class="section-body">
+                @foreach($stayServices as $ss)
+                    @if($ss['mandatory']->isNotEmpty() || $ss['optional']->isNotEmpty())
+                    <div style="margin-bottom:10px;">
+                        <strong>{{ $ss['stay']->city->name_en ?? '' }} ({{ $ss['stay']->nights }}н)</strong>
+                        <table class="data-table" style="width:100%; margin-top:5px;">
+                            <thead>
+                                <tr><th></th><th>Услуга</th><th style="text-align:right;">Цена</th><th>За чел.</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach($ss['mandatory'] as $svc)
+                                <tr style="background:#f0fff0;">
+                                    <td style="width:30px;">
+                                        <input type="checkbox" name="services[]" value="{{ $svc->id }}" checked disabled>
+                                        <input type="hidden" name="services[]" value="{{ $svc->id }}">
+                                    </td>
+                                    <td>{{ $svc->name_en }} <span style="color:#888; font-size:11px;">(обязательно)</span></td>
+                                    <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                                    <td>{{ $svc->is_per_person ? 'да' : 'нет' }}</td>
+                                </tr>
+                                @endforeach
+                                @foreach($ss['optional'] as $svc)
+                                <tr>
+                                    <td style="width:30px;">
+                                        <input type="checkbox" name="services[]" value="{{ $svc->id }}" class="optional-service" data-price="{{ $svc->price }}" data-per-person="{{ $svc->is_per_person ? 1 : 0 }}">
+                                    </td>
+                                    <td>{{ $svc->name_en }}</td>
+                                    <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                                    <td>{{ $svc->is_per_person ? 'да' : 'нет' }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- ═══ PRICE ═══ --}}
         <div class="section">
             <div class="section-title">Стоимость</div>
@@ -295,6 +339,16 @@
                         <td>Трансфер + сборы</td>
                         <td style="text-align:right; font-weight:600;">${{ number_format($hiddenFee + $agentFee, 0) }}</td>
                     </tr>
+                    @if($mandatoryServicesCost > 0)
+                    <tr>
+                        <td>Обяз. услуги (на чел.)</td>
+                        <td style="text-align:right; font-weight:600;">${{ number_format($mandatoryServicesCost, 0) }}</td>
+                    </tr>
+                    @endif
+                    <tr id="optionalServicesRow" style="display:none;">
+                        <td>Доп. услуги</td>
+                        <td style="text-align:right; font-weight:600;">$<span id="optionalServicesCost">0</span></td>
+                    </tr>
                 </table>
                 <div class="price-box" style="margin-top:10px; text-align:center;">
                     <div class="price-alt"><span id="touristCount">1</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
@@ -311,8 +365,41 @@
 </div>
 
 <script>
-const pricePerPerson = {{ $pricePerPerson }};
+const basePricePerPerson = {{ $pricePerPerson }};
+let pricePerPerson = basePricePerPerson;
+let optionalCostPerPerson = 0;
+let optionalCostFlat = 0;
 let touristIndex = 1;
+
+// Optional services checkboxes
+document.querySelectorAll('.optional-service').forEach(cb => {
+    cb.addEventListener('change', recalcOptionalServices);
+});
+
+function recalcOptionalServices() {
+    optionalCostPerPerson = 0;
+    optionalCostFlat = 0;
+    document.querySelectorAll('.optional-service:checked').forEach(cb => {
+        const price = parseFloat(cb.dataset.price) || 0;
+        if (cb.dataset.perPerson === '1') {
+            optionalCostPerPerson += price;
+        } else {
+            optionalCostFlat += price;
+        }
+    });
+    pricePerPerson = basePricePerPerson + optionalCostPerPerson;
+
+    const row = document.getElementById('optionalServicesRow');
+    const costEl = document.getElementById('optionalServicesCost');
+    const totalOptional = optionalCostPerPerson + optionalCostFlat;
+    if (totalOptional > 0) {
+        row.style.display = '';
+        costEl.textContent = Math.round(totalOptional);
+    } else {
+        row.style.display = 'none';
+    }
+    updateTotal();
+}
 
 function addTourist() {
     const container = document.getElementById('tourists-container');
@@ -356,7 +443,8 @@ function addTourist() {
 function updateTotal() {
     const count = document.querySelectorAll('.tourist-section').length;
     document.getElementById('touristCount').textContent = count;
-    document.getElementById('totalPrice').textContent = '$' + (count * pricePerPerson).toLocaleString('en-US', {maximumFractionDigits: 0});
+    const total = (count * pricePerPerson) + optionalCostFlat;
+    document.getElementById('totalPrice').textContent = '$' + total.toLocaleString('en-US', {maximumFractionDigits: 0});
 }
 
 function updatePax() {
