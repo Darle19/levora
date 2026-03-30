@@ -116,10 +116,10 @@
                 <div class="banner-slide" style="min-width:100%; flex-shrink:0;">
                     @if($banner->link)
                     <a href="{{ $banner->link }}" target="_blank">
-                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:auto; aspect-ratio:4/1; object-fit:cover; display:block;">
+                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; width:100%; height:300px; object-fit:cover; display:block;">
                     </a>
                     @else
-                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; height:auto; aspect-ratio:4/1; object-fit:cover; display:block;">
+                    <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title }}" style="width:100%; width:100%; height:300px; object-fit:cover; display:block;">
                     @endif
                 </div>
                 @endforeach
