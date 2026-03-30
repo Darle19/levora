@@ -49,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         Flight::observe(FlightObserver::class);
         Tour::observe(TourObserver::class);
         Payment::observe(PaymentObserver::class);
+        Booking::observe(\App\Observers\BookingObserver::class);
 
         Gate::policy(Booking::class, BookingPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
