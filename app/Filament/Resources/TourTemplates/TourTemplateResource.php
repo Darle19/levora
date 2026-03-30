@@ -66,6 +66,7 @@ class TourTemplateResource extends Resource
 
             Section::make('City Stays')
                 ->description('Add cities in visit order. The system derives flight legs: Departure → City 1 → City 2 → ... → Departure.')
+                ->columnSpanFull()
                 ->schema([
                     Repeater::make('stays')
                         ->relationship()
@@ -121,6 +122,7 @@ class TourTemplateResource extends Resource
 
             Section::make('Flight Legs')
                 ->description('Define flight segments. Day offset = days from base departure date. Use "Generate Flights" to search and create paths.')
+                ->columnSpanFull()
                 ->schema([
                     Repeater::make('legs')
                         ->relationship()
