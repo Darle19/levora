@@ -13,6 +13,7 @@ class AdditionalService extends Model
 
     protected $fillable = [
         'code',
+        'city_id',
         'name_en',
         'name_ru',
         'name_uz',
@@ -35,9 +36,24 @@ class AdditionalService extends Model
         ];
     }
 
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
+    }
+
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);
+    }
+
+    public function scopeForCity($query, int $cityId)
+    {
+        return $query->where('city_id', $cityId);
+    }
+
+    public function scopeGlobal($query)
+    {
+        return $query->whereNull('city_id');
     }
 
     public function tours(): BelongsToMany

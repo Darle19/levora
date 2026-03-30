@@ -44,4 +44,28 @@ class City extends Model
         return $this->hasMany(Airport::class);
     }
 
+    public function hotels(): HasMany
+    {
+        return $this->hasMany(Hotel::class);
+    }
+
+    public function additionalServices(): HasMany
+    {
+        return $this->hasMany(AdditionalService::class);
+    }
+
+    public function outboundFlights(): HasMany
+    {
+        return $this->hasMany(Flight::class, 'origin_city_id');
+    }
+
+    public function inboundFlights(): HasMany
+    {
+        return $this->hasMany(Flight::class, 'destination_city_id');
+    }
+
+    public function banners(): HasMany
+    {
+        return $this->hasMany(Banner::class);
+    }
 }

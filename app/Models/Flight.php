@@ -13,6 +13,8 @@ class Flight extends Model
 
     protected $fillable = [
         'airline_id',
+        'origin_city_id',
+        'destination_city_id',
         'from_airport_id',
         'to_airport_id',
         'currency_id',
@@ -63,6 +65,16 @@ class Flight extends Model
         return $this->belongsTo(Airport::class, 'to_airport_id');
     }
 
+    public function originCity(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'origin_city_id');
+    }
+
+    public function destinationCity(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'destination_city_id');
+    }
+
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);
@@ -72,5 +84,23 @@ class Flight extends Model
     {
         return $this->belongsToMany(Tour::class, 'tour_flight')
             ->withPivot('direction');
+    }
+
+    public function scopeFromCity($query, int $cityId)
+    {
+        return $query->where('origin_city_id', $cityId);
+    }
+
+    public function scopeToCity($query, int $cityId)
+    {
+        return $query->where('destination_city_id', $cityId);
+    }
+
+    public function scopeForCity($query, int $cityId)
+    {
+        return $query->where(function ($q) use ($cityId) {
+            $q->where('origin_city_id', $cityId)
+              ->orWhere('destination_city_id', $cityId);
+        });
     }
 }
