@@ -20,6 +20,8 @@ class TourTemplateLeg extends Model
         'arrival_date',
         'preferred_time_range',
         'passenger_count',
+        'flight_source',
+        'round_trip_pair_id',
     ];
 
     protected function casts(): array
@@ -55,10 +57,25 @@ class TourTemplateLeg extends Model
         return $this->hasOne(TourTemplateFlightSelection::class);
     }
 
+    public function roundTripPair(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'round_trip_pair_id');
+    }
+
     // ── Helpers ──
 
     public function hasFlightSelected(): bool
     {
         return $this->flightSelection()->exists();
+    }
+
+    public function isRoundTrip(): bool
+    {
+        return $this->round_trip_pair_id !== null;
+    }
+
+    public function usesRapidApi(): bool
+    {
+        return $this->flight_source === 'rapidapi';
     }
 }

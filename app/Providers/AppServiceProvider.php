@@ -36,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\FlightProviderInterface::class,
             config('tour.flight_provider', \App\Services\Flights\DummyFlightProvider::class),
         );
+
+        $this->app->singleton(\App\Services\Flights\RapidApiFlightProvider::class);
     }
 
     /**

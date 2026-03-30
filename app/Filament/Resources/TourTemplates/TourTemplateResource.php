@@ -121,11 +121,24 @@ class TourTemplateResource extends Resource
                                 ])
                                 ->default('any'),
                             TextInput::make('passenger_count')
-                                ->label('Passengers')
+                                ->label('Pax')
                                 ->numeric()
                                 ->default(1),
+                            Select::make('flight_source')
+                                ->label('Source')
+                                ->options([
+                                    'local_db' => 'Local DB',
+                                    'rapidapi' => 'RapidAPI',
+                                ])
+                                ->default('local_db')
+                                ->required(),
+                            TextInput::make('round_trip_pair_id')
+                                ->label('RT Pair Leg #')
+                                ->numeric()
+                                ->placeholder('Leg ID')
+                                ->helperText('Link to return leg ID for round-trip search'),
                         ])
-                        ->columns(6)
+                        ->columns(4)
                         ->defaultItems(0)
                         ->maxItems(10)
                         ->reorderable()
