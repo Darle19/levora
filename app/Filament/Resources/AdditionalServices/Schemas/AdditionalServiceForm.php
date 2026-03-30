@@ -52,6 +52,10 @@ class AdditionalServiceForm
                             ->label('Mandatory')
                             ->helperText('Included in base tour price')
                             ->default(false),
+                        Toggle::make('is_one_time')
+                            ->label('One-time')
+                            ->helperText('Show once per booking, not per city')
+                            ->default(false),
                         Toggle::make('is_per_person')
                             ->label('Per Person')
                             ->helperText('Price multiplied by number of tourists')

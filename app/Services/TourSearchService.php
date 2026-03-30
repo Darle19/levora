@@ -181,13 +181,21 @@ class TourSearchService
                     $hotelCost += ((float) $stayData['hotel']->price_per_person / 2) * $stayData['nights'];
                 }
 
-                // Mandatory services for cities in this path
+                // Mandatory services for cities in this path (one-time counted once)
                 $mandatoryCost = 0;
                 $cityIds = $fp->stays->pluck('city_id')->unique();
+                $seenOneTime = [];
                 foreach ($mandatoryServices as $svc) {
-                    if ($cityIds->contains($svc->city_id) || $svc->city_id === null) {
-                        $mandatoryCost += (float) $svc->price;
+                    if (! ($cityIds->contains($svc->city_id) || $svc->city_id === null)) {
+                        continue;
                     }
+                    if ($svc->is_one_time) {
+                        if (in_array($svc->id, $seenOneTime)) {
+                            continue;
+                        }
+                        $seenOneTime[] = $svc->id;
+                    }
+                    $mandatoryCost += (float) $svc->price;
                 }
 
                 $price = $fp->flight_total + $hotelCost + $hiddenFee + $agentFee + $mandatoryCost;

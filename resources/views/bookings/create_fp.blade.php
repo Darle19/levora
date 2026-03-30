@@ -229,7 +229,7 @@
                                 </td>
                                 <td>{{ $svc->name_en }} <span style="color:#888; font-size:11px;">({{ $ss['stay']->city->name_en }})</span></td>
                                 <td>{{ $stayStart->format('d.m.Y') }}</td>
-                                <td>{{ $svc->is_per_person ? '<span class="svc-pax">2 ADL</span>' : '—' }}</td>
+                                <td><span class="svc-pax">{{ $svc->is_per_person ? '2 ADL' : '—' }}</span></td>
                                 <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
                             </tr>
                             @endforeach
@@ -240,7 +240,7 @@
                                 </td>
                                 <td>{{ $svc->name_en }} <span style="color:#888; font-size:11px;">({{ $ss['stay']->city->name_en }})</span></td>
                                 <td>{{ $stayStart->format('d.m.Y') }}</td>
-                                <td>{{ $svc->is_per_person ? '<span class="svc-pax">2 ADL</span>' : '—' }}</td>
+                                <td><span class="svc-pax">{{ $svc->is_per_person ? '2 ADL' : '—' }}</span></td>
                                 <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
                             </tr>
                             @endforeach
@@ -249,6 +249,33 @@
                     </table>
                 @else
                     <p style="color:#888; margin:0;">Нет дополнительных услуг</p>
+                @endif
+
+                {{-- One-time services (insurance, etc.) --}}
+                @if($oneTimeServices->isNotEmpty())
+                    <table class="data-table" style="margin-top:10px;">
+                        <thead>
+                            <tr><th></th><th>Услуга (на весь тур)</th><th>Период</th><th>Кол-во</th><th style="text-align:right;">Стоимость</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach($oneTimeServices as $svc)
+                            <tr @if($svc->is_mandatory) style="background:#f0fff0;" @endif>
+                                <td style="width:30px;">
+                                    @if($svc->is_mandatory)
+                                        <input type="checkbox" checked disabled>
+                                        <input type="hidden" name="services[]" value="{{ $svc->id }}">
+                                    @else
+                                        <input type="checkbox" name="services[]" value="{{ $svc->id }}" class="optional-service" data-price="{{ $svc->price }}" data-per-person="{{ $svc->is_per_person ? 1 : 0 }}">
+                                    @endif
+                                </td>
+                                <td>{{ $svc->name_en }} @if($svc->is_mandatory)<span style="color:#888; font-size:11px;">(обязательно)</span>@endif</td>
+                                <td>{{ $flightPath->departure_date->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}</td>
+                                <td><span class="svc-pax">{{ $svc->is_per_person ? '2 ADL' : '—' }}</span></td>
+                                <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 @endif
             </div>
         </div>
@@ -420,33 +447,10 @@
         <div class="section">
             <div class="section-title">Стоимость / Price</div>
             <div class="section-body">
-                <table class="data-table" style="width:auto;">
-                    <tr>
-                        <td style="width:200px;">Перелёт (на чел.)</td>
-                        <td style="text-align:right; font-weight:600;">${{ number_format($flightPath->flight_total, 0) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Проживание (на чел.)</td>
-                        <td style="text-align:right; font-weight:600;">${{ number_format($hotelCost, 0) }}</td>
-                    </tr>
-                    <tr>
-                        <td>Трансфер + сборы</td>
-                        <td style="text-align:right; font-weight:600;">${{ number_format($hiddenFee + $agentFee, 0) }}</td>
-                    </tr>
-                    @if($mandatoryServicesCost > 0)
-                    <tr>
-                        <td>Обяз. услуги (на чел.)</td>
-                        <td style="text-align:right; font-weight:600;">${{ number_format($mandatoryServicesCost, 0) }}</td>
-                    </tr>
-                    @endif
-                    <tr id="optionalServicesRow" style="display:none;">
-                        <td>Доп. услуги / Страховка</td>
-                        <td style="text-align:right; font-weight:600;">$<span id="optionalServicesCost">0</span></td>
-                    </tr>
-                </table>
-                <div class="price-box" style="margin-top:10px; text-align:center;">
+                <div class="price-box" style="text-align:center;">
                     <div class="price-alt"><span id="touristCount">1</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
                     <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson, 0) }} USD</div>
+                    <div id="optionalServicesNote" style="display:none; font-size:12px; color:#666; margin-top:4px;">+ доп. услуги: $<span id="optionalServicesCost">0</span></div>
                 </div>
             </div>
         </div>
@@ -482,14 +486,14 @@ function recalcOptionalServices() {
     });
     pricePerPerson = basePricePerPerson + optionalCostPerPerson;
 
-    const row = document.getElementById('optionalServicesRow');
+    const note = document.getElementById('optionalServicesNote');
     const costEl = document.getElementById('optionalServicesCost');
     const totalOptional = optionalCostPerPerson + optionalCostFlat;
     if (totalOptional > 0) {
-        row.style.display = '';
+        note.style.display = '';
         costEl.textContent = Math.round(totalOptional);
     } else {
-        row.style.display = 'none';
+        note.style.display = 'none';
     }
     updateTotal();
 }

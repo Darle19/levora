@@ -120,17 +120,34 @@ class BookingController extends Controller
             }
         }
 
-        // Build services per stay
+        // Build services per stay, tracking one-time services to avoid duplicates
         $stayServices = [];
+        $oneTimeServices = collect(); // shown once, separate from per-city
         $mandatoryServicesCost = 0;
+        $seenOneTimeIds = [];
+
         foreach ($flightPath->stays as $stay) {
             $cityServices = $allServices->get($stay->city_id, collect());
-            $mandatory = $cityServices->where('is_mandatory', true);
-            $optional = $cityServices->where('is_mandatory', false);
+
+            // Separate one-time services (show only once, not per city)
+            $perCity = $cityServices->where('is_one_time', false);
+            $oneTime = $cityServices->where('is_one_time', true);
+
+            foreach ($oneTime as $svc) {
+                if (! in_array($svc->id, $seenOneTimeIds)) {
+                    $seenOneTimeIds[] = $svc->id;
+                    $oneTimeServices->push($svc);
+                    if ($svc->is_mandatory) {
+                        $mandatoryServicesCost += (float) $svc->price;
+                    }
+                }
+            }
+
+            $mandatory = $perCity->where('is_mandatory', true);
+            $optional = $perCity->where('is_mandatory', false);
 
             foreach ($mandatory as $svc) {
-                $cost = $svc->is_per_person ? (float) $svc->price : (float) $svc->price;
-                $mandatoryServicesCost += $cost;
+                $mandatoryServicesCost += (float) $svc->price;
             }
 
             $stayServices[] = [
@@ -156,7 +173,7 @@ class BookingController extends Controller
         return view('bookings.create_fp', compact(
             'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
             'hotelCost', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
-            'stayServices', 'insurances', 'countries'
+            'stayServices', 'oneTimeServices', 'insurances', 'countries'
         ));
     }
 

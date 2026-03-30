@@ -34,6 +34,7 @@ class AdditionalService extends Model
         'currency_id',
         'is_per_person',
         'is_mandatory',
+        'is_one_time',
         'is_active',
     ];
 
