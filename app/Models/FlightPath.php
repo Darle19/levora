@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class FlightPath extends Model
 {
     protected $fillable = [
+        'tour_template_id',
         'route_name',
         'departure_date',
         'departure_city_id',
@@ -25,6 +26,11 @@ class FlightPath extends Model
             'total_price' => 'decimal:2',
             'is_available' => 'boolean',
         ];
+    }
+
+    public function tourTemplate(): BelongsTo
+    {
+        return $this->belongsTo(TourTemplate::class);
     }
 
     public function departureCity(): BelongsTo
