@@ -113,8 +113,7 @@
                     $uzsId = \App\Models\Currency::where('code', 'UZS')->value('id');
                     $usdUzsRate = null;
                     if ($usdId && $uzsId) {
-                        $usdUzsRate = \App\Models\CurrencyRate::where('is_active', true)
-                            ->where(function($q) use ($usdId, $uzsId) {
+                        $usdUzsRate = \App\Models\CurrencyRate::where(function($q) use ($usdId, $uzsId) {
                                 $q->where(fn($q2) => $q2->where('from_currency_id', $usdId)->where('to_currency_id', $uzsId))
                                   ->orWhere(fn($q2) => $q2->where('from_currency_id', $uzsId)->where('to_currency_id', $usdId));
                             })
