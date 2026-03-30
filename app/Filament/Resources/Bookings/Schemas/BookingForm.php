@@ -100,19 +100,19 @@ class BookingForm
                                 $html = '';
                                 foreach ($tourists as $i => $t) {
                                     $num = $i + 1;
-                                    $html .= "<div style='border:1px solid #d1d5db;border-radius:6px;padding:10px;margin-bottom:10px;background:#fafbfc;'>";
-                                    $html .= "<div style='font-weight:700;margin-bottom:6px;color:#1a5c2e;'>Tourist {$num}: " . e($t->title) . ' ' . e($t->last_name) . ' ' . e($t->first_name) . "</div>";
+                                    $html .= "<div style='border:1px solid rgba(128,128,128,0.3);border-radius:6px;padding:10px;margin-bottom:10px;'>";
+                                    $html .= "<div style='font-weight:700;margin-bottom:6px;color:var(--c-primary-500, #1a5c2e);'>Tourist {$num}: " . e($t->title) . ' ' . e($t->last_name) . ' ' . e($t->first_name) . "</div>";
                                     $html .= "<table style='font-size:12px;'>";
-                                    $html .= "<tr><td style='color:#666;padding:2px 10px 2px 0;'>Sex:</td><td>" . e($t->gender ?? '—') . "</td>";
-                                    $html .= "<td style='color:#666;padding:2px 10px 2px 20px;'>Birth date:</td><td>" . ($t->birth_date?->format('d.m.Y') ?? '—') . "</td></tr>";
-                                    $html .= "<tr><td style='color:#666;padding:2px 10px 2px 0;'>Birth country:</td><td>" . e($t->birth_country ?? '—') . "</td>";
-                                    $html .= "<td style='color:#666;padding:2px 10px 2px 20px;'>Nationality:</td><td>" . e($t->nationality ?? '—') . "</td></tr>";
-                                    $html .= "<tr><td style='color:#666;padding:2px 10px 2px 0;'>Document type:</td><td>" . e($t->document_type ?? '—') . "</td>";
-                                    $html .= "<td style='color:#666;padding:2px 10px 2px 20px;'>Series:</td><td>" . e($t->passport_series ?? '—') . "</td></tr>";
-                                    $html .= "<tr><td style='color:#666;padding:2px 10px 2px 0;'>Number:</td><td><strong>" . e($t->passport_number ?? '—') . "</strong></td>";
-                                    $html .= "<td style='color:#666;padding:2px 10px 2px 20px;'>Valid to:</td><td>" . ($t->passport_expiry?->format('d.m.Y') ?? '—') . "</td></tr>";
-                                    $html .= "<tr><td style='color:#666;padding:2px 10px 2px 0;'>Issued:</td><td>" . ($t->passport_issued?->format('d.m.Y') ?? '—') . "</td>";
-                                    $html .= "<td style='color:#666;padding:2px 10px 2px 20px;'>Issued by:</td><td>" . e($t->passport_issued_by ?? '—') . "</td></tr>";
+                                    $html .= "<tr><td style='opacity:0.6;padding:2px 10px 2px 0;'>Sex:</td><td>" . e($t->gender ?? '—') . "</td>";
+                                    $html .= "<td style='opacity:0.6;padding:2px 10px 2px 20px;'>Birth date:</td><td>" . ($t->birth_date?->format('d.m.Y') ?? '—') . "</td></tr>";
+                                    $html .= "<tr><td style='opacity:0.6;padding:2px 10px 2px 0;'>Birth country:</td><td>" . e($t->birth_country ?? '—') . "</td>";
+                                    $html .= "<td style='opacity:0.6;padding:2px 10px 2px 20px;'>Nationality:</td><td>" . e($t->nationality ?? '—') . "</td></tr>";
+                                    $html .= "<tr><td style='opacity:0.6;padding:2px 10px 2px 0;'>Document type:</td><td>" . e($t->document_type ?? '—') . "</td>";
+                                    $html .= "<td style='opacity:0.6;padding:2px 10px 2px 20px;'>Series:</td><td>" . e($t->passport_series ?? '—') . "</td></tr>";
+                                    $html .= "<tr><td style='opacity:0.6;padding:2px 10px 2px 0;'>Number:</td><td><strong>" . e($t->passport_number ?? '—') . "</strong></td>";
+                                    $html .= "<td style='opacity:0.6;padding:2px 10px 2px 20px;'>Valid to:</td><td>" . ($t->passport_expiry?->format('d.m.Y') ?? '—') . "</td></tr>";
+                                    $html .= "<tr><td style='opacity:0.6;padding:2px 10px 2px 0;'>Issued:</td><td>" . ($t->passport_issued?->format('d.m.Y') ?? '—') . "</td>";
+                                    $html .= "<td style='opacity:0.6;padding:2px 10px 2px 20px;'>Issued by:</td><td>" . e($t->passport_issued_by ?? '—') . "</td></tr>";
                                     $html .= "</table></div>";
                                 }
                                 return new HtmlString($html);
