@@ -9,6 +9,7 @@ use App\Models\FlightPath;
 use App\Models\Hotel;
 use App\Models\Setting;
 use App\Models\Tour;
+use App\Services\NeoInsuranceService;
 use App\Services\BookingException;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
@@ -68,14 +69,40 @@ class BookingController extends Controller
             ->get()
             ->groupBy('city_id');
 
-        // Load insurances separately (service_type = 'insurance', any city or global)
-        $insurances = AdditionalService::where('is_active', true)
+        // Load insurances: try NeoInsurance API first, fallback to local services
+        $neoInsurance = app(NeoInsuranceService::class);
+        $neoOptions = $neoInsurance->getInsuranceOptions();
+        $insurances = collect();
+
+        if ($neoOptions && is_array($neoOptions)) {
+            // Build insurance options from NeoInsurance API response
+            foreach ($neoOptions as $option) {
+                $name = $option['name_en'] ?? $option['name'] ?? 'Travel Insurance';
+                $coverage = $option['coverage'] ?? $option['summa'] ?? 10000;
+                $insurances->push((object) [
+                    'id' => 'neo_' . ($option['id'] ?? 0),
+                    'name_en' => "{$name} ({$coverage} USD)",
+                    'price' => (float) ($option['price'] ?? $option['premium'] ?? 0),
+                    'is_per_person' => true,
+                    'is_mandatory' => false,
+                    'source' => 'neoinsurance',
+                    'neo_data' => $option,
+                ]);
+            }
+        }
+
+        // Also add local insurance services as fallback/additional options
+        $localInsurances = AdditionalService::where('is_active', true)
             ->where('service_type', 'insurance')
             ->where(function ($q) use ($cityIds) {
                 $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
             })
             ->orderBy('name_en')
             ->get();
+
+        foreach ($localInsurances as $li) {
+            $insurances->push($li);
+        }
 
         // Build services per stay
         $stayServices = [];
