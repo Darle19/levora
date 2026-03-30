@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TourTemplates;
 use App\Filament\Resources\TourTemplates\Pages\CreateTourTemplate;
 use App\Filament\Resources\TourTemplates\Pages\EditTourTemplate;
 use App\Filament\Resources\TourTemplates\Pages\ListTourTemplates;
+use App\Models\Airline;
 use App\Models\City;
 use App\Models\TourTemplate;
 use BackedEnum;
@@ -105,6 +106,11 @@ class TourTemplateResource extends Resource
                                 ->label('To')
                                 ->options(City::where('is_active', true)->pluck('name_en', 'id'))
                                 ->required(),
+                            Select::make('airline_id')
+                                ->label('Airline')
+                                ->options(Airline::where('is_active', true)->pluck('name', 'id'))
+                                ->placeholder('Any')
+                                ->searchable(),
                             TextInput::make('day_offset')
                                 ->label('Day +')
                                 ->numeric()

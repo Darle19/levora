@@ -62,7 +62,7 @@ class EditTourTemplate extends EditRecord
     protected function generateFlightPaths(array $data): void
     {
         $template = $this->record;
-        $template->load('stays.city', 'legs.departureCity.airports', 'legs.arrivalCity.airports');
+        $template->load('stays.city', 'legs.departureCity.airports', 'legs.arrivalCity.airports', 'legs.airline');
 
         $dates = $data['dates'] ?? [];
         if (empty($dates)) {
@@ -78,8 +78,9 @@ class EditTourTemplate extends EditRecord
 
         // Build route description
         $legNames = $templateLegs->map(function (TourTemplateLeg $leg) {
-            $src = $leg->flight_source === 'rapidapi' ? ' [API]' : ' [DB]';
-            return $leg->departureCity->name_en . '→' . $leg->arrivalCity->name_en . $src;
+            $src = $leg->flight_source === 'rapidapi' ? 'API' : 'DB';
+            $air = $leg->airline ? $leg->airline->code : '*';
+            return $leg->departureCity->name_en . '→' . $leg->arrivalCity->name_en . " [{$air}/{$src}]";
         })->implode(', ');
 
         // Build airport lookup: city_id → IATA code, city_id → airport_id
@@ -165,6 +166,18 @@ class EditTourTemplate extends EditRecord
                     // === LOCAL DB SEARCH ===
                     $key = $fromAirportId . '-' . $toAirportId . '-' . $legDate;
                     $dbFlight = $flightIndex[$key] ?? null;
+                    // Filter by airline if specified
+                    if ($dbFlight && $leg->airline_id && $dbFlight->airline_id != $leg->airline_id) {
+                        // Specific airline requested but cheapest is different — search all
+                        $dbFlight = DB::table('flights')
+                            ->where('from_airport_id', $fromAirportId)
+                            ->where('to_airport_id', $toAirportId)
+                            ->where('departure_date', $legDate)
+                            ->where('airline_id', $leg->airline_id)
+                            ->where('is_active', true)
+                            ->orderBy('price_adult')
+                            ->first();
+                    }
                     if ($dbFlight) {
                         $flightId = $dbFlight->id;
                         $price = (float) $dbFlight->price_adult;
@@ -182,8 +195,9 @@ class EditTourTemplate extends EditRecord
                         $pairLeg = $templateLegs->firstWhere('id', $leg->round_trip_pair_id);
                         if ($pairLeg) {
                             $returnDate = $pairLeg->departureDateFor($baseDate);
+                            $airlineCode = $leg->airline?->code;
                             $rtResults = $rapidApi->searchRoundTrip(
-                                $fromIata, $toIata, $legDate, $returnDate, $leg->passenger_count
+                                $fromIata, $toIata, $legDate, $returnDate, $leg->passenger_count, $airlineCode
                             );
 
                             // Outbound: cheapest
@@ -214,7 +228,8 @@ class EditTourTemplate extends EditRecord
                         }
                     } else {
                         // One-way search
-                        $offers = $rapidApi->search($fromIata, $toIata, $legDate, $leg->passenger_count);
+                        $airlineCode = $leg->airline?->code;
+                        $offers = $rapidApi->search($fromIata, $toIata, $legDate, $leg->passenger_count, $airlineCode);
                         if (! empty($offers)) {
                             $cheapest = $offers[0]; // already sorted by cheapest
                             $price = $cheapest->priceCents / 100;

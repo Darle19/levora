@@ -14,6 +14,7 @@ class TourTemplateLeg extends Model
         'leg_order',
         'departure_city_id',
         'arrival_city_id',
+        'airline_id',
         'day_offset',
         'preferred_time_range',
         'passenger_count',
@@ -46,6 +47,11 @@ class TourTemplateLeg extends Model
     public function arrivalCity(): BelongsTo
     {
         return $this->belongsTo(City::class, 'arrival_city_id');
+    }
+
+    public function airline(): BelongsTo
+    {
+        return $this->belongsTo(Airline::class);
     }
 
     public function flightSelection(): HasOne

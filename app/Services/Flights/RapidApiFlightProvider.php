@@ -38,8 +38,9 @@ class RapidApiFlightProvider implements FlightProviderInterface
         string $destinationIata,
         string $departureDate,
         int $passengerCount = 1,
+        ?string $airlineCode = null,
     ): array {
-        $data = $this->callApi('/api/flights/one-way', [
+        $params = [
             'origin' => $originIata,
             'destination' => $destinationIata,
             'departure_date' => $departureDate,
@@ -48,7 +49,9 @@ class RapidApiFlightProvider implements FlightProviderInterface
             'max_stops' => 'nonstop',
             'sort_by' => 'cheapest',
             'infants_on_lap' => '0',
-        ]);
+            'airlines' => $airlineCode ?? '',
+        ];
+        $data = $this->callApi('/api/flights/one-way', $params);
 
         if (! $data) {
             return [];
@@ -68,6 +71,7 @@ class RapidApiFlightProvider implements FlightProviderInterface
         string $departureDate,
         string $returnDate,
         int $passengerCount = 1,
+        ?string $airlineCode = null,
     ): array {
         $data = $this->callApi('/api/flights/round-trip', [
             'origin' => $originIata,
@@ -79,6 +83,7 @@ class RapidApiFlightProvider implements FlightProviderInterface
             'max_stops' => 'nonstop',
             'sort_by' => 'cheapest',
             'infants_on_lap' => '0',
+            'airlines' => $airlineCode ?? '',
         ]);
 
         if (! $data) {
