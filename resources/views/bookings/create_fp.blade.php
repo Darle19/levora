@@ -183,7 +183,6 @@
                             <th>Маршрут</th>
                             <th>Время</th>
                             <th>Класс</th>
-                            <th>Багаж</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -201,7 +200,6 @@
                                 </td>
                                 <td>{{ $leg->flight->departure_time ? substr($leg->flight->departure_time, 0, 5) : '' }} — {{ $leg->flight->arrival_time ? substr($leg->flight->arrival_time, 0, 5) : '' }}</td>
                                 <td>{{ ucfirst($leg->flight->class_type ?? 'economy') }}</td>
-                                <td>20 кг + 5 кг ручн.</td>
                             </tr>
                         @endforeach
                     </tbody>

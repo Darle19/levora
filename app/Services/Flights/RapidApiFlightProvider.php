@@ -58,7 +58,7 @@ class RapidApiFlightProvider implements FlightProviderInterface
             return [];
         }
 
-        return $this->parseFlights($data['flights'] ?? [], $originIata, $destinationIata, $departureDate);
+        return $this->parseFlights($data['flights'] ?? [], $originIata, $destinationIata, $departureDate, $airlineCode);
     }
 
     /**
@@ -124,12 +124,21 @@ class RapidApiFlightProvider implements FlightProviderInterface
     /**
      * @return FlightOffer[]
      */
-    private function parseFlights(array $flights, string $originIata, string $destIata, string $date): array
+    /**
+     * @return FlightOffer[]
+     */
+    private function parseFlights(array $flights, string $originIata, string $destIata, string $date, ?string $airlineCode = null): array
     {
         $offers = [];
 
         foreach ($flights as $i => $flight) {
             $leg = $flight['legs'][0] ?? [];
+
+            // Strict airline filter — API returns other airlines even when filtered
+            if ($airlineCode && isset($leg['airline']) && strtoupper($leg['airline']) !== strtoupper($airlineCode)) {
+                continue;
+            }
+
             $price = (float) ($flight['price'] ?? 0);
             $currency = $flight['currency'] ?? 'USD';
 
