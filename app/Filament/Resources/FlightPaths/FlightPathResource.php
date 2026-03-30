@@ -21,7 +21,13 @@ class FlightPathResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGlobeAlt;
 
-    protected static ?string $navigationLabel = 'Flight Paths';
+    protected static ?string $navigationLabel = 'Tours';
+
+    protected static ?string $slug = 'tours';
+
+    protected static ?string $pluralModelLabel = 'Tours';
+
+    protected static ?string $modelLabel = 'Tour';
 
     protected static ?int $navigationSort = 0;
 
