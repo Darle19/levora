@@ -109,11 +109,18 @@
 
                 {{-- Currency --}}
                 @php
-                    $usdUzsRate = \App\Models\CurrencyRate::where('is_active', true)
-                        ->whereHas('fromCurrency', fn($q) => $q->where('code', 'USD'))
-                        ->whereHas('toCurrency', fn($q) => $q->where('code', 'UZS'))
-                        ->orderByDesc('date')
-                        ->first();
+                    $usdId = \App\Models\Currency::where('code', 'USD')->value('id');
+                    $uzsId = \App\Models\Currency::where('code', 'UZS')->value('id');
+                    $usdUzsRate = null;
+                    if ($usdId && $uzsId) {
+                        $usdUzsRate = \App\Models\CurrencyRate::where('is_active', true)
+                            ->where(function($q) use ($usdId, $uzsId) {
+                                $q->where(fn($q2) => $q2->where('from_currency_id', $usdId)->where('to_currency_id', $uzsId))
+                                  ->orWhere(fn($q2) => $q2->where('from_currency_id', $uzsId)->where('to_currency_id', $usdId));
+                            })
+                            ->orderByDesc('date')
+                            ->first();
+                    }
                 @endphp
                 <div style="display:flex; gap:8px;">
                     <div class="head-block head-block-red head-currency">

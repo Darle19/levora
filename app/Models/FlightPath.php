@@ -54,15 +54,19 @@ class FlightPath extends Model
     }
 
     /**
-     * Dynamic flight total — always calculated from current flight prices.
+     * Dynamic flight total — always calculated from current flight prices + baggage fees.
      */
     public function getFlightTotalAttribute(): float
     {
         if (! $this->relationLoaded('legs')) {
-            $this->load('legs.flight');
+            $this->load('legs.flight.airline');
         }
 
-        return $this->legs->sum(fn ($leg) => (float) ($leg->flight?->price_adult ?? 0));
+        return $this->legs->sum(function ($leg) {
+            $fare = (float) ($leg->flight?->price_adult ?? 0);
+            $baggage = (float) ($leg->flight?->airline?->baggage_fee ?? 0);
+            return $fare + $baggage;
+        });
     }
 
     /**

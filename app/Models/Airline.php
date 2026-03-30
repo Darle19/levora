@@ -21,12 +21,14 @@ class Airline extends Model
         'icao_code',
         'logo',
         'is_active',
+        'baggage_fee',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'baggage_fee' => 'decimal:2',
         ];
     }
 

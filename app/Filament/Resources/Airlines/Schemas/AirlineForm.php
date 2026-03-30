@@ -16,6 +16,12 @@ class AirlineForm
                     ->required(),
                 TextInput::make('code')
                     ->required(),
+                TextInput::make('baggage_fee')
+                    ->label('Baggage Fee ($)')
+                    ->numeric()
+                    ->prefix('$')
+                    ->default(0)
+                    ->helperText('Per flight segment, added to fare'),
                 Toggle::make('is_active')
                     ->required(),
             ]);
