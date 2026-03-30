@@ -94,7 +94,7 @@
                 <div class="head-block head-block-green">
                     <div>
                         <div class="head-block-title">По вопросам сотрудничества</div>
-                        <div class="head-block-value">+998 71 233 44 55</div>
+                        <div class="head-block-value">+998 91 977 77 35</div>
                         <div class="head-block-value" style="font-size:12px;">info@levora.uz</div>
                     </div>
                 </div>
@@ -103,16 +103,23 @@
                 <div class="head-block head-block-blue">
                     <div>
                         <div class="head-block-title">Горячая линия</div>
-                        <div class="head-block-value">+998 71 233 44 55</div>
+                        <div class="head-block-value">+998 91 977 77 35</div>
                     </div>
                 </div>
 
                 {{-- Currency --}}
+                @php
+                    $usdUzsRate = \App\Models\CurrencyRate::where('is_active', true)
+                        ->whereHas('fromCurrency', fn($q) => $q->where('code', 'USD'))
+                        ->whereHas('toCurrency', fn($q) => $q->where('code', 'UZS'))
+                        ->orderByDesc('date')
+                        ->first();
+                @endphp
                 <div style="display:flex; gap:8px;">
                     <div class="head-block head-block-red head-currency">
                         <div>
                             <div class="cur-title">Узбекский сум</div>
-                            <table><tr><th>Date</th><th>$</th></tr><tr><td>{{ date('d.m.Y') }}</td><td>12 850</td></tr></table>
+                            <table><tr><th>Date</th><th>$</th></tr><tr><td>{{ $usdUzsRate ? $usdUzsRate->date->format('d.m.Y') : date('d.m.Y') }}</td><td>{{ $usdUzsRate ? number_format($usdUzsRate->rate, 0, '.', ' ') : '—' }}</td></tr></table>
                         </div>
                     </div>
                 </div>
