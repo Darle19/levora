@@ -15,37 +15,28 @@ class AdditionalServicesTable
     {
         return $table
             ->columns([
-                TextColumn::make('code')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('city.name_en')
+                    ->label('City')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('name_en')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('service_type')
-                    ->label('Type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'transfer' => 'info',
-                        'excursion' => 'success',
-                        'insurance' => 'warning',
-                        default => 'gray',
-                    })
-                    ->sortable(),
                 TextColumn::make('price')
-                    ->money(fn ($record) => $record->currency?->code ?? 'USD')
+                    ->money('USD')
                     ->sortable(),
+                IconColumn::make('is_mandatory')
+                    ->label('Mandatory')
+                    ->boolean(),
                 IconColumn::make('is_per_person')
                     ->label('Per Person')
                     ->boolean(),
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('city_id')
             ->filters([])
             ->recordActions([
                 EditAction::make(),
