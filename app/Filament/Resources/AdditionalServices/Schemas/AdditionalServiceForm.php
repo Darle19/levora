@@ -17,10 +17,27 @@ class AdditionalServiceForm
             ->components([
                 Section::make('General')
                     ->schema([
-                        TextInput::make('code')
+                        Select::make('code')
+                            ->label('Code')
+                            ->options([
+                                'airport_transfer' => 'Airport Transfer',
+                                'city_transfer' => 'City Transfer',
+                                'intercity_transfer' => 'Intercity Transfer',
+                                'excursion' => 'Excursion',
+                                'city_tour' => 'City Tour',
+                                'guide' => 'Guide',
+                                'travel_insurance' => 'Travel Insurance',
+                                'medical_insurance' => 'Medical Insurance',
+                                'visa_support' => 'Visa Support',
+                                'sim_card' => 'SIM Card',
+                                'meal_plan' => 'Meal Plan',
+                                'vip_lounge' => 'VIP Lounge',
+                                'fast_track' => 'Fast Track',
+                                'photo_shoot' => 'Photo Shoot',
+                                'other' => 'Other',
+                            ])
                             ->required()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(50),
+                            ->searchable(),
                         Select::make('service_type')
                             ->options([
                                 'transfer' => 'Transfer',
