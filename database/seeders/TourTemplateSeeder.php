@@ -131,7 +131,7 @@ class TourTemplateSeeder extends Seeder
         $t2Id = DB::table('tour_templates')->insertGetId([
             'route_name' => 'Istanbul + Baku',
             'departure_city_id' => $tashkentId,
-            'total_nights' => 6,
+            'total_nights' => 7,
             'is_active' => true,
             'status' => 'active',
             'base_currency' => 'USD',
@@ -144,7 +144,7 @@ class TourTemplateSeeder extends Seeder
             ['tour_template_id' => $t2Id, 'city_id' => $istanbulId, 'stay_order' => 1, 'nights' => 2,
              'check_in_date' => null, 'check_out_date' => null,
              'created_at' => now(), 'updated_at' => now()],
-            ['tour_template_id' => $t2Id, 'city_id' => $bakuId, 'stay_order' => 2, 'nights' => 4,
+            ['tour_template_id' => $t2Id, 'city_id' => $bakuId, 'stay_order' => 2, 'nights' => 5,
              'check_in_date' => null, 'check_out_date' => null,
              'created_at' => now(), 'updated_at' => now()],
         ]);
@@ -167,11 +167,11 @@ class TourTemplateSeeder extends Seeder
             'flight_source' => 'rapidapi', 'round_trip_pair_id' => null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        // Leg 3: GYD→TAS day+6 Centrum Air (local_db)
+        // Leg 3: GYD→TAS day+7 Centrum Air (local_db) — GYD→TAS flights are Mondays
         DB::table('tour_template_legs')->insert([
             'tour_template_id' => $t2Id, 'leg_order' => 3,
             'departure_city_id' => $bakuId, 'arrival_city_id' => $tashkentId,
-            'airline_id' => $c2Id, 'day_offset' => 6,
+            'airline_id' => $c2Id, 'day_offset' => 7,
             'preferred_time_range' => 'any', 'passenger_count' => 1,
             'flight_source' => 'local_db', 'round_trip_pair_id' => null,
             'created_at' => now(), 'updated_at' => now(),
