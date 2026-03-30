@@ -5,9 +5,13 @@ namespace App\Services;
 use App\Models\AdditionalService;
 use App\Models\Booking;
 use App\Models\BookingAmadeusFlight;
+use App\Models\Currency;
 use App\Models\Flight;
+use App\Models\FlightPath;
+use App\Models\Hotel;
 use App\Models\Order;
 use App\Models\RoomType;
+use App\Models\Setting;
 use App\Models\StopSale;
 use App\Models\Tour;
 use App\Models\TourPrice;
@@ -56,6 +60,98 @@ class BookingService
             $this->createTourists($booking, $validated['tourists']);
             $this->attachServices($booking, $serviceAttachments);
             $this->saveAmadeusFlightSelections($booking, $tour, $validated, $touristCounts);
+
+            return ['booking' => $booking, 'order' => $order];
+        });
+    }
+
+    /**
+     * Create a booking from FlightPath + Hotels (new architecture).
+     */
+    public function createFlightPathBooking(array $validated, int $userId, int $agencyId): array
+    {
+        return DB::transaction(function () use ($validated, $userId, $agencyId) {
+            $fp = FlightPath::with(['legs.flight.airline', 'stays.city', 'currency'])
+                ->lockForUpdate()
+                ->findOrFail($validated['flight_path_id']);
+
+            if (! $fp->is_available || $fp->departure_date < today()) {
+                throw new BookingException('This tour is no longer available.');
+            }
+
+            $touristCounts = $this->countTouristsByAge($validated['tourists']);
+            $paxCount = $touristCounts['pax_without_infants'];
+
+            // Decrement flight seats
+            $flightIds = $fp->legs->pluck('flight_id')->unique();
+            $lockedFlights = Flight::whereIn('id', $flightIds)->lockForUpdate()->get();
+            foreach ($lockedFlights as $flight) {
+                if ($flight->available_seats !== null && $flight->available_seats < $paxCount) {
+                    throw new BookingException("Not enough seats on flight {$flight->flight_number}.");
+                }
+                if ($flight->available_seats !== null) {
+                    $flight->decrement('available_seats', $paxCount);
+                }
+            }
+
+            // Calculate dynamic price
+            $hotelIds = array_filter(explode(',', $validated['hotel_ids'] ?? ''), fn ($id) => is_numeric($id));
+            $hotels = Hotel::whereIn('id', $hotelIds)->get()->keyBy('id');
+
+            $flightCost = $fp->flight_total;
+            $hotelCost = 0;
+            foreach ($fp->stays as $stay) {
+                $hotel = $hotels->first(fn ($h) => $h->city_id === $stay->city_id);
+                if ($hotel) {
+                    $hotelCost += ((float) $hotel->price_per_person / 2) * $stay->nights;
+                }
+            }
+
+            $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
+            $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
+
+            // Mandatory services cost
+            $serviceIds = array_filter($validated['services'] ?? [], fn ($v) => is_numeric($v));
+            $mandatoryCost = 0;
+            if (! empty($serviceIds)) {
+                $services = AdditionalService::whereIn('id', $serviceIds)->get();
+                foreach ($services as $svc) {
+                    $cost = (float) $svc->price;
+                    if ($svc->is_per_person) {
+                        $mandatoryCost += $cost;
+                    }
+                }
+            }
+
+            $pricePerPerson = $flightCost + $hotelCost + $hiddenFee + $agentFee + $mandatoryCost;
+            $totalPrice = round($pricePerPerson * $touristCounts['total'], 2);
+
+            $usdId = Currency::where('code', 'USD')->value('id');
+
+            // Create order
+            $order = Order::create([
+                'order_number' => 'ORD-' . Str::ulid(),
+                'agency_id' => $agencyId,
+                'user_id' => $userId,
+                'status' => 'pending',
+                'total_price' => $totalPrice,
+                'currency_id' => $usdId ?? $fp->currency_id,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Create booking
+            $booking = Booking::create([
+                'order_id' => $order->id,
+                'bookable_type' => FlightPath::class,
+                'bookable_id' => $fp->id,
+                'status' => 'pending',
+                'price' => $totalPrice,
+                'currency_id' => $usdId ?? $fp->currency_id,
+                'date' => $fp->departure_date,
+            ]);
+
+            // Create tourists
+            $this->createTourists($booking, $validated['tourists']);
 
             return ['booking' => $booking, 'order' => $order];
         });

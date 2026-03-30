@@ -210,11 +210,22 @@ class BookingController extends Controller
     public function store(StoreBookingRequest $request)
     {
         try {
-            $result = $this->bookingService->createBooking(
-                $request->validated(),
-                auth()->id(),
-                auth()->user()->agency_id,
-            );
+            $validated = $request->validated();
+
+            // Route to correct booking method based on input
+            if (! empty($validated['flight_path_id'])) {
+                $result = $this->bookingService->createFlightPathBooking(
+                    $validated,
+                    auth()->id(),
+                    auth()->user()->agency_id,
+                );
+            } else {
+                $result = $this->bookingService->createBooking(
+                    $validated,
+                    auth()->id(),
+                    auth()->user()->agency_id,
+                );
+            }
 
             return redirect()->route('bookings.confirmation', $result['booking'])
                 ->with('success', 'Your booking has been created successfully!');
@@ -225,6 +236,7 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             Log::error('Booking creation failed', [
                 'error' => $e->getMessage(),
+                'flight_path_id' => $request->validated('flight_path_id'),
                 'tour_id' => $request->validated('tour_id'),
                 'user_id' => auth()->id(),
             ]);

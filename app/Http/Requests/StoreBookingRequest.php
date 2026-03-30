@@ -13,10 +13,26 @@ class StoreBookingRequest extends FormRequest
         return auth()->check();
     }
 
+    protected function prepareForValidation(): void
+    {
+        // Convert notes[] checkboxes array to a string
+        if (is_array($this->notes)) {
+            $combined = implode(', ', $this->notes);
+            if ($this->notes_text) {
+                $combined .= '. ' . $this->notes_text;
+            }
+            $this->merge(['notes' => $combined]);
+        }
+    }
+
     public function rules(): array
     {
         return [
-            'tour_id' => 'required|exists:tours,id',
+            // Either tour_id or flight_path_id required
+            'tour_id' => 'required_without:flight_path_id|nullable|exists:tours,id',
+            'flight_path_id' => 'required_without:tour_id|nullable|exists:flight_paths,id',
+            'hotel_ids' => 'nullable|string',
+
             'room_type_id' => [
                 'nullable',
                 Rule::exists('tour_prices', 'room_type_id')
@@ -35,17 +51,19 @@ class StoreBookingRequest extends FormRequest
             'tourists.*.birth_country' => 'nullable|string|max:100',
             'tourists.*.nationality' => 'required|string|max:100',
             'tourists.*.document_type' => 'nullable|string|max:50',
-            'tourists.*.passport_series' => 'nullable|string|max:20',
+            'tourists.*.document_series' => 'nullable|string|max:20',
             'tourists.*.passport_number' => 'required|string|max:50',
             'tourists.*.passport_expiry' => 'required|date|after:today',
-            'tourists.*.passport_issued' => 'nullable|date|before:today',
-            'tourists.*.passport_issued_by' => 'nullable|string|max:255',
-            'notes' => 'nullable|string|max:1000',
-            'special_requests' => 'nullable|array',
-            'additional_services' => 'nullable|array',
-            'additional_services.*' => 'exists:additional_services,id',
+            'tourists.*.passport_issued' => 'nullable|date',
+            'tourists.*.issued_by' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:2000',
+            'notes_text' => 'nullable|string|max:1000',
+            'services' => 'nullable|array',
+            'services.*' => 'nullable',
+            'insurances' => 'nullable|array',
+            'insurances.*' => 'nullable',
 
-            // Amadeus flight selections (required when tour has amadeus segments)
+            // Legacy Amadeus flight selections
             'amadeus_flights' => 'nullable|array',
             'amadeus_flights.*.segment_id' => 'required|exists:tour_amadeus_segments,id',
             'amadeus_flights.*.offer_id' => 'required|string|max:255',
@@ -71,7 +89,12 @@ class StoreBookingRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $tour = Tour::with('amadeusSegments')->find($this->input('tour_id'));
+            $tourId = $this->input('tour_id');
+            if (! $tourId) {
+                return; // FlightPath booking, no Amadeus validation needed
+            }
+
+            $tour = Tour::with('amadeusSegments')->find($tourId);
             if (! $tour) {
                 return;
             }
