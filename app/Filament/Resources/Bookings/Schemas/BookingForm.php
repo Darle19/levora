@@ -24,7 +24,13 @@ class BookingForm
                 TextInput::make('bookable_id')
                     ->required()
                     ->numeric(),
-                TextInput::make('status')
+                Select::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'confirmed' => 'Confirmed',
+                        'cancelled' => 'Cancelled',
+                        'completed' => 'Completed',
+                    ])
                     ->required()
                     ->default('pending'),
                 TextInput::make('price')
