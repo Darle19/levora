@@ -10,8 +10,10 @@ use App\Services\Flights\RapidApiFlightProvider;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
@@ -37,19 +39,44 @@ class EditTourTemplate extends EditRecord
                 ->color('success')
                 ->form([
                     Section::make('Departure Dates')
-                        ->description('Each leg uses its own source (Local DB or RapidAPI) as configured in the form.')
+                        ->description('Generate multiple departure dates. Each leg uses its own source (Local DB or RapidAPI).')
                         ->schema([
-                            Repeater::make('dates')
-                                ->schema([
-                                    DatePicker::make('date')
-                                        ->label('Date')
-                                        ->required(),
-                                ])
-                                ->defaultItems(1)
-                                ->minItems(1)
-                                ->maxItems(30)
-                                ->addActionLabel('+ Add Date'),
-                        ]),
+                            DatePicker::make('start_date')
+                                ->label('Start Date')
+                                ->required()
+                                ->live(),
+                            TextInput::make('interval_days')
+                                ->label('Interval (days)')
+                                ->numeric()
+                                ->default(7)
+                                ->required()
+                                ->helperText('7 = weekly, 14 = bi-weekly')
+                                ->live(),
+                            TextInput::make('count')
+                                ->label('Count')
+                                ->numeric()
+                                ->default(12)
+                                ->required()
+                                ->minValue(1)
+                                ->maxValue(52)
+                                ->live(),
+                            Placeholder::make('preview')
+                                ->label('Dates to generate')
+                                ->content(function (Get $get) {
+                                    $start = $get('start_date');
+                                    $interval = (int) ($get('interval_days') ?: 7);
+                                    $count = (int) ($get('count') ?: 1);
+                                    if (! $start || $count < 1) return '—';
+                                    $dates = [];
+                                    for ($i = 0; $i < min($count, 52); $i++) {
+                                        $d = strtotime($start . ' +' . ($i * $interval) . ' days');
+                                        $dates[] = date('d M Y (D)', $d);
+                                    }
+                                    return implode(', ', $dates);
+                                })
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(3),
                 ])
                 ->action(function (array $data) {
                     $this->generateFlightPaths($data);
@@ -64,10 +91,19 @@ class EditTourTemplate extends EditRecord
         $template = $this->record;
         $template->load('stays.city', 'legs.departureCity.airports', 'legs.arrivalCity.airports', 'legs.airline');
 
-        $dates = $data['dates'] ?? [];
-        if (empty($dates)) {
-            Notification::make()->danger()->title('Add at least one date.')->send();
+        // Build dates from start_date + interval + count
+        $startDate = $data['start_date'] ?? null;
+        $interval = (int) ($data['interval_days'] ?? 7);
+        $count = (int) ($data['count'] ?? 1);
+
+        if (! $startDate || $count < 1) {
+            Notification::make()->danger()->title('Set a start date and count.')->send();
             return;
+        }
+
+        $dates = [];
+        for ($i = 0; $i < $count; $i++) {
+            $dates[] = ['date' => date('Y-m-d', strtotime($startDate . ' +' . ($i * $interval) . ' days'))];
         }
 
         $templateLegs = $template->legs;
