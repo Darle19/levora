@@ -54,12 +54,15 @@ class FlightPath extends Model
     }
 
     /**
-     * Recalculate total_price from flight legs.
+     * Dynamic flight total — always calculated from current flight prices.
      */
-    public function recalculatePrice(): void
+    public function getFlightTotalAttribute(): float
     {
-        $total = $this->legs()->with('flight')->get()->sum(fn ($leg) => (float) $leg->flight->price_adult);
-        $this->updateQuietly(['total_price' => round($total, 2)]);
+        if (! $this->relationLoaded('legs')) {
+            $this->load('legs.flight');
+        }
+
+        return $this->legs->sum(fn ($leg) => (float) ($leg->flight?->price_adult ?? 0));
     }
 
     /**
@@ -67,6 +70,10 @@ class FlightPath extends Model
      */
     public function getMinSeatsAttribute(): int
     {
-        return $this->legs()->with('flight')->get()->min(fn ($leg) => $leg->flight->available_seats) ?? 0;
+        if (! $this->relationLoaded('legs')) {
+            $this->load('legs.flight');
+        }
+
+        return $this->legs->min(fn ($leg) => (int) ($leg->flight?->available_seats ?? 0)) ?? 0;
     }
 }

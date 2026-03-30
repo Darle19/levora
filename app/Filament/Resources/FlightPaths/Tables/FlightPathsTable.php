@@ -35,7 +35,7 @@ class FlightPathsTable
                 TextColumn::make('nights')
                     ->label('Nights')
                     ->sortable(),
-                TextColumn::make('total_price')
+                TextColumn::make('flight_total')
                     ->label('Flight Total')
                     ->money('USD')
                     ->sortable(),

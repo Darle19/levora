@@ -220,7 +220,7 @@ class EditTourTemplate extends EditRecord
                 'route_name' => $template->route_name,
                 'departure_date' => $baseDate,
                 'departure_city_id' => $template->departure_city_id,
-                'total_price' => $totalPrice,
+                'total_price' => 0, // calculated dynamically from flight prices
                 'currency_id' => $usdId,
                 'nights' => $template->total_nights,
                 'is_available' => true,

@@ -51,10 +51,9 @@ class UpcomingDeparturesWidget extends TableWidget
                     ->label('Nights')
                     ->alignCenter(),
 
-                TextColumn::make('total_price')
+                TextColumn::make('flight_total')
                     ->label('Flight Total')
-                    ->money('USD')
-                    ->sortable(),
+                    ->money('USD'),
             ])
             ->recordUrl(fn (FlightPath $record) => FlightPathResource::getUrl('edit', ['record' => $record]))
             ->paginated(false);

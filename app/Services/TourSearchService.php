@@ -175,7 +175,7 @@ class TourSearchService
                     $hotelCost += ((float) $stayData['hotel']->price_per_person / 2) * $stayData['nights'];
                 }
 
-                $price = (float) $fp->total_price + $hotelCost + $hiddenFee + $agentFee;
+                $price = $fp->flight_total + $hotelCost + $hiddenFee + $agentFee;
 
                 // Min seats across all flight legs
                 $minSeats = $fp->legs->min(fn ($leg) => $leg->flight->available_seats ?? 0);
@@ -184,7 +184,7 @@ class TourSearchService
                     'flight_path' => $fp,
                     'hotels' => $combo,
                     'price' => round($price, 2),
-                    'flight_price' => (float) $fp->total_price,
+                    'flight_price' => $fp->flight_total,
                     'hotel_cost' => round($hotelCost, 2),
                     'fees' => $hiddenFee + $agentFee,
                     'min_seats' => $minSeats,

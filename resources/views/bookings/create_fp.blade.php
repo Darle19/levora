@@ -423,7 +423,7 @@
                 <table class="data-table" style="width:auto;">
                     <tr>
                         <td style="width:200px;">Перелёт (на чел.)</td>
-                        <td style="text-align:right; font-weight:600;">${{ number_format($flightPath->total_price, 0) }}</td>
+                        <td style="text-align:right; font-weight:600;">${{ number_format($flightPath->flight_total, 0) }}</td>
                     </tr>
                     <tr>
                         <td>Проживание (на чел.)</td>

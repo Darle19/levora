@@ -39,10 +39,9 @@ class TemplateFlightPathsTable extends TableWidget
                     ->label('Departure')
                     ->date('d.m.Y (D)')
                     ->sortable(),
-                TextColumn::make('total_price')
+                TextColumn::make('flight_total')
                     ->label('Flight Total')
-                    ->money('USD')
-                    ->sortable(),
+                    ->money('USD'),
                 TextColumn::make('legs_summary')
                     ->label('Flights')
                     ->formatStateUsing(function ($record) {

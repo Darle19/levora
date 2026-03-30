@@ -149,7 +149,7 @@ class BookingController extends Controller
                 $hotelCost += ((float) $sh['hotel']->price_per_person / 2) * $sh['nights'];
             }
         }
-        $pricePerPerson = (float) $flightPath->total_price + $hotelCost + $hiddenFee + $agentFee + $mandatoryServicesCost;
+        $pricePerPerson = $flightPath->flight_total + $hotelCost + $hiddenFee + $agentFee + $mandatoryServicesCost;
 
         $countries = Country::where('is_active', true)->orderBy('name_en')->get();
 
