@@ -1,7 +1,5 @@
 <?php
 
-// File: app/Models/TourTemplateLeg.php
-
 namespace App\Models;
 
 use App\Enums\TimeRange;
@@ -16,8 +14,7 @@ class TourTemplateLeg extends Model
         'leg_order',
         'departure_city_id',
         'arrival_city_id',
-        'departure_date',
-        'arrival_date',
+        'day_offset',
         'preferred_time_range',
         'passenger_count',
         'flight_source',
@@ -28,8 +25,7 @@ class TourTemplateLeg extends Model
     {
         return [
             'leg_order' => 'integer',
-            'departure_date' => 'date',
-            'arrival_date' => 'date',
+            'day_offset' => 'integer',
             'preferred_time_range' => TimeRange::class,
             'passenger_count' => 'integer',
         ];
@@ -63,6 +59,14 @@ class TourTemplateLeg extends Model
     }
 
     // ── Helpers ──
+
+    /**
+     * Calculate the actual departure date given a base date.
+     */
+    public function departureDateFor(string $baseDate): string
+    {
+        return date('Y-m-d', strtotime($baseDate . " +{$this->day_offset} days"));
+    }
 
     public function hasFlightSelected(): bool
     {

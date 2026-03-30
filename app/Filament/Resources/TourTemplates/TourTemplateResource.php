@@ -92,7 +92,7 @@ class TourTemplateResource extends Resource
                 ]),
 
             Section::make('Flight Legs')
-                ->description('Define flight segments with dates. Or use "Generate Flights" to auto-find.')
+                ->description('Define flight segments. Day offset = days from base departure date. Use "Generate Flights" to search and create paths.')
                 ->schema([
                     Repeater::make('legs')
                         ->relationship()
@@ -105,25 +105,12 @@ class TourTemplateResource extends Resource
                                 ->label('To')
                                 ->options(City::where('is_active', true)->pluck('name_en', 'id'))
                                 ->required(),
-                            DatePicker::make('departure_date')
-                                ->label('Departure Date')
-                                ->required(),
-                            DatePicker::make('arrival_date')
-                                ->label('Arrival Date')
-                                ->required(),
-                            Select::make('preferred_time_range')
-                                ->label('Time')
-                                ->options([
-                                    'any' => 'Any',
-                                    'morning' => 'Morning',
-                                    'afternoon' => 'Afternoon',
-                                    'evening' => 'Evening',
-                                ])
-                                ->default('any'),
-                            TextInput::make('passenger_count')
-                                ->label('Pax')
+                            TextInput::make('day_offset')
+                                ->label('Day +')
                                 ->numeric()
-                                ->default(1),
+                                ->default(0)
+                                ->required()
+                                ->helperText('Days from base date'),
                             Select::make('flight_source')
                                 ->label('Source')
                                 ->options([
@@ -132,13 +119,16 @@ class TourTemplateResource extends Resource
                                 ])
                                 ->default('local_db')
                                 ->required(),
+                            TextInput::make('passenger_count')
+                                ->label('Pax')
+                                ->numeric()
+                                ->default(1),
                             TextInput::make('round_trip_pair_id')
                                 ->label('RT Pair Leg #')
                                 ->numeric()
-                                ->placeholder('Leg ID')
-                                ->helperText('Link to return leg ID for round-trip search'),
+                                ->placeholder('Leg ID'),
                         ])
-                        ->columns(4)
+                        ->columns(6)
                         ->defaultItems(0)
                         ->maxItems(10)
                         ->reorderable()

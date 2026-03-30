@@ -156,7 +156,7 @@ class EditTourTemplate extends EditRecord
                 $toAirportId = $cityAirportId[$leg->arrival_city_id];
                 $fromIata = $cityIata[$leg->departure_city_id];
                 $toIata = $cityIata[$leg->arrival_city_id];
-                $legDate = $leg->departure_date->format('Y-m-d');
+                $legDate = $leg->departureDateFor($baseDate);
 
                 $flightId = null;
                 $price = null;
@@ -181,7 +181,7 @@ class EditTourTemplate extends EditRecord
                         // Round-trip search: find the paired leg
                         $pairLeg = $templateLegs->firstWhere('id', $leg->round_trip_pair_id);
                         if ($pairLeg) {
-                            $returnDate = $pairLeg->departure_date->format('Y-m-d');
+                            $returnDate = $pairLeg->departureDateFor($baseDate);
                             $rtResults = $rapidApi->searchRoundTrip(
                                 $fromIata, $toIata, $legDate, $returnDate, $leg->passenger_count
                             );
