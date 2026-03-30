@@ -26,12 +26,11 @@
 
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <!-- Total Claims -->
             <div class="bg-white rounded-2xl p-6 border border-slate-200 card-hover">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-slate-500">{{ __('messages.dashboard.total_claims') }}</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-800">0</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-800">{{ $totalClaims }}</p>
                         <p class="mt-1 text-xs text-slate-400">{{ __('messages.dashboard.all_time') }}</p>
                     </div>
                     <div class="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center">
@@ -42,12 +41,11 @@
                 </div>
             </div>
 
-            <!-- Active Bookings -->
             <div class="bg-white rounded-2xl p-6 border border-slate-200 card-hover">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-slate-500">{{ __('messages.dashboard.active_bookings') }}</p>
-                        <p class="mt-2 text-3xl font-bold text-emerald-600">0</p>
+                        <p class="mt-2 text-3xl font-bold text-emerald-600">{{ $activeBookings }}</p>
                         <p class="mt-1 text-xs text-slate-400">{{ __('messages.dashboard.confirmed_tours') }}</p>
                     </div>
                     <div class="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center">
@@ -58,12 +56,11 @@
                 </div>
             </div>
 
-            <!-- Pending -->
             <div class="bg-white rounded-2xl p-6 border border-slate-200 card-hover">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-slate-500">{{ __('messages.dashboard.pending') }}</p>
-                        <p class="mt-2 text-3xl font-bold text-amber-600">0</p>
+                        <p class="mt-2 text-3xl font-bold text-amber-600">{{ $pendingBookings }}</p>
                         <p class="mt-1 text-xs text-slate-400">{{ __('messages.dashboard.awaiting') }}</p>
                     </div>
                     <div class="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -74,12 +71,11 @@
                 </div>
             </div>
 
-            <!-- Revenue -->
             <div class="bg-white rounded-2xl p-6 border border-slate-200 card-hover">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-slate-500">{{ __('messages.dashboard.revenue') }}</p>
-                        <p class="mt-2 text-3xl font-bold text-violet-600">$0</p>
+                        <p class="mt-2 text-3xl font-bold text-violet-600">${{ number_format($monthlyRevenue, 0) }}</p>
                         <p class="mt-1 text-xs text-slate-400">{{ __('messages.dashboard.this_month') }}</p>
                     </div>
                     <div class="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center">
@@ -94,7 +90,7 @@
         <!-- Quick Actions -->
         <div class="mb-8">
             <h2 class="text-lg font-semibold text-slate-800 mb-4">{{ __('messages.dashboard.quick_actions') }}</h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <a href="{{ route('search.tours') }}" class="bg-white rounded-2xl p-5 border border-slate-200 text-center card-hover group">
                     <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
                         <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,12 +139,13 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Recent Activity -->
+            <!-- Recent Orders -->
             <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                     <h3 class="font-semibold text-slate-800">{{ __('messages.dashboard.recent_activity') }}</h3>
                     <a href="{{ route('claims.index') }}" class="text-sm text-green-700 hover:text-green-800 font-medium">{{ __('messages.dashboard.view_all') }}</a>
                 </div>
+                @if($recentOrders->isEmpty())
                 <div class="p-6">
                     <div class="flex flex-col items-center justify-center py-12 text-center">
                         <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
@@ -158,73 +155,59 @@
                         </div>
                         <h4 class="text-slate-700 font-medium mb-1">{{ __('messages.dashboard.no_activity') }}</h4>
                         <p class="text-sm text-slate-500 mb-4">{{ __('messages.dashboard.start_searching') }}</p>
-                        <a href="{{ route('search.tours') }}" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center">
-                            {{ __('messages.dashboard.search_tours') }}
-                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
+                        <a href="{{ route('search.tours') }}" class="text-sm text-green-700 hover:text-green-800 font-medium">{{ __('messages.dashboard.search_tours') }} &rarr;</a>
                     </div>
                 </div>
+                @else
+                <div class="divide-y divide-slate-100">
+                    @foreach($recentOrders as $order)
+                    <div class="px-6 py-4 hover:bg-slate-50 transition">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="font-semibold text-slate-800">#{{ $order->order_number }}</span>
+                                <span class="ml-2 text-sm text-slate-500">{{ $order->created_at->format('d.m.Y H:i') }}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-semibold">${{ number_format($order->total_price, 0) }}</span>
+                                <span class="px-2 py-1 rounded-lg text-xs font-semibold
+                                    {{ $order->status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : '' }}
+                                    {{ $order->status === 'pending' ? 'bg-amber-100 text-amber-700' : '' }}
+                                    {{ $order->status === 'cancelled' ? 'bg-red-100 text-red-700' : '' }}
+                                    {{ $order->status === 'completed' ? 'bg-blue-100 text-blue-700' : '' }}
+                                ">{{ ucfirst($order->status) }}</span>
+                            </div>
+                        </div>
+                        @if($order->notes)
+                        <p class="text-xs text-slate-400 mt-1">{{ Str::limit($order->notes, 60) }}</p>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+                @endif
             </div>
 
-            <!-- Popular Destinations -->
+            <!-- Available Tours -->
             <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200">
                     <h3 class="font-semibold text-slate-800">{{ __('messages.dashboard.popular_destinations') }}</h3>
                 </div>
                 <div class="p-4 space-y-3">
+                    @forelse($tourRoutes as $route)
                     <a href="{{ route('search.tours') }}" class="flex items-center p-3 rounded-xl hover:bg-slate-50 transition group">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold text-lg mr-4">
-                            TR
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold text-sm mr-4">
+                            {{ $route->count }}
                         </div>
                         <div class="flex-1">
-                            <h4 class="font-medium text-slate-800 group-hover:text-green-700 transition">Turkey</h4>
-                            <p class="text-xs text-slate-500">10 tours available</p>
+                            <h4 class="font-medium text-slate-800 group-hover:text-green-700 transition">{{ $route->route_name }}</h4>
+                            <p class="text-xs text-slate-500">Next: {{ \Carbon\Carbon::parse($route->next_date)->format('d M Y') }}</p>
                         </div>
                         <svg class="w-5 h-5 text-slate-400 group-hover:text-green-700 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
                     </a>
-
-                    <a href="{{ route('search.tours') }}" class="flex items-center p-3 rounded-xl hover:bg-slate-50 transition group">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-lg mr-4">
-                            AE
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-medium text-slate-800 group-hover:text-green-700 transition">UAE</h4>
-                            <p class="text-xs text-slate-500">Luxury experiences</p>
-                        </div>
-                        <svg class="w-5 h-5 text-slate-400 group-hover:text-green-700 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </a>
-
-                    <a href="{{ route('search.tours') }}" class="flex items-center p-3 rounded-xl hover:bg-slate-50 transition group">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-lg mr-4">
-                            EG
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-medium text-slate-800 group-hover:text-green-700 transition">Egypt</h4>
-                            <p class="text-xs text-slate-500">Ancient wonders</p>
-                        </div>
-                        <svg class="w-5 h-5 text-slate-400 group-hover:text-green-700 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </a>
-
-                    <a href="{{ route('search.tours') }}" class="flex items-center p-3 rounded-xl hover:bg-slate-50 transition group">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold text-lg mr-4">
-                            TH
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-medium text-slate-800 group-hover:text-green-700 transition">Thailand</h4>
-                            <p class="text-xs text-slate-500">Tropical paradise</p>
-                        </div>
-                        <svg class="w-5 h-5 text-slate-400 group-hover:text-green-700 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
-                    </a>
+                    @empty
+                    <p class="text-sm text-slate-500 text-center py-4">No tours available</p>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -237,7 +220,7 @@
                     <p class="text-white/80">{{ __('messages.dashboard.support_available') }}</p>
                 </div>
                 <div class="flex space-x-4">
-                    <a href="tel:+998712334455" class="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl font-semibold transition flex items-center">
+                    <a href="tel:+998919777735" class="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl font-semibold transition flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                         </svg>
