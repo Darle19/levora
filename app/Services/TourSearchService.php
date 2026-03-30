@@ -147,6 +147,12 @@ class TourSearchService
         $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
         $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
 
+        // Load mandatory services cost per city
+        $mandatoryServices = \App\Models\AdditionalService::where('is_active', true)
+            ->where('is_mandatory', true)
+            ->where('service_type', '!=', 'insurance')
+            ->get();
+
         // Build combos: flight_path × hotels
         $results = [];
         foreach ($flightPaths as $fp) {
@@ -175,7 +181,16 @@ class TourSearchService
                     $hotelCost += ((float) $stayData['hotel']->price_per_person / 2) * $stayData['nights'];
                 }
 
-                $price = $fp->flight_total + $hotelCost + $hiddenFee + $agentFee;
+                // Mandatory services for cities in this path
+                $mandatoryCost = 0;
+                $cityIds = $fp->stays->pluck('city_id')->unique();
+                foreach ($mandatoryServices as $svc) {
+                    if ($cityIds->contains($svc->city_id) || $svc->city_id === null) {
+                        $mandatoryCost += (float) $svc->price;
+                    }
+                }
+
+                $price = $fp->flight_total + $hotelCost + $hiddenFee + $agentFee + $mandatoryCost;
 
                 // Min seats across all flight legs
                 $minSeats = $fp->legs->min(fn ($leg) => $leg->flight->available_seats ?? 0);
@@ -187,6 +202,7 @@ class TourSearchService
                     'flight_price' => $fp->flight_total,
                     'hotel_cost' => round($hotelCost, 2),
                     'fees' => $hiddenFee + $agentFee,
+                    'services_cost' => round($mandatoryCost, 2),
                     'min_seats' => $minSeats,
                     'currency' => $fp->currency,
                 ];
