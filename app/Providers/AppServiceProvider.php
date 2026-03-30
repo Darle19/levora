@@ -31,6 +31,11 @@ class AppServiceProvider extends ServiceProvider
                 apiKey: config('services.rapidapi.key', ''),
             );
         });
+
+        $this->app->bind(
+            \App\Contracts\FlightProviderInterface::class,
+            config('tour.flight_provider', \App\Services\Flights\DummyFlightProvider::class),
+        );
     }
 
     /**

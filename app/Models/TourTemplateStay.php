@@ -1,5 +1,7 @@
 <?php
 
+// File: app/Models/TourTemplateStay.php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +14,8 @@ class TourTemplateStay extends Model
         'city_id',
         'stay_order',
         'nights',
+        'check_in_date',
+        'check_out_date',
     ];
 
     protected function casts(): array
@@ -19,6 +23,8 @@ class TourTemplateStay extends Model
         return [
             'stay_order' => 'integer',
             'nights' => 'integer',
+            'check_in_date' => 'date',
+            'check_out_date' => 'date',
         ];
     }
 
