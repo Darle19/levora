@@ -130,7 +130,7 @@ class BookingService
 
             // Create order
             $order = Order::create([
-                'order_number' => 'ORD-' . Str::ulid(),
+                'order_number' => (string) (Order::max('id') + 1),
                 'agency_id' => $agencyId,
                 'user_id' => $userId,
                 'status' => 'pending',
@@ -342,7 +342,7 @@ class BookingService
         }
 
         return Order::create([
-            'order_number' => 'ORD-'.Str::ulid(),
+            'order_number' => (string) (Order::max('id') + 1),
             'agency_id' => $agencyId,
             'user_id' => $userId,
             'status' => 'pending',
