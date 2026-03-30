@@ -38,6 +38,10 @@ class AdditionalServiceForm
                             ->prefix('$')
                             ->required()
                             ->default(0),
+                        Toggle::make('is_mandatory')
+                            ->label('Mandatory')
+                            ->helperText('Included in base tour price')
+                            ->default(false),
                         Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),

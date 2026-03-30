@@ -33,6 +33,7 @@ class AdditionalService extends Model
         'price',
         'currency_id',
         'is_per_person',
+        'is_mandatory',
         'is_active',
     ];
 
