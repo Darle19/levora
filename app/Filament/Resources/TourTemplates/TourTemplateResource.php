@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TourTemplates;
 use App\Filament\Resources\TourTemplates\Pages\CreateTourTemplate;
 use App\Filament\Resources\TourTemplates\Pages\EditTourTemplate;
 use App\Filament\Resources\TourTemplates\Pages\ListTourTemplates;
+use App\Models\AdditionalService;
 use App\Models\Airline;
 use App\Models\City;
 use App\Models\TourTemplate;
@@ -72,16 +73,42 @@ class TourTemplateResource extends Resource
                             Select::make('city_id')
                                 ->label('City')
                                 ->options(City::where('is_active', true)->pluck('name_en', 'id'))
-                                ->required(),
+                                ->required()
+                                ->columnSpan(1),
                             TextInput::make('nights')
                                 ->label('Nights')
                                 ->numeric()
                                 ->default(2)
-                                ->required(),
+                                ->required()
+                                ->columnSpan(1),
                             DatePicker::make('check_in_date')
-                                ->label('Check-in'),
+                                ->label('Check-in')
+                                ->columnSpan(1),
                             DatePicker::make('check_out_date')
-                                ->label('Check-out'),
+                                ->label('Check-out')
+                                ->columnSpan(1),
+                            Repeater::make('services')
+                                ->relationship()
+                                ->schema([
+                                    Select::make('additional_service_id')
+                                        ->label('Service')
+                                        ->options(AdditionalService::where('is_active', true)->pluck('name_en', 'id'))
+                                        ->required()
+                                        ->searchable(),
+                                    TextInput::make('price_cents')
+                                        ->label('Price (cents)')
+                                        ->numeric()
+                                        ->required()
+                                        ->helperText('e.g. 3000 = $30.00'),
+                                    Toggle::make('is_mandatory')
+                                        ->label('Mandatory')
+                                        ->default(false)
+                                        ->helperText('Included in base price'),
+                                ])
+                                ->columns(3)
+                                ->defaultItems(0)
+                                ->addActionLabel('+ Add Service')
+                                ->columnSpanFull(),
                         ])
                         ->columns(4)
                         ->defaultItems(2)

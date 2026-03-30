@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TourTemplateStay extends Model
 {
@@ -36,5 +37,18 @@ class TourTemplateStay extends Model
     public function city(): BelongsTo
     {
         return $this->belongsTo(City::class);
+    }
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(TourTemplateStayService::class);
+    }
+
+    /**
+     * Total cost of mandatory services in cents.
+     */
+    public function mandatoryServicesCostCents(): int
+    {
+        return (int) $this->services()->where('is_mandatory', true)->sum('price_cents');
     }
 }
