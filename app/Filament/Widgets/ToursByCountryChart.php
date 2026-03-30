@@ -2,22 +2,21 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Tour;
+use App\Models\FlightPath;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
 class ToursByCountryChart extends ChartWidget
 {
-    protected ?string $heading = 'Tours by Country';
+    protected ?string $heading = 'Tours by Route';
 
     protected static ?int $sort = 5;
 
     protected function getData(): array
     {
-        $data = Tour::where('is_available', true)
-            ->join('countries', 'tours.country_id', '=', 'countries.id')
-            ->select('countries.name_en as country', DB::raw('count(*) as total'))
-            ->groupBy('countries.name_en')
+        $data = FlightPath::where('is_available', true)
+            ->select('route_name', DB::raw('count(*) as total'))
+            ->groupBy('route_name')
             ->orderByDesc('total')
             ->limit(8)
             ->get();
@@ -30,12 +29,12 @@ class ToursByCountryChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Tours',
+                    'label' => 'Flight Paths',
                     'data' => $data->pluck('total')->toArray(),
                     'backgroundColor' => array_slice($colors, 0, $data->count()),
                 ],
             ],
-            'labels' => $data->pluck('country')->toArray(),
+            'labels' => $data->pluck('route_name')->toArray(),
         ];
     }
 

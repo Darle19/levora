@@ -9,7 +9,7 @@ use App\Filament\Resources\TourTemplates\TourTemplateResource;
 use App\Models\Agency;
 use App\Models\Flight;
 use App\Models\Order;
-use App\Models\Tour;
+use App\Models\FlightPath;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -19,10 +19,10 @@ class StatsOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        // Active Tours
-        $activeTours = Tour::where('is_available', true)->count();
-        $upcomingDepartures = Tour::where('is_available', true)
-            ->whereBetween('date_from', [now(), now()->addDays(14)])
+        // Active Tours (FlightPaths)
+        $activeTours = FlightPath::where('is_available', true)->count();
+        $upcomingDepartures = FlightPath::where('is_available', true)
+            ->whereBetween('departure_date', [now(), now()->addDays(14)])
             ->count();
 
         // Bookings This Month

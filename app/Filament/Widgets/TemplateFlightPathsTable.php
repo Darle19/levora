@@ -17,6 +17,9 @@ class TemplateFlightPathsTable extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    // Only show on edit pages, not on dashboard
+    protected static bool $isDiscovered = false;
+
     public function table(Table $table): Table
     {
         $templateId = $this->getOwnerRecord()?->getKey();
