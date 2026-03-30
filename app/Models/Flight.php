@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Flight extends Model
 {
@@ -84,6 +85,11 @@ class Flight extends Model
     {
         return $this->belongsToMany(Tour::class, 'tour_flight')
             ->withPivot('direction');
+    }
+
+    public function flightPathLegs(): HasMany
+    {
+        return $this->hasMany(FlightPathLeg::class);
     }
 
     public function scopeFromCity($query, int $cityId)
