@@ -9,12 +9,20 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * NeoInsurance Travel API integration.
+ *
+ * Endpoints (travel-neo):
+ *   GET  /api/travel-neo/get-data         — countries, tariffs, purposes, exchange rates
+ *   POST /api/travel-neo/calculator-total  — calculate premium for trip
+ *   POST /api/travel-neo/save-polis        — create policy, returns payment URLs
+ *   POST /api/travel-neo/checkPolis        — check policy status
+ */
 class NeoInsuranceService
 {
     private string $baseUrl;
     private string $username;
     private string $password;
-
     private bool $configured;
 
     public function __construct()
@@ -23,195 +31,190 @@ class NeoInsuranceService
         $this->username = config('services.neoinsurance.username') ?? '';
         $this->password = config('services.neoinsurance.password') ?? '';
         $this->configured = $this->baseUrl !== '' && $this->username !== '' && $this->password !== '';
-
-        if (! $this->configured) {
-            Log::warning('NeoInsurance service is not configured — API calls will be skipped.');
-        }
     }
 
-    private function ensureConfigured(): bool
+    public function isConfigured(): bool
     {
-        if (! $this->configured) {
-            Log::warning('NeoInsurance API call skipped: missing base_url, username, or password.');
-
-            return false;
-        }
-
-        return true;
+        return $this->configured;
     }
 
-    public function getInsuranceOptions(): ?array
+    /**
+     * Get countries, tariffs, purposes, exchange rates.
+     */
+    public function getData(): ?array
     {
-        if (! $this->ensureConfigured()) {
+        if (! $this->configured) {
             return null;
         }
 
-        return Cache::remember('neoinsurance_options', 86400, function () {
-            try {
-                $response = Http::withBasicAuth($this->username, $this->password)
-                    ->timeout(10)
-                    ->get("{$this->baseUrl}/api/travel-risk-neo/get-data");
-
-                if ($response->successful()) {
-                    return $response->json();
-                }
-
-                Log::error('NeoInsurance get-data failed', [
-                    'status' => $response->status(),
-                    'body' => Str::limit($response->body(), 200),
-                ]);
-            } catch (\Exception $e) {
-                Log::error('NeoInsurance get-data exception', ['message' => $e->getMessage()]);
-            }
-
-            return null;
+        return Cache::remember('neoinsurance_data', 86400, function () {
+            $response = $this->get('/api/travel-neo/get-data');
+            return $response['data'] ?? $response;
         });
     }
 
-    public function getCountries(): ?array
-    {
-        return Cache::remember('neoinsurance_countries', 86400, function () {
-            try {
-                $response = Http::withBasicAuth($this->username, $this->password)
-                    ->timeout(10)
-                    ->get("{$this->baseUrl}/api/accident_one_day-neo/get-country");
-
-                if ($response->successful()) {
-                    return $response->json();
-                }
-
-                Log::error('NeoInsurance get-country failed', [
-                    'status' => $response->status(),
-                    'body' => Str::limit($response->body(), 200),
-                ]);
-            } catch (\Exception $e) {
-                Log::error('NeoInsurance get-country exception', ['message' => $e->getMessage()]);
-            }
-
-            return null;
-        });
-    }
-
-    public function calculatePremium(array $risks): ?array
-    {
-        try {
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(10)
-                ->post("{$this->baseUrl}/api/travel-risk-neo/calculator", [
-                    'risklar' => $risks,
-                ]);
-
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            Log::error('NeoInsurance calculator failed', [
-                'status' => $response->status(),
-                'body' => Str::limit($response->body(), 200),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('NeoInsurance calculator exception', ['message' => $e->getMessage()]);
-        }
-
-        return null;
-    }
-
-    public function createPolicy(Tourist $tourist, Booking $booking): ?array
-    {
-        if (! $this->ensureConfigured()) {
-            return null;
-        }
-
-        $tour = $booking->bookable;
-
-        if (!$tour) {
-            Log::error('NeoInsurance: booking has no bookable tour', ['booking_id' => $booking->id]);
-            return null;
-        }
-
-        $countryId = $this->resolveCountryId($tour->country);
-
+    /**
+     * Calculate insurance premium.
+     *
+     * @param string $beginDate DD-MM-YYYY
+     * @param string $endDate DD-MM-YYYY
+     * @param array $countryCodes e.g. ['TR', 'FR']
+     * @param array $travelerBirthDates e.g. ['16-12-2001']
+     * @param array $risks e.g. ['accident' => 1, 'luggage' => 0, ...]
+     * @return array|null Array of programs with prices
+     */
+    public function calculatePremium(
+        string $beginDate,
+        string $endDate,
+        array $countryCodes,
+        array $travelerBirthDates,
+        array $risks = [],
+    ): ?array {
         $payload = [
-            'begin_date' => $tour->date_from->format('d-m-Y'),
-            'end_date' => $tour->date_to->format('d-m-Y'),
-            'sugurtalovchi' => [
-                'type' => 2,
-                'passportSeries' => $tourist->passport_series ?? '',
-                'passportNumber' => $tourist->passport_number ?? '',
-                'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '',
-                'phone' => $booking->order->user->phone ?? '',
-                'last_name' => $tourist->last_name ?? '',
-                'first_name' => $tourist->first_name ?? '',
-                'middle_name' => $tourist->middle_name ?? '',
-                'address' => '',
-                'gender' => $this->mapGender($tourist->gender),
-                'country_id' => $countryId,
-            ],
-            'risklar' => [
+            'begin_date' => $beginDate,
+            'end_date' => $endDate,
+            'countries' => $countryCodes,
+            'purpose_id' => 1, // Travel
+            'kop_martali' => false,
+            'is_family' => false,
+            'has_covid' => false,
+            'travelers' => $travelerBirthDates,
+            'risklar' => array_merge([
                 'accident' => 1,
                 'luggage' => 0,
                 'cancel_travel' => 0,
                 'person_respon' => 0,
                 'delay_travel' => 0,
-            ],
+            ], $risks),
         ];
+
+        $response = $this->post('/api/travel-neo/calculator-total', $payload);
+
+        if (! $response || ! ($response['result'] ?? false)) {
+            return null;
+        }
+
+        return $response['response'] ?? null;
+    }
+
+    /**
+     * Create and save insurance policy. Returns order_id + payment URLs.
+     */
+    public function savePolicy(array $policyData): ?array
+    {
+        $response = $this->post('/api/travel-neo/save-polis', $policyData);
+
+        if (! $response || ! ($response['result'] ?? false)) {
+            Log::error('NeoInsurance save-polis failed', [
+                'message' => $response['message'] ?? 'Unknown error',
+            ]);
+            return null;
+        }
+
+        return $response['response'] ?? null;
+    }
+
+    /**
+     * Check policy status by order ID.
+     */
+    public function checkPolicy(int $orderId): ?array
+    {
+        $response = $this->post('/api/travel-neo/checkPolis', [
+            'order_id' => $orderId,
+        ]);
+
+        return $response;
+    }
+
+    /**
+     * Get insurance options formatted for booking page display.
+     * Returns array of programs with USD prices.
+     */
+    public function getInsuranceOptionsForBooking(
+        string $departureDate,
+        string $returnDate,
+        array $countryCodes,
+        int $travelerCount = 1,
+    ): array {
+        // Use a dummy birth date for calculation (adult)
+        $travelerDates = array_fill(0, $travelerCount, '01-01-1990');
+
+        $beginDate = date('d-m-Y', strtotime($departureDate));
+        $endDate = date('d-m-Y', strtotime($returnDate));
+
+        $programs = $this->calculatePremium($beginDate, $endDate, $countryCodes, $travelerDates);
+
+        if (! $programs || ! is_array($programs)) {
+            return [];
+        }
+
+        return collect($programs)->map(function ($program) use ($departureDate, $returnDate) {
+            return [
+                'id' => 'neo_program_' . ($program['program_id'] ?? 0),
+                'program_id' => $program['program_id'] ?? 0,
+                'name' => $program['program_name'] ?? 'Insurance',
+                'price_usd' => (float) ($program['prem_usd'] ?? 0),
+                'price_uzs' => (int) ($program['prem_uzs'] ?? 0),
+                'currency' => 'USD',
+                'is_per_person' => true,
+                'period' => $departureDate . ' — ' . $returnDate,
+                'source' => 'neoinsurance',
+            ];
+        })->all();
+    }
+
+    // ── HTTP helpers ──
+
+    private function get(string $endpoint): ?array
+    {
+        if (! $this->configured) {
+            return null;
+        }
 
         try {
             $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(10)
-                ->post("{$this->baseUrl}/api/travel-risk-neo/save", $payload);
+                ->timeout(15)
+                ->get("{$this->baseUrl}{$endpoint}");
 
             if ($response->successful()) {
                 return $response->json();
             }
 
-            Log::error('NeoInsurance save failed', [
+            Log::error("NeoInsurance GET {$endpoint} failed", [
                 'status' => $response->status(),
-                'body' => Str::limit($response->body(), 200),
-                'tourist_id' => $tourist->id,
+                'body' => Str::limit($response->body(), 300),
             ]);
         } catch (\Exception $e) {
-            Log::error('NeoInsurance save exception', [
-                'message' => $e->getMessage(),
-                'tourist_id' => $tourist->id,
-            ]);
+            Log::error("NeoInsurance GET {$endpoint} exception", ['message' => $e->getMessage()]);
         }
 
         return null;
     }
 
-    private function mapGender(?string $gender): int
+    private function post(string $endpoint, array $data): ?array
     {
-        return match (strtolower($gender ?? '')) {
-            'male', 'm' => 1,
-            'female', 'f' => 2,
-            default => 1,
-        };
-    }
-
-    private function resolveCountryId(?object $country): int
-    {
-        if (!$country) {
-            return 98; // Uzbekistan default
+        if (! $this->configured) {
+            return null;
         }
 
-        // Try to match by country name against cached NeoInsurance countries
-        $neoCountries = $this->getCountries();
-        if (!$neoCountries || !is_array($neoCountries)) {
-            return 98;
-        }
+        try {
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->timeout(15)
+                ->post("{$this->baseUrl}{$endpoint}", $data);
 
-        $countryName = $country->name_en ?? $country->attributes['name'] ?? '';
-
-        foreach ($neoCountries as $nc) {
-            $names = [$nc['name_en'] ?? '', $nc['name_ru'] ?? '', $nc['name_uz'] ?? ''];
-            foreach ($names as $name) {
-                if ($name && stripos($name, $countryName) !== false) {
-                    return (int) ($nc['id'] ?? 98);
-                }
+            if ($response->successful()) {
+                return $response->json();
             }
+
+            Log::error("NeoInsurance POST {$endpoint} failed", [
+                'status' => $response->status(),
+                'body' => Str::limit($response->body(), 300),
+                'payload' => $data,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("NeoInsurance POST {$endpoint} exception", ['message' => $e->getMessage()]);
         }
 
-        return 98;
+        return null;
     }
 }

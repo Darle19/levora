@@ -37,7 +37,7 @@ class BookingController extends Controller
 
         $flightPath = FlightPath::with([
             'legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport',
-            'stays.city', 'currency', 'departureCity',
+            'stays.city.country', 'currency', 'departureCity',
         ])->findOrFail($fpId);
 
         if (! $flightPath->is_available) {
@@ -69,39 +69,55 @@ class BookingController extends Controller
             ->get()
             ->groupBy('city_id');
 
-        // Load insurances: try NeoInsurance API first, fallback to local services
+        // Load insurances from NeoInsurance API
         $neoInsurance = app(NeoInsuranceService::class);
-        $neoOptions = $neoInsurance->getInsuranceOptions();
         $insurances = collect();
 
-        if ($neoOptions && is_array($neoOptions)) {
-            // Build insurance options from NeoInsurance API response
-            foreach ($neoOptions as $option) {
-                $name = $option['name_en'] ?? $option['name'] ?? 'Travel Insurance';
-                $coverage = $option['coverage'] ?? $option['summa'] ?? 10000;
-                $insurances->push((object) [
-                    'id' => 'neo_' . ($option['id'] ?? 0),
-                    'name_en' => "{$name} ({$coverage} USD)",
-                    'price' => (float) ($option['price'] ?? $option['premium'] ?? 0),
-                    'is_per_person' => true,
-                    'is_mandatory' => false,
-                    'source' => 'neoinsurance',
-                    'neo_data' => $option,
-                ]);
+        if ($neoInsurance->isConfigured()) {
+            // Get country codes for the tour destinations
+            $countryCodes = $flightPath->stays
+                ->map(fn ($s) => $s->city?->country?->code)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (! empty($countryCodes)) {
+                $departureDate = $flightPath->departure_date->format('Y-m-d');
+                $returnDate = $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('Y-m-d');
+
+                $neoPrograms = $neoInsurance->getInsuranceOptionsForBooking(
+                    $departureDate, $returnDate, $countryCodes
+                );
+
+                foreach ($neoPrograms as $program) {
+                    $insurances->push((object) [
+                        'id' => $program['id'],
+                        'name_en' => $program['name'] . ' (' . implode(', ', $countryCodes) . ')',
+                        'price' => $program['price_usd'],
+                        'is_per_person' => true,
+                        'is_mandatory' => false,
+                        'source' => 'neoinsurance',
+                        'program_id' => $program['program_id'],
+                        'period' => $program['period'],
+                    ]);
+                }
             }
         }
 
-        // Also add local insurance services as fallback/additional options
-        $localInsurances = AdditionalService::where('is_active', true)
-            ->where('service_type', 'insurance')
-            ->where(function ($q) use ($cityIds) {
-                $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
-            })
-            ->orderBy('name_en')
-            ->get();
+        // Fallback: local insurance services from DB
+        if ($insurances->isEmpty()) {
+            $localInsurances = AdditionalService::where('is_active', true)
+                ->where('service_type', 'insurance')
+                ->where(function ($q) use ($cityIds) {
+                    $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
+                })
+                ->orderBy('name_en')
+                ->get();
 
-        foreach ($localInsurances as $li) {
-            $insurances->push($li);
+            foreach ($localInsurances as $li) {
+                $insurances->push($li);
+            }
         }
 
         // Build services per stay
