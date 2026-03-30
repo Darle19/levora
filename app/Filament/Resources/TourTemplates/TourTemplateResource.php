@@ -142,8 +142,7 @@ class TourTemplateResource extends Resource
                                 ->label('Day +')
                                 ->numeric()
                                 ->default(0)
-                                ->required()
-                                ->helperText('Days from base date'),
+                                ->required(),
                             Select::make('flight_source')
                                 ->label('Source')
                                 ->options([
@@ -152,16 +151,8 @@ class TourTemplateResource extends Resource
                                 ])
                                 ->default('local_db')
                                 ->required(),
-                            TextInput::make('passenger_count')
-                                ->label('Pax')
-                                ->numeric()
-                                ->default(1),
-                            TextInput::make('round_trip_pair_id')
-                                ->label('RT Pair Leg #')
-                                ->numeric()
-                                ->placeholder('Leg ID'),
                         ])
-                        ->columns(6)
+                        ->columns(5)
                         ->defaultItems(0)
                         ->maxItems(10)
                         ->reorderable()
