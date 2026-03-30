@@ -141,10 +141,10 @@ class TourTemplateSeeder extends Seeder
         ]);
 
         DB::table('tour_template_stays')->insert([
-            ['tour_template_id' => $t2Id, 'city_id' => $istanbulId, 'stay_order' => 1, 'nights' => 2,
+            ['tour_template_id' => $t2Id, 'city_id' => $istanbulId, 'stay_order' => 1, 'nights' => 4,
              'check_in_date' => null, 'check_out_date' => null,
              'created_at' => now(), 'updated_at' => now()],
-            ['tour_template_id' => $t2Id, 'city_id' => $bakuId, 'stay_order' => 2, 'nights' => 5,
+            ['tour_template_id' => $t2Id, 'city_id' => $bakuId, 'stay_order' => 2, 'nights' => 3,
              'check_in_date' => null, 'check_out_date' => null,
              'created_at' => now(), 'updated_at' => now()],
         ]);
@@ -158,11 +158,11 @@ class TourTemplateSeeder extends Seeder
             'flight_source' => 'local_db', 'round_trip_pair_id' => null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
-        // Leg 2: IST→GYD day+2 Azerbaijan Airlines (rapidapi)
+        // Leg 2: IST→GYD day+4 Azerbaijan Airlines (rapidapi) — after 4n in Istanbul
         DB::table('tour_template_legs')->insert([
             'tour_template_id' => $t2Id, 'leg_order' => 2,
             'departure_city_id' => $istanbulId, 'arrival_city_id' => $bakuId,
-            'airline_id' => $j2Id, 'day_offset' => 2,
+            'airline_id' => $j2Id, 'day_offset' => 4,
             'preferred_time_range' => 'any', 'passenger_count' => 1,
             'flight_source' => 'rapidapi', 'round_trip_pair_id' => null,
             'created_at' => now(), 'updated_at' => now(),
