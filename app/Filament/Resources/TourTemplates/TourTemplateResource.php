@@ -9,6 +9,7 @@ use App\Models\City;
 use App\Models\TourTemplate;
 use BackedEnum;
 use UnitEnum;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -76,14 +77,60 @@ class TourTemplateResource extends Resource
                                 ->numeric()
                                 ->default(2)
                                 ->required(),
+                            DatePicker::make('check_in_date')
+                                ->label('Check-in'),
+                            DatePicker::make('check_out_date')
+                                ->label('Check-out'),
                         ])
-                        ->columns(2)
+                        ->columns(4)
                         ->defaultItems(2)
                         ->minItems(1)
                         ->maxItems(5)
                         ->reorderable()
                         ->orderColumn('stay_order')
                         ->addActionLabel('+ Add City'),
+                ]),
+
+            Section::make('Flight Legs')
+                ->description('Define flight segments with dates. Or use "Generate Flights" to auto-find.')
+                ->schema([
+                    Repeater::make('legs')
+                        ->relationship()
+                        ->schema([
+                            Select::make('departure_city_id')
+                                ->label('From')
+                                ->options(City::where('is_active', true)->pluck('name_en', 'id'))
+                                ->required(),
+                            Select::make('arrival_city_id')
+                                ->label('To')
+                                ->options(City::where('is_active', true)->pluck('name_en', 'id'))
+                                ->required(),
+                            DatePicker::make('departure_date')
+                                ->label('Departure Date')
+                                ->required(),
+                            DatePicker::make('arrival_date')
+                                ->label('Arrival Date')
+                                ->required(),
+                            Select::make('preferred_time_range')
+                                ->label('Time')
+                                ->options([
+                                    'any' => 'Any',
+                                    'morning' => 'Morning',
+                                    'afternoon' => 'Afternoon',
+                                    'evening' => 'Evening',
+                                ])
+                                ->default('any'),
+                            TextInput::make('passenger_count')
+                                ->label('Passengers')
+                                ->numeric()
+                                ->default(1),
+                        ])
+                        ->columns(6)
+                        ->defaultItems(0)
+                        ->maxItems(10)
+                        ->reorderable()
+                        ->orderColumn('leg_order')
+                        ->addActionLabel('+ Add Leg'),
                 ]),
         ]);
     }

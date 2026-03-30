@@ -240,7 +240,7 @@ class EditTourTemplate extends EditRecord
     protected function getFooterWidgets(): array
     {
         return [
-            \App\Filament\Widgets\TemplateFlightPathsTable::class,
+            \App\Filament\Widgets\TemplateFlightPathsTable::make(['record' => $this->getRecord()]),
         ];
     }
 }

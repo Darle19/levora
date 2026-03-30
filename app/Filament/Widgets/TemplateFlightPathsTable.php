@@ -9,7 +9,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class TemplateFlightPathsTable extends TableWidget
 {
@@ -17,17 +17,18 @@ class TemplateFlightPathsTable extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    // Only show on edit pages, not on dashboard
     protected static bool $isDiscovered = false;
+
+    public Model|int|string|null $record = null;
 
     public function table(Table $table): Table
     {
-        $templateId = $this->getOwnerRecord()?->getKey();
+        $templateId = $this->record instanceof Model ? $this->record->getKey() : $this->record;
 
         return $table
             ->query(
                 FlightPath::query()
-                    ->where('tour_template_id', $templateId)
+                    ->where('tour_template_id', $templateId ?? 0)
                     ->with([
                         'legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport',
                         'departureCity',
@@ -62,12 +63,5 @@ class TemplateFlightPathsTable extends TableWidget
                     DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    private function getOwnerRecord()
-    {
-        $livewire = $this->getLivewire();
-
-        return method_exists($livewire, 'getRecord') ? $livewire->getRecord() : null;
     }
 }
