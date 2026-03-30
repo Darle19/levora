@@ -2,12 +2,11 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Resources\Tours\TourResource;
-use App\Models\Tour;
+use App\Filament\Resources\FlightPaths\FlightPathResource;
+use App\Models\FlightPath;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
-use Illuminate\Database\Eloquent\Builder;
 
 class UpcomingDeparturesWidget extends TableWidget
 {
@@ -21,61 +20,43 @@ class UpcomingDeparturesWidget extends TableWidget
     {
         return $table
             ->query(
-                Tour::query()
+                FlightPath::query()
                     ->where('is_available', true)
-                    ->whereBetween('date_from', [now(), now()->addDays(14)])
-                    ->with(['stays.city', 'stays.hotel', 'hotel'])
-                    ->orderBy('date_from', 'asc')
+                    ->whereBetween('departure_date', [now(), now()->addDays(14)])
+                    ->with(['stays.city', 'departureCity', 'legs.flight.airline'])
+                    ->orderBy('departure_date', 'asc')
                     ->limit(10)
             )
             ->columns([
-                TextColumn::make('date_from')
+                TextColumn::make('departure_date')
                     ->label('Departure')
                     ->date('d M Y')
                     ->sortable()
-                    ->color(fn (Tour $record) => $record->date_from->isToday() ? 'danger' : ($record->date_from->diffInDays(now()) <= 3 ? 'warning' : null)),
+                    ->color(fn (FlightPath $record) => $record->departure_date->isToday() ? 'danger' : ($record->departure_date->diffInDays(now()) <= 3 ? 'warning' : null)),
 
-                TextColumn::make('route')
+                TextColumn::make('route_name')
                     ->label('Route')
-                    ->state(function (Tour $record): string {
-                        if ($record->stays->isNotEmpty()) {
-                            return $record->stays
-                                ->map(fn ($stay) => $stay->city?->name ?? '—')
-                                ->unique()
-                                ->implode(' → ');
-                        }
+                    ->searchable(),
 
-                        return $record->departureCity?->name ?? '—';
-                    }),
-
-                TextColumn::make('hotel_name')
-                    ->label('Hotel')
-                    ->state(function (Tour $record): string {
-                        if ($record->stays->isNotEmpty()) {
-                            return $record->stays
-                                ->map(fn ($stay) => $stay->hotel?->name ?? '—')
-                                ->unique()
-                                ->implode(', ');
-                        }
-
-                        return $record->hotel?->name ?? '—';
+                TextColumn::make('stays_summary')
+                    ->label('Cities')
+                    ->formatStateUsing(function ($record) {
+                        return $record->stays
+                            ->sortBy('stay_order')
+                            ->map(fn ($s) => ($s->city->name_en ?? '?') . ' ' . $s->nights . 'n')
+                            ->implode(' → ');
                     }),
 
                 TextColumn::make('nights')
                     ->label('Nights')
                     ->alignCenter(),
 
-                TextColumn::make('adults')
-                    ->label('Pax')
-                    ->alignCenter()
-                    ->state(fn (Tour $record) => $record->adults . ($record->children > 0 ? '+' . $record->children : '')),
-
-                TextColumn::make('price')
-                    ->label('Price')
+                TextColumn::make('total_price')
+                    ->label('Flight Total')
                     ->money('USD')
                     ->sortable(),
             ])
-            ->recordUrl(fn (Tour $record) => TourResource::getUrl('edit', ['record' => $record]))
+            ->recordUrl(fn (FlightPath $record) => FlightPathResource::getUrl('edit', ['record' => $record]))
             ->paginated(false);
     }
 }

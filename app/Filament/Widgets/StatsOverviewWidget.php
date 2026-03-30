@@ -5,7 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\Agencies\AgencyResource;
 use App\Filament\Resources\Flights\FlightResource;
 use App\Filament\Resources\Orders\OrderResource;
-use App\Filament\Resources\Tours\TourResource;
+use App\Filament\Resources\TourTemplates\TourTemplateResource;
 use App\Models\Agency;
 use App\Models\Flight;
 use App\Models\Order;
@@ -76,7 +76,7 @@ class StatsOverviewWidget extends BaseWidget
                 ->color('success')
                 ->extraAttributes([
                     'class' => 'cursor-pointer',
-                    'onclick' => 'window.location.href=\'' . TourResource::getUrl() . '\'',
+                    'onclick' => 'window.location.href=\'' . TourTemplateResource::getUrl() . '\'',
                 ]),
 
             Stat::make('Bookings This Month', $totalBookingsThisMonth)
