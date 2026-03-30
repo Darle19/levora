@@ -1,203 +1,291 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="py-8">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="mb-6 flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Claim Details</h1>
-                <p class="mt-2 text-sm text-gray-600">Order #{{ $order->order_number }}</p>
+<style>
+    .claim { font-family: inherit; font-size: 12px; color: #333; max-width: 1300px; margin: 20px auto; padding: 0 10px; }
+    .claim a { color: #007355; }
+    .claim .hdr { background: #3B6E8F; color: #fff; padding: 8px 12px; font-weight: 700; font-size: 13px; margin-bottom: 0; }
+    .claim .hdr-green { background: #4A8C5C; }
+    .claim .hdr-dark { background: #34495E; }
+    .claim .blk { background: #fff; border: 1px solid #ccc; margin-bottom: 12px; }
+    .claim .blk-body { padding: 10px 12px; }
+    .claim table { width: 100%; border-collapse: collapse; }
+    .claim table th { background: #e8ecf1; border: 1px solid #bbb; padding: 5px 8px; font-size: 12px; font-weight: 600; text-align: left; }
+    .claim table td { border: 1px solid #ddd; padding: 5px 8px; font-size: 12px; vertical-align: middle; }
+    .claim table tr:hover td { background: #f5f8fa; }
+    .claim .meta { display: flex; gap: 24px; flex-wrap: wrap; padding: 10px 12px; background: #f8f9fb; border-bottom: 1px solid #ddd; }
+    .claim .meta-item { }
+    .claim .meta-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
+    .claim .meta-value { font-size: 13px; font-weight: 600; color: #222; }
+    .claim .badge { display: inline-block; padding: 2px 10px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+    .claim .badge-confirmed { background: #d4edda; color: #155724; }
+    .claim .badge-pending { background: #fff3cd; color: #856404; }
+    .claim .badge-cancelled { background: #f8d7da; color: #721c24; }
+    .claim .badge-paid { background: #d4edda; color: #155724; border: 1px solid #b8d4be; }
+    .claim .svc-row td:first-child { padding-left: 20px; }
+    .claim .tourist-card { border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-bottom: 8px; background: #fafbfc; }
+    .claim .tourist-card h4 { margin: 0 0 6px; font-size: 13px; color: #2c5f2d; font-weight: 700; }
+    .claim .tourist-card table { border: none; }
+    .claim .tourist-card td { border: none; padding: 2px 8px; }
+    .claim .tourist-card .lbl { color: #888; }
+    .claim .back-link { display: inline-block; margin-bottom: 12px; font-size: 13px; }
+</style>
+
+<div class="claim">
+    <a href="{{ route('claims.index') }}" class="back-link">&larr; Back to claims</a>
+
+    {{-- ═══ HEADER ═══ --}}
+    <div class="blk">
+        <div class="meta">
+            <div class="meta-item">
+                <div class="meta-label">Reservation</div>
+                <div class="meta-value">#{{ $order->order_number }}</div>
             </div>
-            <a href="{{ route('claims.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Back to Claims
-            </a>
-        </div>
-
-        <!-- Order Information -->
-        <div class="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-900">Order Information</h2>
+            <div class="meta-item">
+                <div class="meta-label">Created</div>
+                <div class="meta-value">{{ $order->created_at->format('d.m.Y H:i') }}</div>
             </div>
-
-            <div class="p-6">
-                <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Order Number</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ $order->order_number }}</dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Created By</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ $order->user->name }}</dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Status</dt>
-                        <dd class="mt-1">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                @if($order->status === 'confirmed') bg-green-100 text-green-800
-                                @elseif($order->status === 'pending') bg-yellow-100 text-yellow-800
-                                @elseif($order->status === 'cancelled') bg-red-100 text-red-800
-                                @else bg-gray-100 text-gray-800 @endif">
-                                {{ ucfirst($order->status) }}
-                            </span>
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Total Price</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ number_format($order->total_price, 2) }} {{ $order->currency->code ?? 'USD' }}</dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Created Date</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ $order->created_at->format('d M Y H:i') }}</dd>
-                    </div>
-
-                    @if($order->notes)
-                        <div class="sm:col-span-2">
-                            <dt class="text-sm font-medium text-gray-500">Notes</dt>
-                            <dd class="mt-1 text-sm text-gray-900">{{ $order->notes }}</dd>
-                        </div>
-                    @endif
-                </dl>
+            <div class="meta-item">
+                <div class="meta-label">Agency</div>
+                <div class="meta-value">{{ $order->agency->name ?? '—' }}</div>
             </div>
-        </div>
-
-        <!-- Bookings -->
-        <div class="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-900">Bookings</h2>
+            <div class="meta-item">
+                <div class="meta-label">Manager</div>
+                <div class="meta-value">{{ $order->user->name ?? '—' }}</div>
             </div>
-
-            <div class="p-6">
-                @forelse($order->bookings as $booking)
-                    <div class="mb-6 last:mb-0 pb-6 last:pb-0 border-b last:border-b-0 border-gray-200">
-                        <h3 class="text-md font-semibold text-gray-900 mb-4">
-                            Booking #{{ $booking->id }} - {{ $booking->bookable_type }}
-                        </h3>
-                        <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Status</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ ucfirst($booking->status) }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Price</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ number_format($booking->price, 2) }} {{ $booking->currency->code ?? 'USD' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Date</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $booking->date->format('d M Y') }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-                @empty
-                    <p class="text-sm text-gray-500">No bookings found</p>
-                @endforelse
-            </div>
-        </div>
-
-        <!-- Documents -->
-        @php
-            $allDocuments = $order->bookings->flatMap->documents;
-        @endphp
-        @if($allDocuments->isNotEmpty())
-        <div class="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-gray-900">{{ __('messages.doc_documents') }}</h2>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm text-gray-600">{{ __('messages.doc_payment_progress') }}: {{ $paymentPercentage }}%</span>
-                        <div class="w-32 bg-gray-200 rounded-full h-2.5">
-                            <div class="h-2.5 rounded-full {{ $paymentPercentage >= 100 ? 'bg-green-500' : ($paymentPercentage >= 30 ? 'bg-yellow-500' : 'bg-red-500') }}"
-                                 style="width: {{ min($paymentPercentage, 100) }}%"></div>
-                        </div>
-                    </div>
+            <div class="meta-item">
+                <div class="meta-label">Status</div>
+                <div class="meta-value">
+                    <span class="badge badge-{{ $order->status }}">{{ ucfirst($order->status) }}</span>
                 </div>
-                @if($paymentPercentage < 100)
-                <p class="mt-2 text-sm text-amber-600">{{ __('messages.doc_locked_message') }}</p>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Total</div>
+                <div class="meta-value">${{ number_format($order->total_price, 0) }} {{ $order->currency->code ?? 'USD' }}</div>
+            </div>
+            @if($flightPath)
+            <div class="meta-item">
+                <div class="meta-label">Tour</div>
+                <div class="meta-value">{{ $flightPath->route_name }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Dates</div>
+                <div class="meta-value">{{ $flightPath->departure_date->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}</div>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    @if($flightPath)
+    {{-- ═══ ACCOMMODATION ═══ --}}
+    <div class="blk">
+        <div class="hdr">Accommodation</div>
+        <div class="blk-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hotel</th>
+                        <th>City</th>
+                        <th>Room</th>
+                        <th>Accommodation</th>
+                        <th>Meal</th>
+                        <th>Period</th>
+                        <th style="text-align:right;">Tourists</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($stayHotels as $i => $sh)
+                    @php
+                        $checkIn = $flightPath->departure_date->copy()->addDays(collect($stayHotels)->take($i)->sum('nights'));
+                        $checkOut = $checkIn->copy()->addDays($sh['nights']);
+                    @endphp
+                    <tr>
+                        <td style="font-weight:600;">
+                            {{ $sh['hotel']->name ?? 'N/A' }}
+                            @if($sh['hotel']?->category)
+                                <span style="color:#c90;">@for($s=0;$s<$sh['hotel']->category->stars;$s++)★@endfor</span>
+                            @endif
+                        </td>
+                        <td>{{ $sh['stay']->city->name_en ?? '' }}</td>
+                        <td>DBL</td>
+                        <td>{{ $booking?->tourists->count() ?? 2 }} ADL</td>
+                        <td><strong>BB</strong></td>
+                        <td>{{ $checkIn->format('d.m.Y') }} — {{ $checkOut->format('d.m.Y') }}</td>
+                        <td style="text-align:right;">{{ $booking?->tourists->count() ?? 0 }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- ═══ TRANSPORT ═══ --}}
+    <div class="blk">
+        <div class="hdr">Transport</div>
+        <div class="blk-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Flight</th>
+                        <th>Date</th>
+                        <th>Route</th>
+                        <th>Time</th>
+                        <th>Class</th>
+                        <th style="text-align:right;">Tourists</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($flightPath->legs->sortBy('leg_order') as $leg)
+                    <tr>
+                        <td>
+                            @if($leg->leg_order <= $flightPath->legs->count() / 2)
+                                <span style="color:#4A8C5C;">&#9992;</span>
+                            @else
+                                <span style="color:#3B6E8F;">&#9992;</span>
+                            @endif
+                        </td>
+                        <td><strong>{{ $leg->flight->airline->code ?? '' }} {{ $leg->flight->flight_number }}</strong> {{ $leg->flight->airline->name ?? '' }}</td>
+                        <td>{{ $leg->flight->departure_date?->format('d.m.Y') }}</td>
+                        <td>{{ $leg->flight->fromAirport->code ?? '' }} ({{ $leg->flight->fromAirport->city->name_en ?? '' }}) &rarr; {{ $leg->flight->toAirport->code ?? '' }} ({{ $leg->flight->toAirport->city->name_en ?? '' }})</td>
+                        <td>{{ $leg->flight->departure_time ? substr($leg->flight->departure_time, 0, 5) : '' }} — {{ $leg->flight->arrival_time ? substr($leg->flight->arrival_time, 0, 5) : '' }}</td>
+                        <td>{{ ucfirst($leg->flight->class_type ?? 'economy') }}</td>
+                        <td style="text-align:right;">{{ $booking?->tourists->count() ?? 0 }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- ═══ SERVICES ═══ --}}
+    @if($services->isNotEmpty())
+    <div class="blk">
+        <div class="hdr">Services</div>
+        <div class="blk-body">
+            <table>
+                <thead>
+                    <tr><th>Service</th><th>City</th><th>Date</th><th style="text-align:right;">Tourists</th><th style="text-align:right;">Price</th></tr>
+                </thead>
+                <tbody>
+                    @foreach($services as $svc)
+                    <tr>
+                        <td>{{ $svc->name_en }}</td>
+                        <td>{{ $svc->city->name_en ?? 'Global' }}</td>
+                        <td>{{ $flightPath->departure_date->format('d.m.Y') }}</td>
+                        <td style="text-align:right;">{{ $svc->is_per_person ? ($booking?->tourists->count() ?? 0) : '—' }}</td>
+                        <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══ INSURANCE ═══ --}}
+    @if($insurances->isNotEmpty())
+    <div class="blk">
+        <div class="hdr" style="background:#8B4A6B;">&#9829; Insurance</div>
+        <div class="blk-body">
+            @foreach($insurances as $ins)
+            <div style="padding:4px 0;">
+                {{ $ins->name_en }}
+                &nbsp; <strong>${{ number_format($ins->price, 0) }}</strong>
+                &nbsp; {{ $flightPath->departure_date->format('d.m.Y') }} - {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}
+                &nbsp; <span style="color:#888;">{{ $booking?->tourists->count() ?? 0 }} tourists</span>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+    @endif
+
+    {{-- ═══ TOURISTS ═══ --}}
+    @if($booking && $booking->tourists->isNotEmpty())
+    <div class="blk">
+        <div class="hdr hdr-green">Tourists</div>
+        <div class="blk-body">
+            <table>
+                <thead>
+                    <tr><th></th><th>Name</th><th>Date of birth</th><th>Nationality</th><th>Document</th><th>Valid to</th></tr>
+                </thead>
+                <tbody>
+                    @foreach($booking->tourists as $t)
+                    <tr>
+                        <td>{{ $t->title }}</td>
+                        <td style="font-weight:600;">{{ $t->last_name }} {{ $t->first_name }}</td>
+                        <td>{{ $t->birth_date?->format('d.m.Y') ?? '—' }}</td>
+                        <td>{{ $t->nationality ?? '—' }}</td>
+                        <td>{{ $t->passport_series ?? '' }} {{ $t->passport_number ?? '—' }}</td>
+                        <td>{{ $t->passport_expiry?->format('d.m.Y') ?? '—' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══ NOTES ═══ --}}
+    @if($order->notes)
+    <div class="blk">
+        <div class="hdr hdr-dark">Notes</div>
+        <div class="blk-body">{{ $order->notes }}</div>
+    </div>
+    @endif
+
+    {{-- ═══ PAYMENTS ═══ --}}
+    <div class="blk">
+        <div class="hdr hdr-dark">Payments</div>
+        <div class="blk-body">
+            @if($order->payments->isNotEmpty())
+            <table>
+                <thead>
+                    <tr><th>Date</th><th>Amount</th><th>Method</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    @foreach($order->payments as $payment)
+                    <tr>
+                        <td>{{ $payment->payment_date->format('d.m.Y') }}</td>
+                        <td style="font-weight:600;">{{ number_format($payment->amount, 2) }} {{ $payment->currency->code ?? 'USD' }}</td>
+                        <td>{{ $payment->payment_method }}</td>
+                        <td><span class="badge badge-{{ $payment->status }}">{{ ucfirst($payment->status) }}</span></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @else
+            <p style="color:#888;">No payments yet</p>
+            @endif
+        </div>
+    </div>
+
+    {{-- ═══ DOCUMENTS ═══ --}}
+    @php $allDocuments = $order->bookings->flatMap->documents; @endphp
+    @if($allDocuments->isNotEmpty())
+    <div class="blk">
+        <div class="hdr hdr-dark">Documents</div>
+        <div class="blk-body">
+            @foreach($allDocuments as $doc)
+            <div style="padding:4px 0; display:flex; justify-content:space-between; align-items:center;">
+                <span>{{ $doc->getTypeLabel() }} @if($doc->getDescription()) — <span style="color:#888;">{{ $doc->getDescription() }}</span>@endif</span>
+                @if($order->isFullyPaid())
+                <a href="{{ route('documents.download', $doc) }}" style="font-size:12px;">Download</a>
+                @else
+                <span style="color:#999; font-size:11px;">Locked (payment required)</span>
                 @endif
             </div>
-
-            <div class="divide-y divide-gray-200">
-                @foreach($allDocuments as $document)
-                <div class="px-6 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                        </svg>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">{{ $document->getTypeLabel() }}</p>
-                            @if($document->getDescription())
-                            <p class="text-xs text-gray-500">{{ $document->getDescription() }}</p>
-                            @endif
-                        </div>
-                    </div>
-                    <div>
-                        @if($order->isFullyPaid())
-                        <a href="{{ route('documents.download', $document) }}"
-                           class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                            </svg>
-                            {{ __('messages.doc_download') }}
-                        </a>
-                        @else
-                        <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-gray-500 bg-gray-100">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                            </svg>
-                            {{ __('messages.doc_locked') }}
-                        </span>
-                        @endif
-                    </div>
-                </div>
-                @endforeach
-            </div>
+            @endforeach
         </div>
-        @endif
+    </div>
+    @endif
 
-        <!-- Payments -->
-        <div class="bg-white shadow-sm rounded-lg overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-900">Payments</h2>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse($order->payments as $payment)
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payment->payment_date->format('d M Y') }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($payment->amount, 2) }} {{ $payment->currency->code ?? 'USD' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $payment->payment_method }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $payment->transaction_id ?? 'N/A' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                        @if($payment->status === 'completed') bg-green-100 text-green-800
-                                        @elseif($payment->status === 'pending') bg-yellow-100 text-yellow-800
-                                        @else bg-gray-100 text-gray-800 @endif">
-                                        {{ ucfirst($payment->status) }}
-                                    </span>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No payments found</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+    {{-- ═══ PRICE ═══ --}}
+    <div class="blk">
+        <div class="hdr" style="background:#2c5f2d;">Price</div>
+        <div class="blk-body" style="text-align:center; padding:16px;">
+            <div style="font-size:24px; font-weight:700; color:#2c5f2d;">${{ number_format($order->total_price, 0) }} USD</div>
         </div>
     </div>
 </div>
