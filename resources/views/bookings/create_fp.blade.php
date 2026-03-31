@@ -255,23 +255,19 @@
                 @if($oneTimeServices->isNotEmpty())
                     <table class="data-table" style="margin-top:10px;">
                         <thead>
-                            <tr><th></th><th>Услуга (на весь тур)</th><th>Период</th><th>Кол-во</th><th style="text-align:right;">Стоимость</th></tr>
+                            <tr><th></th><th>Услуга (на весь тур)</th><th>Период</th><th>Кол-во</th><th style="text-align:right;"></th></tr>
                         </thead>
                         <tbody>
                             @foreach($oneTimeServices as $svc)
-                            <tr @if($svc->is_mandatory) style="background:#f0fff0;" @endif>
+                            <tr style="background:#f0fff0;">
                                 <td style="width:30px;">
-                                    @if($svc->is_mandatory)
-                                        <input type="checkbox" checked disabled>
-                                        <input type="hidden" name="services[]" value="{{ $svc->id }}">
-                                    @else
-                                        <input type="checkbox" name="services[]" value="{{ $svc->id }}" class="optional-service" data-price="{{ $svc->price }}" data-per-person="{{ $svc->is_per_person ? 1 : 0 }}">
-                                    @endif
+                                    <input type="checkbox" checked disabled>
+                                    <input type="hidden" name="services[]" value="{{ $svc->id }}">
                                 </td>
-                                <td>{{ $svc->name_en }} @if($svc->is_mandatory)<span style="color:#888; font-size:11px;">(обязательно)</span>@endif</td>
+                                <td>{{ $svc->name_en }}</td>
                                 <td>{{ $flightPath->departure_date->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}</td>
                                 <td><span class="svc-pax">{{ $svc->is_per_person ? '2 ADL' : '—' }}</span></td>
-                                <td style="text-align:right; font-weight:600;">${{ number_format($svc->price, 0) }}</td>
+                                <td style="text-align:right; color:#888; font-size:11px;">Включено / Included</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -451,6 +447,7 @@
                     <div class="price-alt"><span id="touristCount">1</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
                     <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson, 0) }} USD</div>
                     <div id="optionalServicesNote" style="display:none; font-size:12px; color:#666; margin-top:4px;">+ доп. услуги: $<span id="optionalServicesCost">0</span></div>
+                    <div style="font-size:12px; color:#888; margin-top:6px;">Агентское вознаграждение / Agency fee: ${{ number_format($agentFee, 0) }} на чел.</div>
                 </div>
             </div>
         </div>
