@@ -36,7 +36,7 @@ class HotelSearchController extends Controller
 
             $hotelQuery = Hotel::where('is_active', true)
                 ->whereHas('resort', fn ($q) => $q->where('country_id', $selectedCountryId))
-                ->with(['category', 'resort', 'city', 'roomTypes', 'mealTypes']);
+                ->with(['category', 'resort', 'city', 'roomTypes']);
 
             if ($selectedResortId) {
                 $hotelQuery->where('resort_id', $selectedResortId);

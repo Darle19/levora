@@ -116,11 +116,7 @@
                             </td>
                             @endif
                             <td><span class="room-badge">{{ $room->code }}</span> {{ $room->name_en }}</td>
-                            <td>
-                                @foreach($hotel->mealTypes as $mt)
-                                    <span class="meal">{{ $mt->code }}</span>
-                                @endforeach
-                            </td>
+                            <td><span class="meal">BB</span></td>
                             <td style="text-align:right;" class="price">${{ number_format($room->pivot->price_per_night + ($commission / $nights), 0) }}</td>
                             <td style="text-align:right;" class="price">${{ number_format(($room->pivot->price_per_night * $nights) + $commission, 0) }}</td>
                         </tr>
