@@ -460,11 +460,23 @@
 </div>
 
 <script>
-const basePricePerPerson = {{ $pricePerPerson }};
-let pricePerPerson = basePricePerPerson;
+// Price components (per person unless noted)
+const flightTotal = {{ $flightPath->flight_total }};
+const hotelRoomTotal = {{ $hotelRoomTotal }}; // full DBL room cost (not per person)
+const hiddenFee = {{ $hiddenFee }};
+const agentFee = {{ $agentFee }};
+const mandatoryCost = {{ $mandatoryServicesCost }};
+
+let pricePerPerson = 0;
 let optionalCostPerPerson = 0;
 let optionalCostFlat = 0;
 let touristIndex = 1;
+
+function calcPricePerPerson(touristCount) {
+    // Single person pays full room. 2+ people split the room.
+    const hotelPerPerson = touristCount <= 1 ? hotelRoomTotal : hotelRoomTotal / 2;
+    return flightTotal + hotelPerPerson + hiddenFee + agentFee + mandatoryCost + optionalCostPerPerson;
+}
 
 document.querySelectorAll('.optional-service').forEach(cb => {
     cb.addEventListener('change', recalcOptionalServices);
@@ -481,7 +493,8 @@ function recalcOptionalServices() {
             optionalCostFlat += price;
         }
     });
-    pricePerPerson = basePricePerPerson + optionalCostPerPerson;
+    const count = document.querySelectorAll('.tourist-section').length;
+    pricePerPerson = calcPricePerPerson(count);
 
     const note = document.getElementById('optionalServicesNote');
     const costEl = document.getElementById('optionalServicesCost');
@@ -552,9 +565,15 @@ function addTourist() {
 
 function updateTotal() {
     const count = document.querySelectorAll('.tourist-section').length;
+    pricePerPerson = calcPricePerPerson(count);
     document.getElementById('touristCount').textContent = count;
     const total = (count * pricePerPerson) + optionalCostFlat;
-    document.getElementById('totalPrice').textContent = '$' + total.toLocaleString('en-US', {maximumFractionDigits: 0}) + ' USD';
+    document.getElementById('totalPrice').textContent = '$' + Math.round(total).toLocaleString('en-US') + ' USD';
+    // Update per-person display
+    const perPersonEl = document.querySelector('.price-alt');
+    if (perPersonEl) {
+        perPersonEl.innerHTML = count + ' турист(ов) × $' + Math.round(pricePerPerson).toLocaleString('en-US') + '/чел';
+    }
 }
 
 function updatePax() {

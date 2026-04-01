@@ -157,22 +157,24 @@ class BookingController extends Controller
             ];
         }
 
-        // Calculate price per person
+        // Calculate hotel cost — full room price per stay (split dynamically by JS based on tourist count)
         $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
         $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
-        $hotelCost = 0;
+        $hotelRoomTotal = 0; // full DBL room cost across all stays
         foreach ($stayHotels as $sh) {
             if ($sh['hotel']) {
-                $hotelCost += ((float) $sh['hotel']->price_per_person / 2) * $sh['nights'];
+                $hotelRoomTotal += (float) $sh['hotel']->price_per_person * $sh['nights'];
             }
         }
-        $pricePerPerson = $flightPath->flight_total + $hotelCost + $hiddenFee + $agentFee + $mandatoryServicesCost;
+        // Default display assumes 2 people sharing (per-person = room/2)
+        $hotelCostPerPerson = $hotelRoomTotal / 2;
+        $pricePerPerson = $flightPath->flight_total + $hotelCostPerPerson + $hiddenFee + $agentFee + $mandatoryServicesCost;
 
         $countries = Country::where('is_active', true)->orderBy('name_en')->get();
 
         return view('bookings.create_fp', compact(
             'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
-            'hotelCost', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
+            'hotelCostPerPerson', 'hotelRoomTotal', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
             'stayServices', 'oneTimeServices', 'insurances', 'countries'
         ));
     }

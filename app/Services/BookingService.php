@@ -99,13 +99,16 @@ class BookingService
             $hotels = Hotel::whereIn('id', $hotelIds)->get()->keyBy('id');
 
             $flightCost = $fp->flight_total;
-            $hotelCost = 0;
+            $hotelRoomTotal = 0;
             foreach ($fp->stays as $stay) {
                 $hotel = $hotels->first(fn ($h) => $h->city_id === $stay->city_id);
                 if ($hotel) {
-                    $hotelCost += ((float) $hotel->price_per_person / 2) * $stay->nights;
+                    $hotelRoomTotal += (float) $hotel->price_per_person * $stay->nights;
                 }
             }
+            // Single person pays full room, 2+ split
+            $paxCount = $touristCounts['total'];
+            $hotelCost = $paxCount <= 1 ? $hotelRoomTotal : ($hotelRoomTotal / 2);
 
             $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
             $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
