@@ -145,12 +145,6 @@ class IndonesiaHotelSeeder extends Seeder
                 'updated_at' => now(),
             ]);
 
-            // Link BB meal type
-            DB::table('hotel_meal_type')->insertOrIgnore([
-                'hotel_id' => $hotelId,
-                'meal_type_id' => $bbId,
-            ]);
-
             $created++;
         }
 
