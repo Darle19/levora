@@ -135,6 +135,15 @@ class BookingController extends Controller
 
             $combined = $cityServices->merge($globalServices)->unique('id');
 
+            // Filter out excursions if stay is 3 nights or less
+            $stayNights = $stay->nights;
+            $combined = $combined->filter(function ($svc) use ($stayNights) {
+                if ($svc->is_excursion && $stayNights <= 3) {
+                    return false;
+                }
+                return true;
+            });
+
             // Separate one-time services (show only once, not per city)
             $perCity = $combined->where('is_one_time', false);
             $oneTime = $combined->where('is_one_time', true);

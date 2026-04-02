@@ -35,6 +35,7 @@ class AdditionalService extends Model
         'is_per_person',
         'is_mandatory',
         'is_one_time',
+        'is_excursion',
         'is_active',
     ];
 
@@ -45,6 +46,7 @@ class AdditionalService extends Model
             'is_per_person' => 'boolean',
             'is_mandatory' => 'boolean',
             'is_one_time' => 'boolean',
+            'is_excursion' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

@@ -56,6 +56,10 @@ class AdditionalServiceForm
                             ->label('One-time')
                             ->helperText('Show once per booking, not per city')
                             ->default(false),
+                        Toggle::make('is_excursion')
+                            ->label('Excursion')
+                            ->helperText('Only shown if city stay is 4+ nights')
+                            ->default(false),
                         Toggle::make('is_per_person')
                             ->label('Per Person')
                             ->helperText('Price multiplied by number of tourists')

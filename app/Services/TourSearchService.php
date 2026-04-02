@@ -189,10 +189,18 @@ class TourSearchService
                 // Mandatory services for cities in this path (one-time counted once)
                 $mandatoryCost = 0;
                 $cityIds = $fp->stays->pluck('city_id')->unique();
+                $stayNightsByCity = $fp->stays->pluck('nights', 'city_id');
                 $seenOneTime = [];
                 foreach ($mandatoryServices as $svc) {
                     if (! ($cityIds->contains($svc->city_id) || $svc->city_id === null)) {
                         continue;
+                    }
+                    // Excursions only if city stay > 3 nights
+                    if ($svc->is_excursion) {
+                        $cityNights = $svc->city_id ? ($stayNightsByCity[$svc->city_id] ?? 0) : $fp->nights;
+                        if ($cityNights <= 3) {
+                            continue;
+                        }
                     }
                     if ($svc->is_one_time) {
                         if (in_array($svc->id, $seenOneTime)) {
