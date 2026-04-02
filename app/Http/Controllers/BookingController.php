@@ -181,7 +181,8 @@ class BookingController extends Controller
             'nights' => $sh['nights'],
             'city_id' => $sh['stay']->city_id,
         ], $stayHotels);
-        $breakdown = \App\Services\TourPriceCalculator::calculate($flightPath, $calcInput, 2);
+        $adults = (int) session('booking_adults', 2);
+        $breakdown = \App\Services\TourPriceCalculator::calculate($flightPath, $calcInput, $adults);
 
         $pricePerPerson = $breakdown['price_per_person'];
         $hotelRoomTotal = $breakdown['hotel_room_total'];
@@ -192,7 +193,7 @@ class BookingController extends Controller
         $countries = Country::where('is_active', true)->orderBy('name_en')->get();
 
         return view('bookings.create_fp', compact(
-            'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
+            'flightPath', 'stayHotels', 'hotels', 'pricePerPerson', 'adults',
             'hotelRoomTotal', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
             'stayServices', 'oneTimeServices', 'insurances', 'countries'
         ));

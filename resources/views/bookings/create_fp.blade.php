@@ -312,17 +312,18 @@
 
         {{-- ═══ TOURISTS ═══ --}}
         <div class="section">
-            <div class="section-title">Информация о туристах / Tourist Info</div>
+            <div class="section-title">Информация о туристах / Tourist Info ({{ $adults }})</div>
             <div class="section-body">
                 <div id="tourists-container">
-                    <div class="tourist-section" data-index="0">
-                        <div class="tourist-header">Tourist info 1</div>
+                    @for($idx = 0; $idx < $adults; $idx++)
+                    <div class="tourist-section" data-index="{{ $idx }}">
+                        <div class="tourist-header">Tourist info {{ $idx + 1 }} @if($idx > 0)<button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal();">Удалить</button>@endif</div>
                         <div class="tourist-body">
                             <table class="form-table">
                                 <tr>
                                     <td class="lbl">MR/MRS/CHD/INF:</td>
                                     <td>
-                                        <select name="tourists[0][title]" onchange="updatePax()" style="width:80px;">
+                                        <select name="tourists[{{ $idx }}][title]" onchange="updatePax()" style="width:80px;">
                                             <option value="MR">MR</option>
                                             <option value="MRS">MRS</option>
                                             <option value="CHD">CHD</option>
@@ -331,7 +332,7 @@
                                     </td>
                                     <td class="lbl">Пол / Sex:</td>
                                     <td>
-                                        <select name="tourists[0][gender]" style="width:100px;">
+                                        <select name="tourists[{{ $idx }}][gender]" style="width:100px;">
                                             <option value="male">Male</option>
                                             <option value="female">Female</option>
                                         </select>
@@ -339,16 +340,16 @@
                                 </tr>
                                 <tr>
                                     <td class="lbl">Фамилия / Lastname:</td>
-                                    <td><input type="text" name="tourists[0][last_name]" required placeholder="LASTNAME" style="width:180px;"></td>
+                                    <td><input type="text" name="tourists[{{ $idx }}][last_name]" required placeholder="LASTNAME" style="width:180px;"></td>
                                     <td class="lbl">Имя / Firstname:</td>
-                                    <td><input type="text" name="tourists[0][first_name]" required placeholder="FIRSTNAME" style="width:180px;"></td>
+                                    <td><input type="text" name="tourists[{{ $idx }}][first_name]" required placeholder="FIRSTNAME" style="width:180px;"></td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Дата рождения:</td>
-                                    <td><input type="date" name="tourists[0][birth_date]" required></td>
+                                    <td><input type="date" name="tourists[{{ $idx }}][birth_date]" required></td>
                                     <td class="lbl">Страна рождения:</td>
                                     <td>
-                                        <select name="tourists[0][birth_country]" style="width:180px;">
+                                        <select name="tourists[{{ $idx }}][birth_country]" style="width:180px;">
                                             <option value="">—</option>
                                             @foreach($countries as $c)
                                                 <option value="{{ $c->code }}" {{ $c->code === 'UZ' ? 'selected' : '' }}>{{ $c->name_en }}</option>
@@ -359,7 +360,7 @@
                                 <tr>
                                     <td class="lbl">Гражданство:</td>
                                     <td>
-                                        <select name="tourists[0][nationality]" style="width:180px;">
+                                        <select name="tourists[{{ $idx }}][nationality]" style="width:180px;">
                                             @foreach($countries as $c)
                                                 <option value="{{ $c->code }}" {{ $c->code === 'UZ' ? 'selected' : '' }}>{{ $c->name_en }}</option>
                                             @endforeach
@@ -367,7 +368,7 @@
                                     </td>
                                     <td class="lbl">Тип документа:</td>
                                     <td>
-                                        <select name="tourists[0][document_type]" style="width:180px;">
+                                        <select name="tourists[{{ $idx }}][document_type]" style="width:180px;">
                                             <option value="passport">Загранпаспорт</option>
                                             <option value="id_card">ID карта</option>
                                             <option value="birth_cert">Свидетельство о рождении</option>
@@ -376,23 +377,24 @@
                                 </tr>
                                 <tr>
                                     <td class="lbl">Серия документа:</td>
-                                    <td><input type="text" name="tourists[0][document_series]" placeholder="DOCUMENT SERIES" style="width:180px;"></td>
+                                    <td><input type="text" name="tourists[{{ $idx }}][document_series]" placeholder="DOCUMENT SERIES" style="width:180px;"></td>
                                     <td class="lbl">Номер документа:</td>
-                                    <td><input type="text" name="tourists[0][passport_number]" required placeholder="DOCUMENT NUMBER" style="width:180px;"></td>
+                                    <td><input type="text" name="tourists[{{ $idx }}][passport_number]" required placeholder="DOCUMENT NUMBER" style="width:180px;"></td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Действ. до / Valid to:</td>
-                                    <td><input type="date" name="tourists[0][passport_expiry]" required></td>
+                                    <td><input type="date" name="tourists[{{ $idx }}][passport_expiry]" required></td>
                                     <td class="lbl">Дата выдачи:</td>
-                                    <td><input type="date" name="tourists[0][passport_issued]"></td>
+                                    <td><input type="date" name="tourists[{{ $idx }}][passport_issued]"></td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Кем выдан / Issued by:</td>
-                                    <td colspan="3"><input type="text" name="tourists[0][issued_by]" placeholder="ISSUED BY" style="width:100%;"></td>
+                                    <td colspan="3"><input type="text" name="tourists[{{ $idx }}][issued_by]" placeholder="ISSUED BY" style="width:100%;"></td>
                                 </tr>
                             </table>
                         </div>
                     </div>
+                    @endfor
                 </div>
                 <button type="button" class="btn-add" onclick="addTourist()">+ Добавить туриста</button>
             </div>
@@ -470,11 +472,12 @@ const mandatoryCost = {{ $mandatoryServicesCost }};
 let pricePerPerson = 0;
 let optionalCostPerPerson = 0;
 let optionalCostFlat = 0;
-let touristIndex = 1;
+let touristIndex = {{ $adults }};
 
 function calcPricePerPerson(touristCount) {
-    // Single person pays full room. 2+ people split the room.
-    const hotelPerPerson = touristCount <= 1 ? hotelRoomTotal : hotelRoomTotal / 2;
+    // ceil(people/2) rooms: 1p=1room, 2p=1room, 3p=2rooms, 4p=2rooms
+    const rooms = Math.ceil(touristCount / 2);
+    const hotelPerPerson = (rooms * hotelRoomTotal) / Math.max(touristCount, 1);
     return flightTotal + hotelPerPerson + hiddenFee + agentFee + mandatoryCost + optionalCostPerPerson;
 }
 
@@ -591,5 +594,9 @@ function updatePax() {
         el.textContent = adults + ' ADL' + (children ? '(' + children + ')' : '') + (infants ? '(' + infants + ')' : '');
     });
 }
+
+// Calculate on page load with actual tourist count
+updateTotal();
+updatePax();
 </script>
 @endsection

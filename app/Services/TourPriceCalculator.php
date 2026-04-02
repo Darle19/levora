@@ -41,7 +41,9 @@ class TourPriceCalculator
                 $hotelRoomTotal += (float) $hotel->price_per_person * $nights;
             }
         }
-        $hotelPerPerson = $adults <= 1 ? $hotelRoomTotal : ($hotelRoomTotal / 2);
+        // ceil(people/2) rooms needed: 1p=1room, 2p=1room, 3p=2rooms, 4p=2rooms
+        $rooms = (int) ceil($adults / 2);
+        $hotelPerPerson = ($rooms * $hotelRoomTotal) / max($adults, 1);
 
         // Fees
         $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);

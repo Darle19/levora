@@ -30,6 +30,9 @@ class TourSearchController extends Controller
         $sortBy = $request->input('sort_by', 'price');
         $sortDir = $request->input('sort_dir', 'asc');
 
+        // Store adults in session for booking page
+        session(['booking_adults' => (int) ($filters['adults'] ?? 2)]);
+
         $results = $this->searchService->search($filters, $sortBy, $sortDir);
 
         $filterOptions = $this->searchService->getFilterOptions();
