@@ -174,12 +174,16 @@ class TourSearchService
             // Cartesian product of hotels across stays
             $combos = $this->cartesianHotels($hotelsByCityStay);
 
+            $adults = (int) ($filters['adults'] ?? 2);
+
             foreach ($combos as $combo) {
                 // combo = [stay_order => ['hotel' => Hotel, 'nights' => N, 'city' => City], ...]
-                $hotelCost = 0;
+                $hotelRoomTotal = 0;
                 foreach ($combo as $stayData) {
-                    $hotelCost += ((float) $stayData['hotel']->price_per_person / 2) * $stayData['nights'];
+                    $hotelRoomTotal += (float) $stayData['hotel']->price_per_person * $stayData['nights'];
                 }
+                // Single person pays full room, 2+ split
+                $hotelCost = $adults <= 1 ? $hotelRoomTotal : ($hotelRoomTotal / 2);
 
                 // Mandatory services for cities in this path (one-time counted once)
                 $mandatoryCost = 0;
