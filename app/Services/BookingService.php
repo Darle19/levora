@@ -16,6 +16,7 @@ use App\Models\StopSale;
 use App\Models\Tour;
 use App\Models\TourPrice;
 use App\Models\Tourist;
+use App\Services\TourPriceCalculator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -94,40 +95,12 @@ class BookingService
                 }
             }
 
-            // Calculate dynamic price
+            // Calculate price using the single source of truth
             $hotelIds = array_filter(explode(',', $validated['hotel_ids'] ?? ''), fn ($id) => is_numeric($id));
-            $hotels = Hotel::whereIn('id', $hotelIds)->get()->keyBy('id');
+            $hotels = Hotel::whereIn('id', $hotelIds)->get();
 
-            $flightCost = $fp->flight_total;
-            $hotelRoomTotal = 0;
-            foreach ($fp->stays as $stay) {
-                $hotel = $hotels->first(fn ($h) => $h->city_id === $stay->city_id);
-                if ($hotel) {
-                    $hotelRoomTotal += (float) $hotel->price_per_person * $stay->nights;
-                }
-            }
-            // Single person pays full room, 2+ split
-            $paxCount = $touristCounts['total'];
-            $hotelCost = $paxCount <= 1 ? $hotelRoomTotal : ($hotelRoomTotal / 2);
-
-            $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
-            $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
-
-            // Mandatory services cost
-            $serviceIds = array_filter($validated['services'] ?? [], fn ($v) => is_numeric($v));
-            $mandatoryCost = 0;
-            if (! empty($serviceIds)) {
-                $services = AdditionalService::whereIn('id', $serviceIds)->get();
-                foreach ($services as $svc) {
-                    $cost = (float) $svc->price;
-                    if ($svc->is_per_person) {
-                        $mandatoryCost += $cost;
-                    }
-                }
-            }
-
-            $pricePerPerson = $flightCost + $hotelCost + $hiddenFee + $agentFee + $mandatoryCost;
-            $totalPrice = round($pricePerPerson * $touristCounts['total'], 2);
+            $breakdown = TourPriceCalculator::calculateFromHotels($fp, $hotels, $touristCounts['total']);
+            $totalPrice = round($breakdown['price_per_person'] * $touristCounts['total'], 2);
 
             $usdId = Currency::where('code', 'USD')->value('id');
 

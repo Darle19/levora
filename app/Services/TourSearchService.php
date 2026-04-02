@@ -10,6 +10,7 @@ use App\Models\Hotel;
 use App\Models\HotelCategory;
 use App\Models\MealType;
 use App\Models\Setting;
+use App\Services\TourPriceCalculator;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -145,19 +146,11 @@ class TourSearchService
             $hotelFilter = $filters['hotel_ids'];
         }
 
-        $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
-        $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
-
-        // Load mandatory services cost per city
-        $mandatoryServices = \App\Models\AdditionalService::where('is_active', true)
-            ->where('is_mandatory', true)
-            ->where('service_type', '!=', 'insurance')
-            ->get();
+        $adults = (int) ($filters['adults'] ?? 2);
 
         // Build combos: flight_path × hotels
         $results = [];
         foreach ($flightPaths as $fp) {
-            // Get hotels for each stay city
             $hotelsByCityStay = [];
             foreach ($fp->stays as $stay) {
                 $cityHotels = Hotel::where('city_id', $stay->city_id)
@@ -172,58 +165,29 @@ class TourSearchService
                 ];
             }
 
-            // Cartesian product of hotels across stays
             $combos = $this->cartesianHotels($hotelsByCityStay);
 
-            $adults = (int) ($filters['adults'] ?? 2);
-
             foreach ($combos as $combo) {
-                // combo = [stay_order => ['hotel' => Hotel, 'nights' => N, 'city' => City], ...]
-                $hotelRoomTotal = 0;
+                $stayHotels = [];
                 foreach ($combo as $stayData) {
-                    $hotelRoomTotal += (float) $stayData['hotel']->price_per_person * $stayData['nights'];
-                }
-                // Single person pays full room, 2+ split
-                $hotelCost = $adults <= 1 ? $hotelRoomTotal : ($hotelRoomTotal / 2);
-
-                // Mandatory services for cities in this path (one-time counted once)
-                $mandatoryCost = 0;
-                $cityIds = $fp->stays->pluck('city_id')->unique();
-                $stayNightsByCity = $fp->stays->pluck('nights', 'city_id');
-                $seenOneTime = [];
-                foreach ($mandatoryServices as $svc) {
-                    if (! ($cityIds->contains($svc->city_id) || $svc->city_id === null)) {
-                        continue;
-                    }
-                    // Excursions only if city stay > 3 nights
-                    if ($svc->is_excursion) {
-                        $cityNights = $svc->city_id ? ($stayNightsByCity[$svc->city_id] ?? 0) : $fp->nights;
-                        if ($cityNights <= 3) {
-                            continue;
-                        }
-                    }
-                    if ($svc->is_one_time) {
-                        if (in_array($svc->id, $seenOneTime)) {
-                            continue;
-                        }
-                        $seenOneTime[] = $svc->id;
-                    }
-                    $mandatoryCost += (float) $svc->price;
+                    $stayHotels[] = [
+                        'hotel' => $stayData['hotel'],
+                        'nights' => $stayData['nights'],
+                        'city_id' => $stayData['city']->id ?? null,
+                    ];
                 }
 
-                $price = $fp->flight_total + $hotelCost + $hiddenFee + $agentFee + $mandatoryCost;
-
-                // Min seats across all flight legs
+                $breakdown = TourPriceCalculator::calculate($fp, $stayHotels, $adults);
                 $minSeats = $fp->legs->min(fn ($leg) => $leg->flight->available_seats ?? 0);
 
                 $results[] = (object) [
                     'flight_path' => $fp,
                     'hotels' => $combo,
-                    'price' => round($price, 2),
-                    'flight_price' => $fp->flight_total,
-                    'hotel_cost' => round($hotelCost, 2),
-                    'fees' => $hiddenFee + $agentFee,
-                    'services_cost' => round($mandatoryCost, 2),
+                    'price' => $breakdown['price_per_person'],
+                    'flight_price' => $breakdown['flight_total'],
+                    'hotel_cost' => $breakdown['hotel_per_person'],
+                    'fees' => $breakdown['hidden_fee'] + $breakdown['agent_fee'],
+                    'services_cost' => $breakdown['mandatory_services_cost'],
                     'min_seats' => $minSeats,
                     'currency' => $fp->currency,
                 ];

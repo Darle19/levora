@@ -175,18 +175,19 @@ class BookingController extends Controller
             ];
         }
 
-        // Calculate hotel cost — full room price per stay (split dynamically by JS based on tourist count)
-        $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
-        $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
-        $hotelRoomTotal = 0; // full DBL room cost across all stays
-        foreach ($stayHotels as $sh) {
-            if ($sh['hotel']) {
-                $hotelRoomTotal += (float) $sh['hotel']->price_per_person * $sh['nights'];
-            }
-        }
-        // Default display assumes 2 people sharing (per-person = room/2)
-        $hotelCostPerPerson = $hotelRoomTotal / 2;
-        $pricePerPerson = $flightPath->flight_total + $hotelCostPerPerson + $hiddenFee + $agentFee + $mandatoryServicesCost;
+        // Calculate price using the single source of truth
+        $calcInput = array_map(fn ($sh) => [
+            'hotel' => $sh['hotel'],
+            'nights' => $sh['nights'],
+            'city_id' => $sh['stay']->city_id,
+        ], $stayHotels);
+        $breakdown = \App\Services\TourPriceCalculator::calculate($flightPath, $calcInput, 2);
+
+        $pricePerPerson = $breakdown['price_per_person'];
+        $hotelRoomTotal = $breakdown['hotel_room_total'];
+        $hiddenFee = $breakdown['hidden_fee'];
+        $agentFee = $breakdown['agent_fee'];
+        $mandatoryServicesCost = $breakdown['mandatory_services_cost'];
 
         $countries = Country::where('is_active', true)->orderBy('name_en')->get();
 
