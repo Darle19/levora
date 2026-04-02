@@ -181,7 +181,7 @@ class BookingController extends Controller
             'nights' => $sh['nights'],
             'city_id' => $sh['stay']->city_id,
         ], $stayHotels);
-        $adults = (int) session('booking_adults', 2);
+        $adults = max(1, (int) (session('booking_adults') ?: 2));
         $breakdown = \App\Services\TourPriceCalculator::calculate($flightPath, $calcInput, $adults);
 
         $pricePerPerson = $breakdown['price_per_person'];
