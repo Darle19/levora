@@ -446,8 +446,8 @@
             <div class="section-title">Стоимость / Price</div>
             <div class="section-body">
                 <div class="price-box" style="text-align:center;">
-                    <div class="price-alt"><span id="touristCount">{{ $adults }}</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
-                    <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson * $adults, 0) }} USD</div>
+                    <div class="price-alt"><span id="touristCount">—</span> турист(ов) × $<span id="perPersonPrice">—</span>/чел</div>
+                    <div class="price-big" id="totalPrice">—</div>
                     <div id="optionalServicesNote" style="display:none; font-size:12px; color:#666; margin-top:4px;">+ доп. услуги: $<span id="optionalServicesCost">0</span></div>
                     <div style="font-size:12px; color:#888; margin-top:6px;">Агентское вознаграждение / Agency fee: ${{ number_format($agentFee, 0) }} на чел.</div>
                 </div>
@@ -567,16 +567,14 @@ function addTourist() {
 }
 
 function updateTotal() {
-    const count = document.querySelectorAll('.tourist-section').length;
+    const count = document.querySelectorAll('.tourist-section').length || 1;
     pricePerPerson = calcPricePerPerson(count);
+    const total = Math.round((count * pricePerPerson) + optionalCostFlat);
+    const pp = Math.round(pricePerPerson);
+
     document.getElementById('touristCount').textContent = count;
-    const total = (count * pricePerPerson) + optionalCostFlat;
-    document.getElementById('totalPrice').textContent = '$' + Math.round(total).toLocaleString('en-US') + ' USD';
-    // Update per-person display
-    const perPersonEl = document.querySelector('.price-alt');
-    if (perPersonEl) {
-        perPersonEl.innerHTML = count + ' турист(ов) × $' + Math.round(pricePerPerson).toLocaleString('en-US') + '/чел';
-    }
+    document.getElementById('perPersonPrice').textContent = pp.toLocaleString('en-US');
+    document.getElementById('totalPrice').textContent = '$' + total.toLocaleString('en-US') + ' USD';
 }
 
 function updatePax() {
