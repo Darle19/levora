@@ -193,7 +193,7 @@ class BookingController extends Controller
 
         return view('bookings.create_fp', compact(
             'flightPath', 'stayHotels', 'hotels', 'pricePerPerson',
-            'hotelCostPerPerson', 'hotelRoomTotal', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
+            'hotelRoomTotal', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
             'stayServices', 'oneTimeServices', 'insurances', 'countries'
         ));
     }
