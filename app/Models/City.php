@@ -20,12 +20,14 @@ class City extends Model
         'country_id',
         'code',
         'is_active',
+        'is_departure',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'is_departure' => 'boolean',
         ];
     }
 

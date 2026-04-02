@@ -26,6 +26,7 @@ class TourSearchService
         return Cache::remember('tour_filter_options', 1800, fn () => [
             'countries' => Country::where('is_active', true)->orderBy('order')->get(),
             'cities' => City::where('is_active', true)->orderBy('order')->get(),
+            'departureCities' => City::where('is_active', true)->where('is_departure', true)->orderBy('name_en')->get(),
             'tourRoutes' => $this->buildRoutes(),
             'mealTypes' => MealType::where('is_active', true)->get(),
             'hotelCategories' => HotelCategory::where('is_active', true)->orderBy('stars')->get(),

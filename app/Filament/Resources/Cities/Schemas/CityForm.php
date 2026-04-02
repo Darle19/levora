@@ -24,6 +24,9 @@ class CityForm
                     ->required(),
                 Toggle::make('is_active')
                     ->required(),
+                Toggle::make('is_departure')
+                    ->label('Departure City')
+                    ->helperText('Show in tour search departure filter'),
                 TextInput::make('order')
                     ->required()
                     ->numeric()

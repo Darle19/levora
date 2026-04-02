@@ -156,7 +156,7 @@
                         <span class="form-input">
                             <select id="departure_city_id" name="departure_city_id" required>
                                 <option value="">---</option>
-                                @foreach($cities as $city)
+                                @foreach($departureCities ?? $cities as $city)
                                     <option value="{{ $city->id }}">{{ $city->name }}</option>
                                 @endforeach
                             </select>
