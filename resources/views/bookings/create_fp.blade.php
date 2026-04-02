@@ -317,7 +317,7 @@
                 <div id="tourists-container">
                     @for($idx = 0; $idx < $adults; $idx++)
                     <div class="tourist-section" data-index="{{ $idx }}">
-                        <div class="tourist-header">Tourist info {{ $idx + 1 }} @if($idx > 0)<button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal();">Удалить</button>@endif</div>
+                        <div class="tourist-header">Tourist info {{ $idx + 1 }} @if($idx > 0)<button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal(); updatePax();">Удалить</button>@endif</div>
                         <div class="tourist-body">
                             <table class="form-table">
                                 <tr>
@@ -446,8 +446,8 @@
             <div class="section-title">Стоимость / Price</div>
             <div class="section-body">
                 <div class="price-box" style="text-align:center;">
-                    <div class="price-alt"><span id="touristCount">1</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
-                    <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson, 0) }} USD</div>
+                    <div class="price-alt"><span id="touristCount">{{ $adults }}</span> турист(ов) × ${{ number_format($pricePerPerson, 0) }}/чел</div>
+                    <div class="price-big" id="totalPrice">${{ number_format($pricePerPerson * $adults, 0) }} USD</div>
                     <div id="optionalServicesNote" style="display:none; font-size:12px; color:#666; margin-top:4px;">+ доп. услуги: $<span id="optionalServicesCost">0</span></div>
                     <div style="font-size:12px; color:#888; margin-top:6px;">Агентское вознаграждение / Agency fee: ${{ number_format($agentFee, 0) }} на чел.</div>
                 </div>
@@ -516,7 +516,7 @@ function addTourist() {
     const idx = touristIndex++;
     const html = `
     <div class="tourist-section" data-index="${idx}">
-        <div class="tourist-header">Tourist info ${idx + 1} <button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal();">Удалить</button></div>
+        <div class="tourist-header">Tourist info ${idx + 1} <button type="button" class="btn-remove" onclick="this.closest('.tourist-section').remove(); updateTotal(); updatePax();">Удалить</button></div>
         <div class="tourist-body">
             <table class="form-table">
                 <tr>
