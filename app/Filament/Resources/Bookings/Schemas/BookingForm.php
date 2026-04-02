@@ -78,6 +78,16 @@ class BookingForm
                                     );
                                 }
 
+                                if ($bookable instanceof \App\Models\Hotel) {
+                                    $bookable->load('category', 'city');
+                                    $stars = $bookable->category ? str_repeat('★', $bookable->category->stars) : '';
+                                    return new HtmlString(
+                                        "<strong>{$bookable->name_en}</strong> {$stars} — {$bookable->city?->name_en}<br>" .
+                                        "Room: " . ($record->roomType?->name_en ?? 'DBL') . " | Date: " . ($record->date?->format('d.m.Y') ?? '—') .
+                                        " | Price: <strong>\${$record->price}</strong>"
+                                    );
+                                }
+
                                 return "Tour #{$bookable->id}";
                             })
                             ->columnSpanFull(),

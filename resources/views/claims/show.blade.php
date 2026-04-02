@@ -73,8 +73,47 @@
                 <div class="meta-value">{{ $flightPath->departure_date->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}</div>
             </div>
             @endif
+            @if($hotel)
+            <div class="meta-item">
+                <div class="meta-label">Hotel</div>
+                <div class="meta-value">{{ $hotel->name_en }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">City</div>
+                <div class="meta-value">{{ $hotel->city->name_en ?? '' }}, {{ $hotel->city->country->name_en ?? '' }}</div>
+            </div>
+            @endif
         </div>
     </div>
+
+    @if($hotel)
+    {{-- ═══ HOTEL ACCOMMODATION ═══ --}}
+    <div class="blk">
+        <div class="hdr">Accommodation</div>
+        <div class="blk-body">
+            <table>
+                <thead>
+                    <tr><th>Hotel</th><th>City</th><th>Room</th><th>Meal</th><th>Date</th><th style="text-align:right;">Tourists</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-weight:600;">
+                            {{ $hotel->name_en }}
+                            @if($hotel->category)
+                                <span style="color:#c90;">@for($s=0;$s<$hotel->category->stars;$s++)★@endfor</span>
+                            @endif
+                        </td>
+                        <td>{{ $hotel->city->name_en ?? '' }}</td>
+                        <td>{{ $booking->roomType->code ?? 'DBL' }}</td>
+                        <td><strong>BB</strong></td>
+                        <td>{{ $booking->date?->format('d.m.Y') }}</td>
+                        <td style="text-align:right;">{{ $booking->tourists->count() }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     @if($flightPath)
     {{-- ═══ ACCOMMODATION ═══ --}}

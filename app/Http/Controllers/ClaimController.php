@@ -36,11 +36,14 @@ class ClaimController extends Controller
         $booking = $order->bookings->first();
 
         $flightPath = null;
+        $hotel = null;
         $stayHotels = [];
         $services = collect();
         $insurances = collect();
 
-        if ($booking && $booking->bookable_type === FlightPath::class) {
+        if ($booking && $booking->bookable_type === \App\Models\Hotel::class) {
+            $hotel = Hotel::with(['category', 'city.country', 'roomTypes'])->find($booking->bookable_id);
+        } elseif ($booking && $booking->bookable_type === FlightPath::class) {
             $flightPath = FlightPath::with([
                 'legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport',
                 'stays.city', 'departureCity',
@@ -78,7 +81,7 @@ class ClaimController extends Controller
 
         return view('claims.show', compact(
             'order', 'paymentPercentage', 'booking',
-            'flightPath', 'stayHotels', 'services', 'insurances'
+            'flightPath', 'hotel', 'stayHotels', 'services', 'insurances'
         ));
     }
 }
