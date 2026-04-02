@@ -14,7 +14,6 @@ use App\Models\RoomType;
 use App\Models\Setting;
 use App\Models\StopSale;
 use App\Models\Tour;
-use App\Models\TourPrice;
 use App\Models\Tourist;
 use App\Services\TourPriceCalculator;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +22,6 @@ use Illuminate\Support\Str;
 class BookingService
 {
     public function __construct(
-        private readonly TourPricingService $pricingService,
         private readonly CurrencyConverter $currencyConverter,
     ) {}
 
@@ -262,14 +260,6 @@ class BookingService
 
     private function calculateTotalPrice(Tour $tour, ?int $roomTypeId, array $counts, array $validated): string
     {
-        if ($roomTypeId && $tour->tourPrices->where('room_type_id', $roomTypeId)->where('is_active', true)->isNotEmpty()) {
-            $breakdown = $this->pricingService->calculateBookingPrice(
-                $tour, $roomTypeId, $counts['adults'], $counts['children'], $counts['infants']
-            );
-
-            return $breakdown ? (string) $breakdown['total'] : bcmul((string) $tour->price, (string) $counts['total'], 2);
-        }
-
         return bcmul((string) $tour->price, (string) $counts['total'], 2);
     }
 

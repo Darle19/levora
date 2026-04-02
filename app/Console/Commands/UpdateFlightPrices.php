@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Flight;
 use App\Services\RapidApiFlightService;
-use App\Services\TourPricingService;
 use Illuminate\Console\Command;
 
 /**
@@ -30,7 +29,6 @@ class UpdateFlightPrices extends Command
 
     public function __construct(
         private readonly RapidApiFlightService $flightService,
-        private readonly TourPricingService $pricingService,
     ) {
         parent::__construct();
     }
@@ -122,12 +120,7 @@ class UpdateFlightPrices extends Command
             $uniqueTourIds = $tourIds->unique();
             $this->info("Recalculating {$uniqueTourIds->count()} tour prices...");
 
-            foreach ($uniqueTourIds as $tourId) {
-                $tour = \App\Models\Tour::find($tourId);
-                if ($tour) {
-                    $this->pricingService->recalculate($tour);
-                }
-            }
+            // Prices are dynamic — no recalculation needed
         }
 
         $this->newLine();

@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
-use App\Services\TourPricingService;
 use BackedEnum;
 use UnitEnum;
 use Filament\Actions\Action;
@@ -87,21 +86,7 @@ class PricingSettings extends Page
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('recalculateAll')
-                ->label('Recalculate All Tour Prices')
-                ->icon(Heroicon::OutlinedArrowPath)
-                ->color('warning')
-                ->requiresConfirmation()
-                ->modalHeading('Recalculate All Prices')
-                ->modalDescription('This will recalculate prices for all tours using the current hotel prices, flight prices, and markup settings. Continue?')
-                ->action(function () {
-                    $count = app(TourPricingService::class)->recalculateAll();
-
-                    Notification::make()
-                        ->success()
-                        ->title("{$count} tour prices recalculated")
-                        ->send();
-                }),
+            // Prices are now dynamic — no recalculation needed
         ];
     }
 }

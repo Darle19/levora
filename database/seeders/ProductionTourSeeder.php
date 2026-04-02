@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Services\TourPricingService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -277,10 +276,7 @@ class ProductionTourSeeder extends Seeder
         }
         $this->command->info("Created {$bakuCount} Istanbul+Baku tours.");
 
-        // ── Recalculate all prices ──
-        $pricingService = app(TourPricingService::class);
-        $recalculated = $pricingService->recalculateAll();
-        $this->command->info("Recalculated {$recalculated} tour prices.");
+        // Prices are dynamic — no recalculation needed
 
         DB::table('cache')->truncate();
     }
