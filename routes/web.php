@@ -54,6 +54,7 @@ Route::middleware(['auth', 'agency.active'])->group(function () {
 
     // Booking (requires auth)
     Route::get('/book', [BookingController::class, 'createFromFlightPath'])->name('bookings.create.fp');
+    Route::get('/book/hotel', [BookingController::class, 'createHotelBooking'])->name('bookings.create.hotel');
     Route::get('/tours/{tour}/book', [BookingController::class, 'create'])->name('bookings.create');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}/confirmation', [BookingController::class, 'confirmation'])->name('bookings.confirmation');

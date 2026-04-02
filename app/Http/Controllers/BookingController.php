@@ -199,6 +199,32 @@ class BookingController extends Controller
         ));
     }
 
+    /**
+     * Hotel-only booking page.
+     * URL: /book/hotel?hotel={id}&room={room_type_id}&nights={N}&checkin={date}
+     */
+    public function createHotelBooking(Request $request): View
+    {
+        $hotel = Hotel::with(['category', 'city.country', 'roomTypes'])->findOrFail($request->query('hotel'));
+        $roomTypeId = $request->query('room');
+        $nights = max(1, (int) $request->query('nights', 7));
+        $checkin = $request->query('checkin', now()->addDays(14)->format('Y-m-d'));
+        $checkout = date('Y-m-d', strtotime($checkin . " +{$nights} days"));
+        $adults = max(1, (int) (session('booking_adults') ?: 2));
+
+        $roomType = $hotel->roomTypes->firstWhere('id', $roomTypeId);
+        $roomRate = $roomType ? (float) $roomType->pivot->price_per_night : (float) $hotel->price_per_person;
+
+        $commission = \App\Models\HotelCommissionTier::getForNights($nights);
+
+        $countries = Country::where('is_active', true)->orderBy('name_en')->get();
+
+        return view('bookings.create_hotel', compact(
+            'hotel', 'roomType', 'roomRate', 'nights', 'checkin', 'checkout',
+            'adults', 'commission', 'countries'
+        ));
+    }
+
     public function create(Tour $tour): View
     {
         if (! $tour->is_available || $tour->date_from < today()) {
@@ -255,7 +281,13 @@ class BookingController extends Controller
             assert($user instanceof \App\Models\User);
 
             // Route to correct booking method based on input
-            if (! empty($validated['flight_path_id'])) {
+            if (! empty($validated['hotel_id'])) {
+                $result = $this->bookingService->createHotelBooking(
+                    $validated,
+                    $user->id,
+                    $user->agency_id,
+                );
+            } elseif (! empty($validated['flight_path_id'])) {
                 $result = $this->bookingService->createFlightPathBooking(
                     $validated,
                     $user->id,

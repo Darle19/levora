@@ -100,6 +100,7 @@
                         <th>Meal</th>
                         <th style="text-align:right;">Per Night</th>
                         <th style="text-align:right;">{{ $nights }} nights</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -119,6 +120,7 @@
                             <td><span class="meal">BB</span></td>
                             <td style="text-align:right;" class="price">${{ number_format($room->pivot->price_per_night + ($commission / $nights), 0) }}</td>
                             <td style="text-align:right;" class="price">${{ number_format(($room->pivot->price_per_night * $nights) + $commission, 0) }}</td>
+                            <td><a href="{{ route('bookings.create.hotel', ['hotel' => $hotel->id, 'room' => $room->id, 'nights' => $nights]) }}" style="font-size:11px; font-weight:600; color:#1B6B2E; text-decoration:none;">Book</a></td>
                         </tr>
                         @endforeach
                     @endforeach

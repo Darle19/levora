@@ -131,6 +131,56 @@ class BookingService
         });
     }
 
+    /**
+     * Hotel-only booking (no flights).
+     */
+    public function createHotelBooking(array $validated, int $userId, int $agencyId): array
+    {
+        return DB::transaction(function () use ($validated, $userId, $agencyId) {
+            $hotel = Hotel::with('roomTypes')->findOrFail($validated['hotel_id']);
+            $nights = (int) ($validated['nights'] ?? 7);
+            $touristCounts = $this->countTouristsByAge($validated['tourists']);
+            $paxCount = $touristCounts['total'];
+
+            // Room rate
+            $roomTypeId = $validated['room_type_id'] ?? null;
+            $roomType = $roomTypeId ? $hotel->roomTypes->firstWhere('id', $roomTypeId) : null;
+            $roomRate = $roomType ? (float) $roomType->pivot->price_per_night : (float) $hotel->price_per_person;
+
+            // Price: ceil(pax/2) rooms * rate * nights + commission
+            $rooms = (int) ceil($paxCount / 2);
+            $commission = \App\Models\HotelCommissionTier::getForNights($nights);
+            $totalPrice = round(($rooms * $roomRate * $nights) + $commission, 2);
+
+            $usdId = Currency::where('code', 'USD')->value('id');
+
+            $order = Order::create([
+                'order_number' => (string) (Order::max('id') + 1),
+                'agency_id' => $agencyId,
+                'user_id' => $userId,
+                'status' => 'pending',
+                'total_price' => $totalPrice,
+                'currency_id' => $usdId ?? $hotel->currency_id,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            $booking = Booking::create([
+                'order_id' => $order->id,
+                'bookable_type' => Hotel::class,
+                'bookable_id' => $hotel->id,
+                'room_type_id' => $roomTypeId,
+                'status' => 'pending',
+                'price' => $totalPrice,
+                'currency_id' => $usdId ?? $hotel->currency_id,
+                'date' => $validated['check_in_date'] ?? now()->format('Y-m-d'),
+            ]);
+
+            $this->createTourists($booking, $validated['tourists']);
+
+            return ['booking' => $booking, 'order' => $order];
+        });
+    }
+
     private function loadAndLockTour(int $tourId): Tour
     {
         return Tour::with(['currency', 'tourPrices', 'flights', 'amadeusSegments', 'stays', 'stays.hotel', 'stays.currency', 'additionalServices', 'additionalServices.currency'])

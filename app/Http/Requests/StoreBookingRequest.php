@@ -28,17 +28,15 @@ class StoreBookingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Either tour_id or flight_path_id required
-            'tour_id' => 'required_without:flight_path_id|nullable|exists:tours,id',
-            'flight_path_id' => 'required_without:tour_id|nullable|exists:flight_paths,id',
+            // One of: tour_id, flight_path_id, or hotel_id
+            'tour_id' => 'required_without_all:flight_path_id,hotel_id|nullable|exists:tours,id',
+            'flight_path_id' => 'required_without_all:tour_id,hotel_id|nullable|exists:flight_paths,id',
+            'hotel_id' => 'required_without_all:tour_id,flight_path_id|nullable|exists:hotels,id',
             'hotel_ids' => 'nullable|string',
+            'nights' => 'nullable|integer|min:1',
+            'check_in_date' => 'nullable|date',
 
-            'room_type_id' => [
-                'nullable',
-                Rule::exists('tour_prices', 'room_type_id')
-                    ->where('tour_id', $this->input('tour_id'))
-                    ->where('is_active', true),
-            ],
+            'room_type_id' => 'nullable|exists:room_types,id',
             'contact_name' => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',
             'contact_phone' => 'required|string|max:20',
