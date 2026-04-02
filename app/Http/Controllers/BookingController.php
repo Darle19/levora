@@ -249,18 +249,21 @@ class BookingController extends Controller
         try {
             $validated = $request->validated();
 
+            $user = \Illuminate\Support\Facades\Auth::user();
+            assert($user instanceof \App\Models\User);
+
             // Route to correct booking method based on input
             if (! empty($validated['flight_path_id'])) {
                 $result = $this->bookingService->createFlightPathBooking(
                     $validated,
-                    auth()->id(),
-                    auth()->user()->agency_id,
+                    $user->id,
+                    $user->agency_id,
                 );
             } else {
                 $result = $this->bookingService->createBooking(
                     $validated,
-                    auth()->id(),
-                    auth()->user()->agency_id,
+                    $user->id,
+                    $user->agency_id,
                 );
             }
 
