@@ -59,10 +59,12 @@ class BookingController extends Controller
             ];
         }
 
-        // Load additional services per city (excluding insurance)
+        // Load additional services per city + global (excluding insurance)
         $cityIds = $flightPath->stays->pluck('city_id')->unique()->toArray();
         $allServices = AdditionalService::where('is_active', true)
-            ->whereIn('city_id', $cityIds)
+            ->where(function ($q) use ($cityIds) {
+                $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
+            })
             ->where('service_type', '!=', 'insurance')
             ->orderBy('city_id')
             ->orderBy('name_en')
@@ -120,22 +122,26 @@ class BookingController extends Controller
             }
         }
 
-        // Build services per stay, tracking one-time services to avoid duplicates
+        // Build services per stay, tracking one-time and per-city services to avoid duplicates
         $stayServices = [];
-        $oneTimeServices = collect(); // shown once, separate from per-city
+        $oneTimeServices = collect();
         $mandatoryServicesCost = 0;
-        $seenOneTimeIds = [];
+        $seenServiceIds = []; // track all seen mandatory service IDs to avoid double-counting
 
         foreach ($flightPath->stays as $stay) {
             $cityServices = $allServices->get($stay->city_id, collect());
+            // Also include global services (city_id = null) for first stay only
+            $globalServices = $allServices->get('', collect());
+
+            $combined = $cityServices->merge($globalServices)->unique('id');
 
             // Separate one-time services (show only once, not per city)
-            $perCity = $cityServices->where('is_one_time', false);
-            $oneTime = $cityServices->where('is_one_time', true);
+            $perCity = $combined->where('is_one_time', false);
+            $oneTime = $combined->where('is_one_time', true);
 
             foreach ($oneTime as $svc) {
-                if (! in_array($svc->id, $seenOneTimeIds)) {
-                    $seenOneTimeIds[] = $svc->id;
+                if (! in_array($svc->id, $seenServiceIds)) {
+                    $seenServiceIds[] = $svc->id;
                     $oneTimeServices->push($svc);
                     if ($svc->is_mandatory) {
                         $mandatoryServicesCost += (float) $svc->price;
@@ -147,7 +153,10 @@ class BookingController extends Controller
             $optional = $perCity->where('is_mandatory', false);
 
             foreach ($mandatory as $svc) {
-                $mandatoryServicesCost += (float) $svc->price;
+                if (! in_array($svc->id, $seenServiceIds)) {
+                    $seenServiceIds[] = $svc->id;
+                    $mandatoryServicesCost += (float) $svc->price;
+                }
             }
 
             $stayServices[] = [

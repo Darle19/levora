@@ -43,6 +43,8 @@ class AdditionalService extends Model
         return [
             'price' => 'decimal:2',
             'is_per_person' => 'boolean',
+            'is_mandatory' => 'boolean',
+            'is_one_time' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

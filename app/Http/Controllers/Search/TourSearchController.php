@@ -57,13 +57,9 @@ class TourSearchController extends Controller
         return $this->search($request);
     }
 
-    public function show(FlightPath $flightPath): View
+    public function show(FlightPath $flightPath)
     {
-        $flightPath->load([
-            'legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport',
-            'stays.city', 'currency', 'departureCity',
-        ]);
-
-        return view('search.tours.show', compact('flightPath'));
+        // Tour detail page not yet rebuilt for FlightPath — redirect to search
+        return redirect()->route('search.tours');
     }
 }
