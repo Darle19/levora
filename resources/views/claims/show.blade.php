@@ -309,10 +309,10 @@
             @foreach($allDocuments as $doc)
             <div style="padding:4px 0; display:flex; justify-content:space-between; align-items:center;">
                 <span>{{ $doc->getTypeLabel() }} @if($doc->getDescription()) — <span style="color:#888;">{{ $doc->getDescription() }}</span>@endif</span>
-                @if($order->isFullyPaid())
+                @if($order->status === 'paid')
                 <a href="{{ route('documents.download', $doc) }}" style="font-size:12px;">Download</a>
                 @else
-                <span style="color:#999; font-size:11px;">Locked (payment required)</span>
+                <span style="color:#999; font-size:11px;">Locked (status: {{ $order->status }})</span>
                 @endif
             </div>
             @endforeach

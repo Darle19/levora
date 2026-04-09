@@ -21,7 +21,13 @@ class OrderForm
                     ->required(),
                 TextInput::make('order_number')
                     ->required(),
-                TextInput::make('status')
+                Select::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'confirmed' => 'Confirmed',
+                        'paid' => 'Paid',
+                        'cancelled' => 'Cancelled',
+                    ])
                     ->required()
                     ->default('pending'),
                 TextInput::make('total_price')

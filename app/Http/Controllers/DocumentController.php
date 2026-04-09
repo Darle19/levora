@@ -25,7 +25,7 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if (! $isAdmin && !$order->isFullyPaid()) {
+        if (! $isAdmin && $order->status !== 'paid') {
             abort(403, __('messages.doc_locked_message'));
         }
 
