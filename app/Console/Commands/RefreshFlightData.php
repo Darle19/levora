@@ -67,7 +67,7 @@ class RefreshFlightData extends Command
             foreach ($offers as $offer) {
                 $num = $this->normalizeFlightNumber($offer->flightNumber);
                 $offersByNumber[$num] = $offer;
-                $this->line("    API offer: #{$offer->flightNumber} → normalized: [{$num}] \${$offer->priceCents/100}");
+                $this->line("    API offer: #{$offer->flightNumber} → normalized: [{$num}] $" . ($offer->priceCents / 100));
             }
 
             foreach ($groupFlights as $flight) {
