@@ -127,6 +127,23 @@ class BookingService
             // Create tourists
             $this->createTourists($booking, $validated['tourists']);
 
+            // Store hotel selections for document generation
+            $dayOffset = 0;
+            foreach ($fp->stays as $stay) {
+                $hotel = $hotels->first(fn ($h) => $h->city_id === $stay->city_id);
+                if ($hotel) {
+                    $checkIn = $fp->departure_date->copy()->addDays($dayOffset);
+                    $checkOut = $checkIn->copy()->addDays($stay->nights);
+                    $booking->hotels()->attach($hotel->id, [
+                        'stay_order' => $stay->stay_order,
+                        'nights' => $stay->nights,
+                        'check_in_date' => $checkIn->format('Y-m-d'),
+                        'check_out_date' => $checkOut->format('Y-m-d'),
+                    ]);
+                }
+                $dayOffset += $stay->nights;
+            }
+
             return ['booking' => $booking, 'order' => $order];
         });
     }

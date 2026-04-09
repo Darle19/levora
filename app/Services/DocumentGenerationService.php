@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
 class DocumentGenerationService
 {
     public function __construct(
-        private NeoInsuranceService $insuranceService
+        private DocumentDataResolver $dataResolver,
     ) {}
 
     public function generateAllForOrder(Order $order): void
@@ -31,154 +31,92 @@ class DocumentGenerationService
             return;
         }
 
-        $booking->loadMissing([
-            'order.agency',
-            'order.currency',
-            'tourists',
-            'bookable.hotel.category',
-            'bookable.country',
-            'bookable.resort',
-            'bookable.mealType',
-            'bookable.flights.airline',
-            'bookable.flights.fromAirport',
-            'bookable.flights.toAirport',
-        ]);
+        try {
+            $data = $this->dataResolver->resolve($booking);
+        } catch (\Exception $e) {
+            Log::error('DocumentDataResolver failed', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+            return;
+        }
 
-        $this->generateConfirmation($booking);
-        $this->generateMemo($booking);
-        $this->generateVoucher($booking);
+        // Tourist Voucher — always generated (summary page)
+        $this->generateTouristVoucher($booking, $data);
 
-        foreach ($booking->tourists as $tourist) {
-            $this->generateTicket($booking, $tourist);
-            $this->generateInsurance($booking, $tourist);
+        // Hotel Voucher — one per hotel stay
+        foreach ($data['hotels'] as $i => $hotelStay) {
+            $this->generateHotelVoucher($booking, $data, $hotelStay, $i);
+        }
+
+        // eTicket — one per tourist (only for FlightPath with flights)
+        if ($data['type'] === 'flight_path' && $data['flights']->isNotEmpty()) {
+            foreach ($booking->tourists as $tourist) {
+                $this->generateETicket($booking, $data, $tourist);
+            }
+        }
+
+        // Insurance — one per tourist (if insurance services exist)
+        if ($data['insurances']->isNotEmpty()) {
+            foreach ($booking->tourists as $tourist) {
+                $this->generateInsurancePolicy($booking, $data, $tourist);
+            }
         }
     }
 
-    private function generateConfirmation(Booking $booking): void
+    private function generateTouristVoucher(Booking $booking, array $data): void
     {
-        $order = $booking->order;
-        $tour = $booking->bookable;
-
-        $pdf = Pdf::loadView('documents.confirmation', [
-            'booking' => $booking,
-            'order' => $order,
-            'tour' => $tour,
-            'agency' => $order->agency,
-        ]);
-
-        $path = $this->storePdf($pdf, $order->id, "confirmation_{$booking->id}");
+        $pdf = Pdf::loadView('documents.tourist-voucher', $data);
+        $path = $this->storePdf($pdf, $booking->order->id, "tourist_voucher_{$booking->id}");
 
         BookingDocument::create([
             'booking_id' => $booking->id,
-            'type' => 'confirmation',
+            'type' => 'tourist_voucher',
             'file_path' => $path,
         ]);
     }
 
-    private function generateMemo(Booking $booking): void
+    private function generateHotelVoucher(Booking $booking, array $data, object $hotelStay, int $index): void
     {
-        $order = $booking->order;
-        $tour = $booking->bookable;
-
-        $pdf = Pdf::loadView('documents.memo', [
-            'booking' => $booking,
-            'order' => $order,
-            'tour' => $tour,
-        ]);
-
-        $path = $this->storePdf($pdf, $order->id, "memo_{$booking->id}");
+        $pdf = Pdf::loadView('documents.hotel-voucher', array_merge($data, [
+            'hotelStay' => $hotelStay,
+        ]));
+        $path = $this->storePdf($pdf, $booking->order->id, "hotel_voucher_{$booking->id}_{$index}");
 
         BookingDocument::create([
             'booking_id' => $booking->id,
-            'type' => 'memo',
+            'type' => 'hotel_voucher',
             'file_path' => $path,
         ]);
     }
 
-    private function generateVoucher(Booking $booking): void
+    private function generateETicket(Booking $booking, array $data, Tourist $tourist): void
     {
-        $order = $booking->order;
-        $tour = $booking->bookable;
-
-        $pdf = Pdf::loadView('documents.voucher', [
-            'booking' => $booking,
-            'order' => $order,
-            'tour' => $tour,
-        ]);
-
-        $path = $this->storePdf($pdf, $order->id, "voucher_{$booking->id}");
-
-        BookingDocument::create([
-            'booking_id' => $booking->id,
-            'type' => 'voucher',
-            'file_path' => $path,
-        ]);
-    }
-
-    private function generateTicket(Booking $booking, Tourist $tourist): void
-    {
-        $order = $booking->order;
-        $tour = $booking->bookable;
-        $flights = $tour?->flights ?? collect();
-
-        $pdf = Pdf::loadView('documents.ticket', [
-            'booking' => $booking,
-            'order' => $order,
-            'tour' => $tour,
+        $pdf = Pdf::loadView('documents.eticket', array_merge($data, [
             'tourist' => $tourist,
-            'flights' => $flights,
-        ]);
-
-        $path = $this->storePdf($pdf, $order->id, "ticket_{$booking->id}_{$tourist->id}");
+        ]));
+        $path = $this->storePdf($pdf, $booking->order->id, "eticket_{$booking->id}_{$tourist->id}");
 
         BookingDocument::create([
             'booking_id' => $booking->id,
-            'type' => 'ticket',
+            'type' => 'eticket',
             'tourist_id' => $tourist->id,
             'file_path' => $path,
         ]);
     }
 
-    private function generateInsurance(Booking $booking, Tourist $tourist): void
+    private function generateInsurancePolicy(Booking $booking, array $data, Tourist $tourist): void
     {
-        $order = $booking->order;
-        $tour = $booking->bookable;
-
-        $policyData = [];
-
-        try {
-            $apiResponse = $this->insuranceService->createPolicy($tourist, $booking);
-
-            if ($apiResponse) {
-                $policyData = [
-                    'policy_number' => $apiResponse['policy_number'] ?? $apiResponse['id'] ?? null,
-                    'premium' => $apiResponse['premium'] ?? $apiResponse['summa'] ?? null,
-                    'api_response' => $apiResponse,
-                ];
-            }
-        } catch (\Exception $e) {
-            Log::warning('Insurance API failed, generating document without policy data', [
-                'tourist_id' => $tourist->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        $pdf = Pdf::loadView('documents.insurance', [
-            'booking' => $booking,
-            'order' => $order,
-            'tour' => $tour,
+        $pdf = Pdf::loadView('documents.insurance-policy', array_merge($data, [
             'tourist' => $tourist,
-            'policyData' => $policyData,
-        ]);
-
-        $path = $this->storePdf($pdf, $order->id, "insurance_{$booking->id}_{$tourist->id}");
+        ]));
+        $path = $this->storePdf($pdf, $booking->order->id, "insurance_{$booking->id}_{$tourist->id}");
 
         BookingDocument::create([
             'booking_id' => $booking->id,
             'type' => 'insurance',
             'tourist_id' => $tourist->id,
             'file_path' => $path,
-            'metadata' => !empty($policyData) ? $policyData : null,
         ]);
     }
 
@@ -186,7 +124,6 @@ class DocumentGenerationService
     {
         $path = "documents/{$orderId}/{$filename}.pdf";
         Storage::disk('local')->put($path, $pdf->output());
-
         return $path;
     }
 }

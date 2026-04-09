@@ -38,20 +38,24 @@ class BookingDocument extends Model
     public function getTypeLabel(): string
     {
         return match ($this->type) {
-            'confirmation' => __('messages.doc_confirmation'),
-            'memo' => __('messages.doc_memo'),
-            'voucher' => __('messages.doc_voucher'),
-            'ticket' => __('messages.doc_ticket'),
-            'insurance' => __('messages.doc_insurance'),
-            default => ucfirst($this->type),
+            'tourist_voucher' => 'Tourist Voucher',
+            'hotel_voucher' => 'Hotel Voucher',
+            'eticket' => 'eTicket',
+            'insurance' => 'Insurance Policy',
+            // Legacy types
+            'confirmation' => 'Confirmation',
+            'memo' => 'Memo',
+            'voucher' => 'Voucher',
+            'ticket' => 'Ticket',
+            default => ucfirst(str_replace('_', ' ', $this->type)),
         };
     }
 
     public function getDescription(): string
     {
         return match ($this->type) {
-            'voucher' => $this->booking->bookable?->hotel?->name ?? '',
-            'ticket' => $this->tourist ? strtoupper($this->tourist->last_name . ' ' . $this->tourist->first_name) : '',
+            'hotel_voucher' => 'Hotel',
+            'eticket', 'ticket' => $this->tourist ? strtoupper($this->tourist->last_name . ' ' . $this->tourist->first_name) : '',
             'insurance' => $this->tourist ? strtoupper($this->tourist->last_name . ' ' . $this->tourist->first_name) : '',
             default => '',
         };

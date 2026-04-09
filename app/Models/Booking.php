@@ -74,4 +74,12 @@ class Booking extends Model
             ->withTimestamps()
             ->withCasts(['price' => 'decimal:2', 'quantity' => 'integer']);
     }
+
+    public function hotels(): BelongsToMany
+    {
+        return $this->belongsToMany(Hotel::class, 'booking_hotels')
+            ->withPivot('stay_order', 'nights', 'check_in_date', 'check_out_date')
+            ->orderByPivot('stay_order')
+            ->withTimestamps();
+    }
 }
