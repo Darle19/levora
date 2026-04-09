@@ -198,6 +198,19 @@ class NeoInsuranceService
         return $result ?: null;
     }
 
+    /**
+     * Check policy payment status via travel-neo/checkPolis.
+     * Returns API response with error_code: 1 = not paid, 0 = paid.
+     */
+    public function checkPolicyStatus(int $neoOrderId): ?array
+    {
+        $response = $this->post('/api/travel-neo/checkPolis', [
+            'order_id' => $neoOrderId,
+        ]);
+
+        return $response;
+    }
+
     private function resolveTravelDates(Booking $booking): ?array
     {
         $bookable = $booking->bookable;

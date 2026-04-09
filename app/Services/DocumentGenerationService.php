@@ -42,7 +42,7 @@ class DocumentGenerationService
             return;
         }
 
-        // Tourist Voucher — always generated (summary page)
+        // Tourist Voucher — always
         $this->generateTouristVoucher($booking, $data);
 
         // Hotel Voucher — one per hotel stay
@@ -50,35 +50,113 @@ class DocumentGenerationService
             $this->generateHotelVoucher($booking, $data, $hotelStay, $i);
         }
 
-        // eTicket — one per tourist (only for FlightPath with flights)
+        // eTicket — one per tourist (FlightPath only)
         if ($data['type'] === 'flight_path' && $data['flights']->isNotEmpty()) {
             foreach ($booking->tourists as $tourist) {
                 $this->generateETicket($booking, $data, $tourist);
             }
         }
 
-        // Insurance — create real policy via NeoInsurance API if risks selected
+        // Insurance — register policy in NeoInsurance (get PTN + payment links)
+        // but do NOT generate PDF yet — admin must pay first, then click "Generate"
         if (! empty($booking->insurance_risks) && $this->neoInsurance->isConfigured()) {
-            $this->createInsurancePolicies($booking, $data);
+            $this->registerInsurancePolicy($booking);
         }
     }
 
     /**
-     * Create insurance policies via NeoInsurance API and generate PDFs.
+     * Register insurance policy in NeoInsurance API.
+     * Saves PTN + payment links to booking document metadata.
+     * PDF is NOT generated — admin pays first, then uses "Check & Generate" button.
      */
-    private function createInsurancePolicies(Booking $booking, array $data): void
+    private function registerInsurancePolicy(Booking $booking): void
     {
-        // Call NeoInsurance API to create the policy
         $neoResult = $this->neoInsurance->createPolicyForBooking($booking);
-        $neoOrderId = $neoResult['order_id'] ?? null;
+        if (! $neoResult || empty($neoResult['order_id'])) {
+            Log::warning('NeoInsurance policy registration failed', ['booking_id' => $booking->id]);
+            return;
+        }
 
-        $metadata = $neoResult ? [
-            'neo_order_id' => $neoOrderId,
-            'neo_click_url' => $neoResult['click'] ?? null,
-            'neo_payme_url' => $neoResult['payme'] ?? null,
-        ] : null;
+        // Store a placeholder document with payment links (no file yet)
+        BookingDocument::create([
+            'booking_id' => $booking->id,
+            'type' => 'insurance',
+            'file_path' => '',
+            'metadata' => [
+                'neo_order_id' => $neoResult['order_id'],
+                'neo_click_url' => $neoResult['click'] ?? null,
+                'neo_payme_url' => $neoResult['payme'] ?? null,
+                'status' => 'pending_payment',
+            ],
+        ]);
+    }
 
-        // Generate insurance PDF for each tourist (with or without real policy number)
+    /**
+     * Check NeoInsurance payment status and generate insurance PDFs.
+     * Called from admin "Check & Generate" button.
+     *
+     * @return string Status message
+     */
+    public function checkAndGenerateInsurance(Booking $booking): string
+    {
+        $booking->loadMissing(['tourists', 'order']);
+
+        // Find pending insurance document
+        $insuranceDoc = $booking->documents()
+            ->where('type', 'insurance')
+            ->whereJsonContains('metadata->status', 'pending_payment')
+            ->first();
+
+        if (! $insuranceDoc) {
+            // No pending insurance — maybe not registered yet
+            if (empty($booking->insurance_risks)) {
+                return 'No insurance risks selected.';
+            }
+
+            // Try registering now
+            $this->registerInsurancePolicy($booking);
+            $insuranceDoc = $booking->documents()
+                ->where('type', 'insurance')
+                ->whereJsonContains('metadata->status', 'pending_payment')
+                ->first();
+
+            if (! $insuranceDoc) {
+                return 'Failed to register policy in NeoInsurance.';
+            }
+
+            return 'Policy registered. Pay via Click/Payme links, then check again.';
+        }
+
+        $neoOrderId = $insuranceDoc->metadata['neo_order_id'] ?? null;
+        if (! $neoOrderId) {
+            return 'No NeoInsurance order ID found.';
+        }
+
+        // Check payment status
+        $checkResult = $this->neoInsurance->checkPolicyStatus($neoOrderId);
+        if (! $checkResult) {
+            return 'Failed to check policy status.';
+        }
+
+        $errorCode = $checkResult['response']['error_code'] ?? null;
+
+        // error_code 1 = not paid, 0 = paid (or null = paid)
+        if ($errorCode === 1) {
+            return 'Insurance not yet paid. Please pay via Click/Payme links first.';
+        }
+
+        // Paid — generate PDFs
+        try {
+            $data = $this->dataResolver->resolve($booking);
+        } catch (\Exception $e) {
+            return 'Failed to resolve booking data: ' . $e->getMessage();
+        }
+
+        // Delete placeholder document
+        $metadata = $insuranceDoc->metadata;
+        $insuranceDoc->delete();
+
+        // Generate insurance PDF for each tourist
         foreach ($booking->tourists as $tourist) {
             $policyData = array_merge($data, [
                 'tourist' => $tourist,
@@ -94,9 +172,11 @@ class DocumentGenerationService
                 'type' => 'insurance',
                 'tourist_id' => $tourist->id,
                 'file_path' => $path,
-                'metadata' => $metadata,
+                'metadata' => array_merge($metadata, ['status' => 'paid']),
             ]);
         }
+
+        return 'Insurance paid! ' . $booking->tourists->count() . ' policy PDF(s) generated.';
     }
 
     private function generateTouristVoucher(Booking $booking, array $data): void
