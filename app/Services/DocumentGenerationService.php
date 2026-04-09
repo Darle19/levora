@@ -14,6 +14,7 @@ class DocumentGenerationService
 {
     public function __construct(
         private DocumentDataResolver $dataResolver,
+        private NeoInsuranceService $neoInsurance,
     ) {}
 
     public function generateAllForOrder(Order $order): void
@@ -56,11 +57,45 @@ class DocumentGenerationService
             }
         }
 
-        // Insurance — one per tourist (if insurance services exist)
-        if ($data['insurances']->isNotEmpty()) {
-            foreach ($booking->tourists as $tourist) {
-                $this->generateInsurancePolicy($booking, $data, $tourist);
-            }
+        // Insurance — create real policy via NeoInsurance API if risks selected
+        if (! empty($booking->insurance_risks) && $this->neoInsurance->isConfigured()) {
+            $this->createInsurancePolicies($booking, $data);
+        }
+    }
+
+    /**
+     * Create insurance policies via NeoInsurance API and generate PDFs.
+     */
+    private function createInsurancePolicies(Booking $booking, array $data): void
+    {
+        // Call NeoInsurance API to create the policy
+        $neoResult = $this->neoInsurance->createPolicyForBooking($booking);
+        $neoOrderId = $neoResult['order_id'] ?? null;
+
+        $metadata = $neoResult ? [
+            'neo_order_id' => $neoOrderId,
+            'neo_click_url' => $neoResult['click'] ?? null,
+            'neo_payme_url' => $neoResult['payme'] ?? null,
+        ] : null;
+
+        // Generate insurance PDF for each tourist (with or without real policy number)
+        foreach ($booking->tourists as $tourist) {
+            $policyData = array_merge($data, [
+                'tourist' => $tourist,
+                'neo_order_id' => $neoOrderId,
+                'insurance_risks' => $booking->insurance_risks,
+            ]);
+
+            $pdf = Pdf::loadView('documents.insurance-policy', $policyData);
+            $path = $this->storePdf($pdf, $booking->order->id, "insurance_{$booking->id}_{$tourist->id}");
+
+            BookingDocument::create([
+                'booking_id' => $booking->id,
+                'type' => 'insurance',
+                'tourist_id' => $tourist->id,
+                'file_path' => $path,
+                'metadata' => $metadata,
+            ]);
         }
     }
 
@@ -100,21 +135,6 @@ class DocumentGenerationService
         BookingDocument::create([
             'booking_id' => $booking->id,
             'type' => 'eticket',
-            'tourist_id' => $tourist->id,
-            'file_path' => $path,
-        ]);
-    }
-
-    private function generateInsurancePolicy(Booking $booking, array $data, Tourist $tourist): void
-    {
-        $pdf = Pdf::loadView('documents.insurance-policy', array_merge($data, [
-            'tourist' => $tourist,
-        ]));
-        $path = $this->storePdf($pdf, $booking->order->id, "insurance_{$booking->id}_{$tourist->id}");
-
-        BookingDocument::create([
-            'booking_id' => $booking->id,
-            'type' => 'insurance',
             'tourist_id' => $tourist->id,
             'file_path' => $path,
         ]);

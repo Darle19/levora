@@ -7,9 +7,7 @@ use App\Models\AdditionalService;
 use App\Models\Country;
 use App\Models\FlightPath;
 use App\Models\Hotel;
-use App\Models\Setting;
 use App\Models\Tour;
-use App\Services\NeoInsuranceService;
 use App\Services\BookingException;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
@@ -71,56 +69,8 @@ class BookingController extends Controller
             ->get()
             ->groupBy('city_id');
 
-        // Load insurances from NeoInsurance API
-        $neoInsurance = app(NeoInsuranceService::class);
-        $insurances = collect();
-
-        if ($neoInsurance->isConfigured()) {
-            // Get country codes for the tour destinations
-            $countryCodes = $flightPath->stays
-                ->map(fn ($s) => $s->city?->country?->code)
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
-
-            if (! empty($countryCodes)) {
-                $departureDate = $flightPath->departure_date->format('Y-m-d');
-                $returnDate = $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('Y-m-d');
-
-                $neoPrograms = $neoInsurance->getInsuranceOptionsForBooking(
-                    $departureDate, $returnDate, $countryCodes
-                );
-
-                foreach ($neoPrograms as $program) {
-                    $insurances->push((object) [
-                        'id' => $program['id'],
-                        'name_en' => $program['name'] . ' (' . implode(', ', $countryCodes) . ')',
-                        'price' => $program['price_usd'],
-                        'is_per_person' => true,
-                        'is_mandatory' => false,
-                        'source' => 'neoinsurance',
-                        'program_id' => $program['program_id'],
-                        'period' => $program['period'],
-                    ]);
-                }
-            }
-        }
-
-        // Fallback: local insurance services from DB
-        if ($insurances->isEmpty()) {
-            $localInsurances = AdditionalService::where('is_active', true)
-                ->where('service_type', 'insurance')
-                ->where(function ($q) use ($cityIds) {
-                    $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
-                })
-                ->orderBy('name_en')
-                ->get();
-
-            foreach ($localInsurances as $li) {
-                $insurances->push($li);
-            }
-        }
+        // Insurance risk types (no prices shown to agents)
+        $insuranceRisks = \App\Services\NeoInsuranceService::RISK_TYPES;
 
         // Build services per stay, tracking one-time and per-city services to avoid duplicates
         $stayServices = [];
@@ -195,7 +145,7 @@ class BookingController extends Controller
         return view('bookings.create_fp', compact(
             'flightPath', 'stayHotels', 'hotels', 'pricePerPerson', 'adults',
             'hotelRoomTotal', 'hiddenFee', 'agentFee', 'mandatoryServicesCost',
-            'stayServices', 'oneTimeServices', 'insurances', 'countries'
+            'stayServices', 'oneTimeServices', 'insuranceRisks', 'countries'
         ));
     }
 
@@ -218,10 +168,11 @@ class BookingController extends Controller
         $commission = \App\Models\HotelCommissionTier::getForNights($nights);
 
         $countries = Country::where('is_active', true)->orderBy('name_en')->get();
+        $insuranceRisks = \App\Services\NeoInsuranceService::RISK_TYPES;
 
         return view('bookings.create_hotel', compact(
             'hotel', 'roomType', 'roomRate', 'nights', 'checkin', 'checkout',
-            'adults', 'commission', 'countries'
+            'adults', 'commission', 'countries', 'insuranceRisks'
         ));
     }
 

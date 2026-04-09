@@ -60,6 +60,8 @@ class StoreBookingRequest extends FormRequest
             'services.*' => 'nullable',
             'insurances' => 'nullable|array',
             'insurances.*' => 'nullable',
+            'insurance_risks' => 'nullable|array',
+            'insurance_risks.*' => 'nullable|string|in:accident,luggage,cancel_travel,person_respon,delay_travel',
 
             // Legacy Amadeus flight selections
             'amadeus_flights' => 'nullable|array',

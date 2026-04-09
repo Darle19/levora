@@ -113,6 +113,25 @@
             </div>
         </div>
 
+        {{-- ═══ INSURANCE ═══ --}}
+        @if(!empty($insuranceRisks))
+        <div class="section">
+            <div class="section-title">Страховка / Insurance (опционально)</div>
+            <div class="section-body">
+                <p style="margin:0 0 8px; color:#555; font-size:11px;">Выберите дополнительные риски для страхования туристов:</p>
+                <div style="display:flex; flex-wrap:wrap; gap:8px 20px;">
+                    @foreach($insuranceRisks as $riskKey => $riskInfo)
+                    <label style="font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" name="insurance_risks[]" value="{{ $riskKey }}">
+                        {{ $riskInfo['name_ru'] }}
+                    </label>
+                    @endforeach
+                </div>
+                <p style="margin:8px 0 0; color:#888; font-size:10px;">Полис оформляется автоматически через NeoInsurance при подтверждении заявки.</p>
+            </div>
+        </div>
+        @endif
+
         {{-- ═══ NOTES ═══ --}}
         <div class="section">
             <div class="section-title">Примечания / Notes</div>

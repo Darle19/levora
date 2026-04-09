@@ -29,7 +29,7 @@
     </tr>
 </table>
 
-<div class="ptn">PTN {{ $order_number }}</div>
+<div class="ptn">PTN {{ $neo_order_id ?? $order_number }}</div>
 
 {{-- Policyholder --}}
 <table>
@@ -78,12 +78,20 @@
 {{-- Insurance program --}}
 <table>
     <tr>
-        <th>Sug'urta dasturi<br>Insurance program</th>
-        <th>Har bir sug'urtalangan shaxsning sug'urta puli/<br>Sum insured per person</th>
+        <th>Sug'urta dasturi / Insurance program</th>
+        <th>Tanlangan risklar / Selected risks</th>
     </tr>
     <tr>
-        <td>Econom</td>
-        <td>10 000 USD</td>
+        <td>Travel Risk Insurance</td>
+        <td>
+            @if(!empty($insurance_risks))
+                @foreach($insurance_risks as $risk)
+                    {{ \App\Services\NeoInsuranceService::RISK_TYPES[$risk]['name_en'] ?? ucfirst(str_replace('_', ' ', $risk)) }}@if(!$loop->last), @endif
+                @endforeach
+            @else
+                Accident Insurance
+            @endif
+        </td>
     </tr>
 </table>
 

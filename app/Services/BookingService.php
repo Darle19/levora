@@ -122,6 +122,7 @@ class BookingService
                 'price' => $totalPrice,
                 'currency_id' => $usdId ?? $fp->currency_id,
                 'date' => $fp->departure_date,
+                'insurance_risks' => ! empty($validated['insurance_risks']) ? $validated['insurance_risks'] : null,
             ]);
 
             // Create tourists
@@ -190,6 +191,7 @@ class BookingService
                 'price' => $totalPrice,
                 'currency_id' => $usdId ?? $hotel->currency_id,
                 'date' => $validated['check_in_date'] ?? now()->format('Y-m-d'),
+                'insurance_risks' => ! empty($validated['insurance_risks']) ? $validated['insurance_risks'] : null,
             ]);
 
             $this->createTourists($booking, $validated['tourists']);

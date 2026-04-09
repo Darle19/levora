@@ -278,34 +278,21 @@
 
         {{-- ═══ INSURANCE ═══ --}}
         <div class="section">
-            <div class="section-title">Страховка / Insurance</div>
+            <div class="section-title">Страховка / Insurance (опционально)</div>
             <div class="section-body">
-                @if(isset($insurances) && $insurances->isNotEmpty())
-                    <table class="data-table">
-                        <thead>
-                            <tr><th></th><th>Наименование</th><th>Период</th><th>Кол-во</th><th style="text-align:right;">Стоимость</th></tr>
-                        </thead>
-                        <tbody>
-                            @foreach($insurances as $ins)
-                            <tr>
-                                <td style="width:30px;">
-                                    <input type="checkbox" name="insurances[]" value="{{ $ins->id }}" class="optional-service"
-                                        data-price="{{ $ins->price }}" data-per-person="{{ $ins->is_per_person ? 1 : 0 }}"
-                                        {{ $ins->is_mandatory ? 'checked disabled' : '' }}>
-                                    @if($ins->is_mandatory)
-                                        <input type="hidden" name="insurances[]" value="{{ $ins->id }}">
-                                    @endif
-                                </td>
-                                <td>{{ $ins->name_en }}</td>
-                                <td>{{ $flightPath->departure_date->format('d.m.Y') }} — {{ $flightPath->departure_date->copy()->addDays($flightPath->nights)->format('d.m.Y') }}</td>
-                                <td><span class="svc-pax">2 ADL</span></td>
-                                <td style="text-align:right; font-weight:600;">${{ number_format($ins->price, 0) }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                @if(!empty($insuranceRisks))
+                    <p style="margin:0 0 8px; color:#555; font-size:11px;">Выберите дополнительные риски для страхования туристов на период тура:</p>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px 20px;">
+                        @foreach($insuranceRisks as $riskKey => $riskInfo)
+                        <label style="font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                            <input type="checkbox" name="insurance_risks[]" value="{{ $riskKey }}">
+                            {{ $riskInfo['name_ru'] }}
+                        </label>
+                        @endforeach
+                    </div>
+                    <p style="margin:8px 0 0; color:#888; font-size:10px;">Полис оформляется автоматически через NeoInsurance при подтверждении заявки.</p>
                 @else
-                    <p style="color:#888; margin:0;">Нет страховых программ. Добавьте страховки в <a href="/admin/additional-services">Доп. услуги</a> с типом "insurance".</p>
+                    <p style="color:#888; margin:0;">Страхование недоступно.</p>
                 @endif
             </div>
         </div>

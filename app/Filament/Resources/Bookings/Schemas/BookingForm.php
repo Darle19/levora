@@ -155,6 +155,60 @@ class BookingForm
                             })
                             ->columnSpanFull(),
                     ]),
+
+                Section::make('Insurance & Documents')
+                    ->schema([
+                        Placeholder::make('insurance_info')
+                            ->label('')
+                            ->content(function (?Booking $record) {
+                                if (! $record) {
+                                    return '—';
+                                }
+
+                                $html = '';
+
+                                // Insurance risks
+                                $risks = $record->insurance_risks;
+                                if (! empty($risks)) {
+                                    $riskLabels = collect($risks)->map(fn ($r) =>
+                                        \App\Services\NeoInsuranceService::RISK_TYPES[$r]['name_en'] ?? $r
+                                    )->implode(', ');
+                                    $html .= "<div style='margin-bottom:8px;'><strong>Insurance risks:</strong> {$riskLabels}</div>";
+                                }
+
+                                // Documents with NeoInsurance payment links
+                                $docs = $record->documents()->with('tourist')->get();
+                                if ($docs->isNotEmpty()) {
+                                    $html .= '<div style="margin-bottom:6px;"><strong>Documents:</strong></div>';
+                                    foreach ($docs as $doc) {
+                                        $label = $doc->getTypeLabel();
+                                        $desc = $doc->getDescription();
+                                        $html .= "<div style='padding:2px 0;'>{$label}" . ($desc ? " — {$desc}" : '') . '</div>';
+
+                                        // Show NeoInsurance payment links (admin only)
+                                        $meta = $doc->metadata;
+                                        if (! empty($meta['neo_order_id'])) {
+                                            $html .= "<div style='padding:2px 0 6px 12px; font-size:12px;'>";
+                                            $html .= "<strong>NeoInsurance PTN:</strong> {$meta['neo_order_id']}";
+                                            if (! empty($meta['neo_click_url'])) {
+                                                $html .= " &nbsp; <a href=\"" . e($meta['neo_click_url']) . "\" target=\"_blank\" style='color:#2563eb;'>Click оплата</a>";
+                                            }
+                                            if (! empty($meta['neo_payme_url'])) {
+                                                $html .= " &nbsp; <a href=\"" . e($meta['neo_payme_url']) . "\" target=\"_blank\" style='color:#2563eb;'>Payme оплата</a>";
+                                            }
+                                            $html .= '</div>';
+                                        }
+                                    }
+                                } elseif (empty($risks)) {
+                                    $html = '<span style="color:#888;">No insurance selected</span>';
+                                } else {
+                                    $html .= '<span style="color:#888;">Documents not yet generated (awaiting 30% payment)</span>';
+                                }
+
+                                return new HtmlString($html ?: '—');
+                            })
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 }

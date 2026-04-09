@@ -10,13 +10,15 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * NeoInsurance Travel API integration.
+ * NeoInsurance Travel-Risk API integration.
+ *
+ * Endpoints (travel-risk-neo):
+ *   GET  /api/travel-risk-neo/get-data    — risk options (accident, luggage, etc.)
+ *   POST /api/travel-risk-neo/calculator  — calculate premium for selected risks
+ *   POST /api/travel-risk-neo/save        — create policy, returns order_id + payment URLs
  *
  * Endpoints (travel-neo):
  *   GET  /api/travel-neo/get-data         — countries, tariffs, purposes, exchange rates
- *   POST /api/travel-neo/calculator-total  — calculate premium for trip
- *   POST /api/travel-neo/save-polis        — create policy, returns payment URLs
- *   POST /api/travel-neo/checkPolis        — check policy status
  */
 class NeoInsuranceService
 {
@@ -24,6 +26,15 @@ class NeoInsuranceService
     private string $username;
     private string $password;
     private bool $configured;
+
+    /** Available risk types for the booking page. */
+    public const RISK_TYPES = [
+        'accident' => ['name_en' => 'Accident Insurance', 'name_ru' => 'Страхование от несчастного случая'],
+        'luggage' => ['name_en' => 'Luggage Insurance', 'name_ru' => 'Страхование багажа'],
+        'cancel_travel' => ['name_en' => 'Trip Cancellation', 'name_ru' => 'Отмена поездки'],
+        'person_respon' => ['name_en' => 'Personal Liability', 'name_ru' => 'Гражданская ответственность'],
+        'delay_travel' => ['name_en' => 'Travel Delay', 'name_ru' => 'Задержка рейса'],
+    ];
 
     public function __construct()
     {
@@ -39,31 +50,41 @@ class NeoInsuranceService
     }
 
     /**
-     * Get countries, tariffs, purposes, exchange rates.
+     * Get risk options from API (cached 24h).
      */
-    public function getData(): ?array
+    public function getRiskData(): ?array
     {
         if (! $this->configured) {
             return null;
         }
 
-        return Cache::remember('neoinsurance_data', 86400, function () {
-            $response = $this->get('/api/travel-neo/get-data');
-            return $response['data'] ?? $response;
+        return Cache::remember('neoinsurance_risk_data', 86400, function () {
+            $response = $this->get('/api/travel-risk-neo/get-data');
+            return $response['response'] ?? null;
         });
     }
 
     /**
-     * Calculate insurance premium.
-     *
-     * @param string $beginDate DD-MM-YYYY
-     * @param string $endDate DD-MM-YYYY
-     * @param array $countryCodes e.g. ['TR', 'FR']
-     * @param array $travelerBirthDates e.g. ['16-12-2001']
-     * @param array $risks e.g. ['accident' => 1, 'luggage' => 0, ...]
-     * @return array|null Array of programs with prices
+     * Get country list from travel-neo endpoint (cached 24h).
      */
-    public function calculatePremium(
+    public function getCountries(): array
+    {
+        if (! $this->configured) {
+            return [];
+        }
+
+        return Cache::remember('neoinsurance_countries', 86400, function () {
+            $response = $this->get('/api/travel-neo/get-data');
+            return $response['response']['country'] ?? [];
+        });
+    }
+
+    /**
+     * Calculate risk insurance premium.
+     *
+     * @return array|null {amount, amount_valyuta, forign_amount, forign_amount_valyuta}
+     */
+    public function calculateRiskPremium(
         string $beginDate,
         string $endDate,
         array $countryCodes,
@@ -74,13 +95,13 @@ class NeoInsuranceService
             'begin_date' => $beginDate,
             'end_date' => $endDate,
             'countries' => $countryCodes,
-            'purpose_id' => 1, // Travel
+            'purpose_id' => 1,
             'kop_martali' => false,
             'is_family' => false,
             'has_covid' => false,
             'travelers' => $travelerBirthDates,
             'risklar' => array_merge([
-                'accident' => 1,
+                'accident' => 0,
                 'luggage' => 0,
                 'cancel_travel' => 0,
                 'person_respon' => 0,
@@ -88,7 +109,7 @@ class NeoInsuranceService
             ], $risks),
         ];
 
-        $response = $this->post('/api/travel-neo/calculator-total', $payload);
+        $response = $this->post('/api/travel-risk-neo/calculator', $payload);
 
         if (! $response || ! ($response['result'] ?? false)) {
             return null;
@@ -98,69 +119,164 @@ class NeoInsuranceService
     }
 
     /**
-     * Create and save insurance policy. Returns order_id + payment URLs.
+     * Create insurance policy for a booking via travel-risk-neo/save.
+     *
+     * Called at document generation time (30% payment).
+     * Returns {order_id, click, payme} on success, null on failure.
      */
-    public function savePolicy(array $policyData): ?array
+    public function createPolicyForBooking(Booking $booking): ?array
     {
-        $response = $this->post('/api/travel-neo/save-polis', $policyData);
+        $booking->loadMissing(['tourists', 'order.user', 'bookable']);
+
+        $risks = $booking->insurance_risks;
+        if (empty($risks) || ! is_array($risks)) {
+            return null;
+        }
+
+        // Build risk flags — at least one must be selected
+        $riskFlags = [
+            'accident' => in_array('accident', $risks) ? 1 : 0,
+            'luggage' => in_array('luggage', $risks) ? 1 : 0,
+            'cancel_travel' => in_array('cancel_travel', $risks) ? 1 : 0,
+            'person_respon' => in_array('person_respon', $risks) ? 1 : 0,
+            'delay_travel' => in_array('delay_travel', $risks) ? 1 : 0,
+        ];
+
+        if (array_sum($riskFlags) === 0) {
+            return null;
+        }
+
+        $dates = $this->resolveTravelDates($booking);
+        if (! $dates) {
+            return null;
+        }
+
+        $countryCodes = $this->resolveCountryCodes($booking);
+        if (empty($countryCodes)) {
+            return null;
+        }
+
+        $firstTourist = $booking->tourists->first();
+        if (! $firstTourist) {
+            return null;
+        }
+
+        $sugurtalovchi = $this->buildPolicyholder($firstTourist, $booking->order->user?->phone);
+        $travelers = $booking->tourists->map(fn (Tourist $t) => $this->buildTraveler($t))->values()->all();
+
+        $payload = [
+            'begin_date' => $dates['begin'],
+            'end_date' => $dates['end'],
+            'countries' => $countryCodes,
+            'purpose_id' => 1,
+            'kop_martali' => false,
+            'is_family' => false,
+            'has_covid' => false,
+            'risklar' => $riskFlags,
+            'sugurtalovchi' => $sugurtalovchi,
+            'travelers' => $travelers,
+        ];
+
+        $response = $this->post('/api/travel-risk-neo/save', $payload);
 
         if (! $response || ! ($response['result'] ?? false)) {
-            Log::error('NeoInsurance save-polis failed', [
+            Log::error('NeoInsurance policy creation failed', [
+                'booking_id' => $booking->id,
                 'message' => $response['message'] ?? 'Unknown error',
             ]);
             return null;
         }
 
-        return $response['response'] ?? null;
-    }
+        $result = $response['response'] ?? [];
+        $orderId = $result['order_id'] ?? null;
 
-    /**
-     * Check policy status by order ID.
-     */
-    public function checkPolicy(int $orderId): ?array
-    {
-        $response = $this->post('/api/travel-neo/checkPolis', [
-            'order_id' => $orderId,
+        Log::info('NeoInsurance policy created', [
+            'booking_id' => $booking->id,
+            'neo_order_id' => $orderId,
         ]);
 
-        return $response;
+        return $result ?: null;
     }
 
-    /**
-     * Get insurance options formatted for booking page display.
-     * Returns array of programs with USD prices.
-     */
-    public function getInsuranceOptionsForBooking(
-        string $departureDate,
-        string $returnDate,
-        array $countryCodes,
-        int $travelerCount = 1,
-    ): array {
-        // Use a dummy birth date for calculation (adult)
-        $travelerDates = array_fill(0, $travelerCount, '01-01-1990');
+    private function resolveTravelDates(Booking $booking): ?array
+    {
+        $bookable = $booking->bookable;
 
-        $beginDate = date('d-m-Y', strtotime($departureDate));
-        $endDate = date('d-m-Y', strtotime($returnDate));
-
-        $programs = $this->calculatePremium($beginDate, $endDate, $countryCodes, $travelerDates);
-
-        if (! $programs || ! is_array($programs)) {
-            return [];
+        if ($bookable instanceof \App\Models\FlightPath) {
+            return [
+                'begin' => $bookable->departure_date->format('d-m-Y'),
+                'end' => $bookable->departure_date->copy()->addDays($bookable->nights)->format('d-m-Y'),
+            ];
         }
 
-        return collect($programs)->map(function ($program) use ($departureDate, $returnDate) {
+        if ($bookable instanceof \App\Models\Hotel) {
+            $checkIn = $booking->date;
+            if (! $checkIn) {
+                return null;
+            }
+            $nights = $booking->hotels->first()?->pivot->nights ?? 7;
             return [
-                'id' => 'neo_program_' . ($program['program_id'] ?? 0),
-                'program_id' => $program['program_id'] ?? 0,
-                'name' => $program['program_name'] ?? 'Insurance',
-                'price_usd' => (float) ($program['prem_usd'] ?? 0),
-                'price_uzs' => (int) ($program['prem_uzs'] ?? 0),
-                'currency' => 'USD',
-                'is_per_person' => true,
-                'period' => $departureDate . ' — ' . $returnDate,
-                'source' => 'neoinsurance',
+                'begin' => $checkIn->format('d-m-Y'),
+                'end' => $checkIn->copy()->addDays($nights)->format('d-m-Y'),
             ];
-        })->all();
+        }
+
+        return null;
+    }
+
+    private function resolveCountryCodes(Booking $booking): array
+    {
+        $bookable = $booking->bookable;
+
+        if ($bookable instanceof \App\Models\FlightPath) {
+            $bookable->loadMissing('stays.city.country');
+            return $bookable->stays
+                ->map(fn ($s) => $s->city?->country?->code)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if ($bookable instanceof \App\Models\Hotel) {
+            $bookable->loadMissing('city.country');
+            $code = $bookable->city?->country?->code;
+            return $code ? [$code] : [];
+        }
+
+        return [];
+    }
+
+    private function buildPolicyholder(Tourist $tourist, ?string $phone): array
+    {
+        return [
+            'type' => 2, // foreign citizen (0 = UZ citizen, needs pinfl)
+            'last_name' => strtoupper($tourist->last_name),
+            'first_name' => strtoupper($tourist->first_name),
+            'middle_name' => strtoupper($tourist->middle_name ?? $tourist->first_name),
+            'gender' => $tourist->gender === 'female' ? 2 : 1,
+            'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '01-01-1990',
+            'passportSeries' => $tourist->passport_series ?? substr($tourist->passport_number ?? 'AA', 0, 2),
+            'passportNumber' => $tourist->passport_number ?? '0000000',
+            'address' => 'Tashkent, Uzbekistan',
+            'phone' => $phone ?? '+998919777735',
+            'country_id' => 182, // Uzbekistan
+        ];
+    }
+
+    private function buildTraveler(Tourist $tourist): array
+    {
+        return [
+            'last_name' => strtoupper($tourist->last_name),
+            'first_name' => strtoupper($tourist->first_name),
+            'middle_name' => strtoupper($tourist->middle_name ?? $tourist->first_name),
+            'gender' => $tourist->gender === 'female' ? 2 : 1,
+            'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '01-01-1990',
+            'passport' => ($tourist->passport_series ?? '') . ($tourist->passport_number ?? ''),
+            'pinfl' => '00000000000000',
+            'address' => 'Tashkent, Uzbekistan',
+            'phone' => '+998919777735',
+        ];
     }
 
     // ── HTTP helpers ──

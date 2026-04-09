@@ -22,6 +22,7 @@ class Booking extends Model
         'status',
         'price',
         'date',
+        'insurance_risks',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class Booking extends Model
         return [
             'price' => 'decimal:2',
             'date' => 'date',
+            'insurance_risks' => 'array',
         ];
     }
 
