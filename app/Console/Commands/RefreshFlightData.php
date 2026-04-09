@@ -67,17 +67,14 @@ class RefreshFlightData extends Command
             foreach ($offers as $offer) {
                 $num = $this->normalizeFlightNumber($offer->flightNumber);
                 $offersByNumber[$num] = $offer;
-                $this->line("    API offer: #{$offer->flightNumber} → normalized: [{$num}] $" . ($offer->priceCents / 100));
             }
 
             foreach ($groupFlights as $flight) {
-                $rawNum = $flight->flight_number;
-                $num = $this->normalizeFlightNumber($rawNum);
-                $this->line("    DB flight: #{$rawNum} → normalized: [{$num}]");
+                $num = $this->normalizeFlightNumber($flight->flight_number);
                 $offer = $offersByNumber[$num] ?? null;
 
                 if (! $offer) {
-                    $this->warn("    ✗ {$rawNum} — not found in API (keys: " . implode(', ', array_keys($offersByNumber)) . ")");
+                    $this->warn("    {$airlineCode} {$flight->flight_number} — not found");
                     $failed++;
                     continue;
                 }
