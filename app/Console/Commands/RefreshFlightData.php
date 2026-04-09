@@ -130,8 +130,17 @@ class RefreshFlightData extends Command
      */
     private function normalizeFlightNumber(string $flightNumber): string
     {
-        // Remove airline code prefix and spaces, keep only digits
-        $num = preg_replace('/^[A-Z0-9]{2}\s*/i', '', trim($flightNumber));
-        return ltrim($num, '0') ?: '0';
+        $trimmed = trim($flightNumber);
+
+        // If contains a space, take everything after the last space
+        // "TK 1813" → "1813", "J2 76" → "76"
+        if (str_contains($trimmed, ' ')) {
+            $trimmed = substr($trimmed, strrpos($trimmed, ' ') + 1);
+        }
+
+        // If starts with letters, strip them: "TK1813" → "1813"
+        $trimmed = preg_replace('/^[A-Z]+/i', '', $trimmed);
+
+        return $trimmed ?: $flightNumber;
     }
 }
