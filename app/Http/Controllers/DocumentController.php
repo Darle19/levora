@@ -11,7 +11,13 @@ class DocumentController extends Controller
     {
         $order = $document->booking->order;
 
-        $this->authorize('view', $order);
+        // Admins can always download; agents need authorization
+        $user = auth()->user();
+        $isAdmin = $user && $user->hasAnyRole(['administrator', 'manager']);
+
+        if (! $isAdmin) {
+            $this->authorize('view', $order);
+        }
 
         // Validate file path to prevent path traversal
         $expectedPrefix = "documents/{$order->id}/";
@@ -19,7 +25,7 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if (!$order->isFullyPaid()) {
+        if (! $isAdmin && !$order->isFullyPaid()) {
             abort(403, __('messages.doc_locked_message'));
         }
 

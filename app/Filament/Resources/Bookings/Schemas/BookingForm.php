@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Bookings\Schemas;
 
 use App\Models\Booking;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -158,6 +159,14 @@ class BookingForm
 
                 Section::make('Insurance & Documents')
                     ->schema([
+                        CheckboxList::make('insurance_risks')
+                            ->label('Insurance Risks')
+                            ->options(collect(\App\Services\NeoInsuranceService::RISK_TYPES)->mapWithKeys(
+                                fn ($info, $key) => [$key => $info['name_en'] . ' / ' . $info['name_ru']]
+                            )->all())
+                            ->columns(3)
+                            ->columnSpanFull(),
+
                         Placeholder::make('insurance_info')
                             ->label('')
                             ->content(function (?Booking $record) {
@@ -176,31 +185,38 @@ class BookingForm
                                     $html .= "<div style='margin-bottom:8px;'><strong>Insurance risks:</strong> {$riskLabels}</div>";
                                 }
 
-                                // Documents with NeoInsurance payment links
+                                // Documents with download links and NeoInsurance payment links
                                 $docs = $record->documents()->with('tourist')->get();
                                 if ($docs->isNotEmpty()) {
                                     $html .= '<div style="margin-bottom:6px;"><strong>Documents:</strong></div>';
+                                    $html .= '<table style="font-size:13px; border-collapse:collapse; width:100%;">';
                                     foreach ($docs as $doc) {
-                                        $label = $doc->getTypeLabel();
-                                        $desc = $doc->getDescription();
-                                        $html .= "<div style='padding:2px 0;'>{$label}" . ($desc ? " — {$desc}" : '') . '</div>';
+                                        $label = e($doc->getTypeLabel());
+                                        $desc = e($doc->getDescription());
+                                        $downloadUrl = url("/documents/{$doc->id}/download");
 
-                                        // Show NeoInsurance payment links (admin only)
+                                        $html .= '<tr style="border-bottom:1px solid #e5e7eb;">';
+                                        $html .= "<td style='padding:4px 8px 4px 0;'>{$label}" . ($desc ? " — {$desc}" : '') . '</td>';
+                                        $html .= "<td style='padding:4px 0;'><a href=\"{$downloadUrl}\" target=\"_blank\" style='color:#2563eb; text-decoration:underline;'>Download</a></td>";
+
+                                        // NeoInsurance payment links
                                         $meta = $doc->metadata;
                                         if (! empty($meta['neo_order_id'])) {
-                                            $html .= "<div style='padding:2px 0 6px 12px; font-size:12px;'>";
-                                            $html .= "<strong>NeoInsurance PTN:</strong> {$meta['neo_order_id']}";
+                                            $html .= "<td style='padding:4px 0 4px 12px; font-size:12px;'>";
+                                            $html .= "PTN: {$meta['neo_order_id']}";
                                             if (! empty($meta['neo_click_url'])) {
-                                                $html .= " &nbsp; <a href=\"" . e($meta['neo_click_url']) . "\" target=\"_blank\" style='color:#2563eb;'>Click оплата</a>";
+                                                $html .= " &nbsp;<a href=\"" . e($meta['neo_click_url']) . "\" target=\"_blank\" style='color:#059669;'>Click</a>";
                                             }
                                             if (! empty($meta['neo_payme_url'])) {
-                                                $html .= " &nbsp; <a href=\"" . e($meta['neo_payme_url']) . "\" target=\"_blank\" style='color:#2563eb;'>Payme оплата</a>";
+                                                $html .= " &nbsp;<a href=\"" . e($meta['neo_payme_url']) . "\" target=\"_blank\" style='color:#059669;'>Payme</a>";
                                             }
-                                            $html .= '</div>';
+                                            $html .= '</td>';
                                         }
+                                        $html .= '</tr>';
                                     }
+                                    $html .= '</table>';
                                 } elseif (empty($risks)) {
-                                    $html = '<span style="color:#888;">No insurance selected</span>';
+                                    $html .= '<span style="color:#888;">No insurance selected</span>';
                                 } else {
                                     $html .= '<span style="color:#888;">Documents not yet generated (awaiting 30% payment)</span>';
                                 }
