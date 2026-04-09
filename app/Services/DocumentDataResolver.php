@@ -60,7 +60,7 @@ class DocumentDataResolver
         }
 
         // Flights
-        $flights = $fp->legs->sortBy('leg_order')->map(function ($leg) {
+        $flights = $fp->legs->sortBy('leg_order')->map(function ($leg) use ($booking) {
             $f = $leg->flight;
             return (object) [
                 'date' => $f->departure_date,
