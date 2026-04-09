@@ -16,8 +16,8 @@ class RefreshFlightData extends Command
     private const SKIP_AIRLINES = ['C2']; // Centrum Air
 
     /** Only consider flights departing in this window */
-    private const DEP_TIME_MIN = '09:00';
-    private const DEP_TIME_MAX = '16:00';
+    private const DEP_TIME_MIN = '04:00';
+    private const DEP_TIME_MAX = '17:00';
 
     public function handle(RapidApiFlightProvider $provider): int
     {
