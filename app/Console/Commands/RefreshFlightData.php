@@ -15,6 +15,10 @@ class RefreshFlightData extends Command
     /** Airlines not available in Google Flights (charters, etc.) */
     private const SKIP_AIRLINES = ['C2']; // Centrum Air
 
+    /** Only consider flights departing in this window */
+    private const DEP_TIME_MIN = '09:00';
+    private const DEP_TIME_MAX = '16:00';
+
     public function handle(RapidApiFlightProvider $provider): int
     {
         $days = (int) $this->option('days');
@@ -62,29 +66,34 @@ class RefreshFlightData extends Command
                 continue;
             }
 
-            // Build lookup by flight number (numeric part only)
-            $offersByNumber = [];
-            foreach ($offers as $offer) {
-                $num = $this->normalizeFlightNumber($offer->flightNumber);
-                $offersByNumber[$num] = $offer;
+            // Filter: daytime flights only (09:00–16:00), then pick cheapest
+            $daytimeOffers = array_filter($offers, function ($offer) {
+                $depHour = $offer->departureAt->format('H:i');
+                return $depHour >= self::DEP_TIME_MIN && $depHour <= self::DEP_TIME_MAX;
+            });
+
+            if (empty($daytimeOffers)) {
+                $this->warn("    No daytime flights (09:00–16:00).");
+                $failed += $groupFlights->count();
+                continue;
             }
 
+            // Sort by price, pick cheapest
+            usort($daytimeOffers, fn ($a, $b) => $a->priceCents <=> $b->priceCents);
+            $best = $daytimeOffers[0];
+
+            $depTime = $best->departureAt->format('H:i:s');
+            $arrTime = $best->arrivalAt->format('H:i:s');
+            $arrDate = $best->arrivalAt->format('Y-m-d');
+            $price = $best->priceCents / 100;
+            $bestNum = $best->flightNumber;
+
+            // Update all flights in this group with the best daytime offer
             foreach ($groupFlights as $flight) {
-                $num = $this->normalizeFlightNumber($flight->flight_number);
-                $offer = $offersByNumber[$num] ?? null;
-
-                if (! $offer) {
-                    $this->warn("    {$airlineCode} {$flight->flight_number} — not found");
-                    $failed++;
-                    continue;
-                }
-
-                $depTime = $offer->departureAt->format('H:i:s');
-                $arrTime = $offer->arrivalAt->format('H:i:s');
-                $arrDate = $offer->arrivalAt->format('Y-m-d');
-                $price = $offer->priceCents / 100;
-
                 $changes = [];
+                if ($flight->flight_number !== $bestNum) {
+                    $changes[] = "flight: {$flight->flight_number}→{$bestNum}";
+                }
                 if ($flight->departure_time !== $depTime) {
                     $changes[] = "dep: {$flight->departure_time}→{$depTime}";
                 }
@@ -96,6 +105,7 @@ class RefreshFlightData extends Command
                 }
 
                 $flight->update([
+                    'flight_number' => $bestNum,
                     'departure_time' => $depTime,
                     'arrival_time' => $arrTime,
                     'arrival_date' => $arrDate,
@@ -103,14 +113,14 @@ class RefreshFlightData extends Command
                 ]);
 
                 if (! empty($changes)) {
-                    $this->info("    {$airlineCode} {$flight->flight_number}: " . implode(', ', $changes));
+                    $this->info("    {$airlineCode} {$bestNum}: " . implode(', ', $changes));
                     $updated++;
                 } else {
-                    $this->line("    {$airlineCode} {$flight->flight_number}: no changes");
+                    $this->line("    {$airlineCode} {$bestNum}: no changes");
                 }
             }
 
-            // Rate limit — avoid hammering the API
+            // Rate limit
             usleep(500_000);
         }
 
@@ -119,25 +129,5 @@ class RefreshFlightData extends Command
         Log::info('flights:refresh completed', compact('updated', 'failed'));
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Extract numeric part from flight number.
-     * "TK 1813" → "1813", "501" → "501", "J2 76" → "76"
-     */
-    private function normalizeFlightNumber(string $flightNumber): string
-    {
-        $trimmed = trim($flightNumber);
-
-        // If contains a space, take everything after the last space
-        // "TK 1813" → "1813", "J2 76" → "76"
-        if (str_contains($trimmed, ' ')) {
-            $trimmed = substr($trimmed, strrpos($trimmed, ' ') + 1);
-        }
-
-        // If starts with letters, strip them: "TK1813" → "1813"
-        $trimmed = preg_replace('/^[A-Z]+/i', '', $trimmed);
-
-        return $trimmed ?: $flightNumber;
     }
 }
