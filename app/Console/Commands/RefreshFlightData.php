@@ -62,15 +62,15 @@ class RefreshFlightData extends Command
                 continue;
             }
 
-            // Build lookup by flight number
+            // Build lookup by flight number (numeric part only)
             $offersByNumber = [];
             foreach ($offers as $offer) {
-                $num = ltrim($offer->flightNumber, '0');
+                $num = $this->normalizeFlightNumber($offer->flightNumber);
                 $offersByNumber[$num] = $offer;
             }
 
             foreach ($groupFlights as $flight) {
-                $num = ltrim($flight->flight_number, '0');
+                $num = $this->normalizeFlightNumber($flight->flight_number);
                 $offer = $offersByNumber[$num] ?? null;
 
                 if (! $offer) {
@@ -119,5 +119,16 @@ class RefreshFlightData extends Command
         Log::info('flights:refresh completed', compact('updated', 'failed'));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Extract numeric part from flight number.
+     * "TK 1813" → "1813", "501" → "501", "J2 76" → "76"
+     */
+    private function normalizeFlightNumber(string $flightNumber): string
+    {
+        // Remove airline code prefix and spaces, keep only digits
+        $num = preg_replace('/^[A-Z0-9]{2}\s*/i', '', trim($flightNumber));
+        return ltrim($num, '0') ?: '0';
     }
 }
