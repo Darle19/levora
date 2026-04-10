@@ -58,8 +58,8 @@
             </td>
             <td>
                 Класс ЭКОНОМИЧЕСКИЙ<br>
-                Baggage {{ $f->baggage }}<br>
-                Базовый тариф IT
+                Багаж {{ $f->baggage }}<br>
+                Базовый тариф
             </td>
         </tr>
         @endforeach
@@ -70,9 +70,9 @@
 <table class="info-table">
     <tr><td>Форма оплаты</td><td><strong>НАЛИЧНЫЕ</strong></td></tr>
     <tr><td>Передаточные надписи в билете</td><td>PF{{ $tourist->passport_number }}/NON REF</td></tr>
-    <tr><td>Тариф</td><td>IT</td></tr>
-    <tr><td>Налоги / пошлины / сборы</td><td></td></tr>
-    <tr><td>Общая стоимость</td><td>USD IT</td></tr>
+    <tr><td>Тариф</td><td>Включён</td></tr>
+    <tr><td>Налоги / пошлины / сборы</td><td>Включены</td></tr>
+    <tr><td>Общая стоимость</td><td>Включена в стоимость тура</td></tr>
 </table>
 
 <div class="disclaimer">

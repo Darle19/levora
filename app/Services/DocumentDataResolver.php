@@ -76,7 +76,7 @@ class DocumentDataResolver
                 'class_type' => ucfirst($f->class_type ?? 'economy'),
                 'class_code' => strtoupper(substr($f->class_type ?? 'economy', 0, 1)),
                 'seats' => $booking->tourists->count(),
-                'baggage' => ($f->airline->baggage_fee ?? 0) > 0 ? '1PC 20 kg' : '—',
+                'baggage' => '1PC 20 kg',
                 'direction' => $leg->direction,
             ];
         });
