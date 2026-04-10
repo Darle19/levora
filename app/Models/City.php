@@ -21,6 +21,8 @@ class City extends Model
         'code',
         'is_active',
         'is_departure',
+        'agent_phone',
+        'agent_name',
     ];
 
     protected function casts(): array

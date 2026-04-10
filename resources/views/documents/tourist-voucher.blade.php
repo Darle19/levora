@@ -40,7 +40,13 @@
     {{ $departure_date?->format('d.m.Y') ?? '' }}
 </div>
 
-@if($destination_country)
+@if(isset($city_contacts) && $city_contacts->isNotEmpty())
+<div class="hotline">
+    @foreach($city_contacts as $cc)
+        {{ $cc->city }}@if($cc->agent_name) ({{ $cc->agent_name }})@endif: {{ $cc->agent_phone }}<br>
+    @endforeach
+</div>
+@elseif($destination_country)
 <div class="hotline">{{ $destination_country }} Destination Hotline Number: +998 91 977 77 35</div>
 @endif
 

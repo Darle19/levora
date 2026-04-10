@@ -133,6 +133,19 @@ class DocumentDataResolver
 
         $lastCity = $fp->stays->sortByDesc('stay_order')->first();
 
+        // City contacts (local agents)
+        $cityContacts = $fp->stays->map(function ($stay) {
+            $city = $stay->city;
+            if (! $city || ! $city->agent_phone) {
+                return null;
+            }
+            return (object) [
+                'city' => $city->name_en,
+                'agent_name' => $city->agent_name,
+                'agent_phone' => $city->agent_phone,
+            ];
+        })->filter()->values();
+
         return [
             'type' => 'flight_path',
             'flight_path' => $fp,
@@ -140,6 +153,7 @@ class DocumentDataResolver
             'hotels' => $hotels,
             'transfers' => $transfers,
             'insurances' => $insurances,
+            'city_contacts' => $cityContacts,
             'departure_date' => $fp->departure_date,
             'return_date' => $fp->departure_date->copy()->addDays($fp->nights),
             'total_nights' => $fp->nights,
@@ -176,12 +190,22 @@ class DocumentDataResolver
             'email' => $hotel->email ?? '',
         ]];
 
+        $cityContacts = collect();
+        if ($hotel->city && $hotel->city->agent_phone) {
+            $cityContacts->push((object) [
+                'city' => $hotel->city->name_en,
+                'agent_name' => $hotel->city->agent_name,
+                'agent_phone' => $hotel->city->agent_phone,
+            ]);
+        }
+
         return [
             'type' => 'hotel',
             'flights' => collect(),
             'hotels' => $hotels,
             'transfers' => collect(),
             'insurances' => collect(),
+            'city_contacts' => $cityContacts,
             'departure_date' => $checkIn,
             'return_date' => $checkOut,
             'total_nights' => $nights,
@@ -198,6 +222,7 @@ class DocumentDataResolver
             'hotels' => [],
             'transfers' => collect(),
             'insurances' => collect(),
+            'city_contacts' => collect(),
             'departure_date' => null,
             'return_date' => null,
             'total_nights' => 0,
