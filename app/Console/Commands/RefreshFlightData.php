@@ -46,37 +46,51 @@ class RefreshFlightData extends Command
 
         $updated = 0;
         $failed = 0;
-        $processed = [];
 
-        // Process RT pairs first
+        // Group flights by route+date+airline (shared between RT and OW logic)
+        $groupKey = fn (Flight $f) => $f->fromAirport->code . '-' . $f->toAirport->code . '-' . $f->departure_date->format('Y-m-d') . '-' . $f->airline->code;
+        $allGroups = $flights->groupBy($groupKey);
+
+        // Build set of group keys that are part of RT pairs
+        $rtGroupKeys = [];
+        $processedRtGroups = [];
+
         foreach ($rtPairs as $outboundId => $returnId) {
-            if (in_array($outboundId, $processed) || in_array($returnId, $processed)) {
-                continue;
-            }
             $outbound = $flights->get($outboundId);
             $return = $flights->get($returnId);
             if (! $outbound || ! $return) {
                 continue;
             }
-
-            $result = $this->processRoundTripPair($outbound, $return, $provider);
-            $updated += $result['updated'];
-            $failed += $result['failed'];
-            $processed[] = $outboundId;
-            $processed[] = $returnId;
+            $outKey = $groupKey($outbound);
+            $retKey = $groupKey($return);
+            $rtGroupKeys[$outKey] = $retKey;
         }
 
-        // Group remaining flights by route+date+airline and process as one-way
-        $remaining = $flights->reject(fn ($f) => in_array($f->id, $processed));
-        $groups = $remaining->groupBy(function (Flight $f) {
-            return $f->fromAirport->code . '-' . $f->toAirport->code . '-' . $f->departure_date->format('Y-m-d') . '-' . $f->airline->code;
-        });
+        // Process RT group pairs
+        foreach ($rtGroupKeys as $outKey => $retKey) {
+            if (in_array($outKey, $processedRtGroups) || in_array($retKey, $processedRtGroups)) {
+                continue;
+            }
+            $outboundFlights = $allGroups->get($outKey, collect());
+            $returnFlights = $allGroups->get($retKey, collect());
+            if ($outboundFlights->isEmpty() || $returnFlights->isEmpty()) {
+                continue;
+            }
 
-        $this->info("Refreshing " . count($processed) . " flights in " . count($rtPairs) . " RT pair(s) + " . $remaining->count() . " flights in " . $groups->count() . " one-way call(s)...");
-        $this->line("  [debug] processed IDs: " . implode(',', $processed));
-        $this->line("  [debug] remaining IDs: " . $remaining->pluck('id')->implode(','));
+            $result = $this->processRoundTripGroup($outboundFlights, $returnFlights, $provider);
+            $updated += $result['updated'];
+            $failed += $result['failed'];
+            $processedRtGroups[] = $outKey;
+            $processedRtGroups[] = $retKey;
+        }
 
-        foreach ($groups as $groupFlights) {
+        // Process remaining groups as one-way (exclude RT-processed groups)
+        $owGroups = $allGroups->reject(fn ($_, $key) => in_array($key, $processedRtGroups));
+
+        $rtFlightCount = $flights->count() - $owGroups->flatten()->count();
+        $this->info("Refreshing {$rtFlightCount} flights in " . (count($processedRtGroups) / 2) . " RT pair(s) + " . $owGroups->flatten()->count() . " flights in " . $owGroups->count() . " one-way call(s)...");
+
+        foreach ($owGroups as $groupFlights) {
             $result = $this->processOneWayGroup($groupFlights, $provider);
             $updated += $result['updated'];
             $failed += $result['failed'];
@@ -128,13 +142,18 @@ class RefreshFlightData extends Command
         return $pairs;
     }
 
-    private function processRoundTripPair(Flight $outbound, Flight $return, RapidApiFlightProvider $provider): array
+    /**
+     * Process a round-trip group pair: apply RT pricing to ALL flights in both groups.
+     */
+    private function processRoundTripGroup($outboundFlights, $returnFlights, RapidApiFlightProvider $provider): array
     {
-        $origin = $outbound->fromAirport->code;
-        $destination = $outbound->toAirport->code;
-        $depDate = $outbound->departure_date->format('Y-m-d');
-        $retDate = $return->departure_date->format('Y-m-d');
-        $airlineCode = $outbound->airline->code;
+        $sampleOut = $outboundFlights->first();
+        $sampleRet = $returnFlights->first();
+        $origin = $sampleOut->fromAirport->code;
+        $destination = $sampleOut->toAirport->code;
+        $depDate = $sampleOut->departure_date->format('Y-m-d');
+        $retDate = $sampleRet->departure_date->format('Y-m-d');
+        $airlineCode = $sampleOut->airline->code;
 
         $this->line("  RT: {$origin}↔{$destination} {$depDate}/{$retDate} [{$airlineCode}]...");
 
@@ -142,68 +161,43 @@ class RefreshFlightData extends Command
         $offers = $provider->searchRoundTripOutbound($origin, $destination, $depDate, $retDate, 1, $airlineCode);
 
         if (empty($offers)) {
-            $this->warn("    RT API empty, falling back to one-way pair.");
-            return $this->processOneWayPairFallback($outbound, $return, $provider);
+            $this->warn("    RT API empty, falling back to one-way.");
+            $r1 = $this->processOneWayGroup($outboundFlights, $provider);
+            $r2 = $this->processOneWayGroup($returnFlights, $provider);
+            return ['updated' => $r1['updated'] + $r2['updated'], 'failed' => $r1['failed'] + $r2['failed']];
         }
 
         $best = $this->pickCheapestDaytime($offers);
         if (! $best) {
             $this->warn("    No daytime flights in RT result.");
-            return ['updated' => 0, 'failed' => 2];
+            return ['updated' => 0, 'failed' => $outboundFlights->count() + $returnFlights->count()];
         }
 
         // $best->priceCents is the RT total (full round trip for 1 adult).
         // Split evenly: half on outbound, half on return.
         $rtTotalCents = $best->priceCents;
-        $halfCents = (int) round($rtTotalCents / 2);
-        $halfPrice = $halfCents / 100;
+        $halfPrice = round($rtTotalCents / 2 / 100, 2);
 
-        // Update outbound: time + number from API, price = half
-        $outbound->update([
-            'flight_number' => $best->flightNumber,
-            'departure_time' => $best->departureAt->format('H:i:s'),
-            'arrival_time' => $best->arrivalAt->format('H:i:s'),
-            'arrival_date' => $best->arrivalAt->format('Y-m-d'),
-            'price_adult' => $halfPrice,
-        ]);
-
-        // Update return: only price (times/number kept as-is since RT response has no return leg data)
-        $return->update(['price_adult' => $halfPrice]);
-
-        $this->info("    ✓ {$airlineCode} RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg)");
-
-        return ['updated' => 2, 'failed' => 0];
-    }
-
-    /**
-     * Fallback: when RT API returns empty, use two one-way searches BUT
-     * record the price on outbound only, set return to 0, so the sum is still one-way level.
-     * Actually use two one-ways summed (closest approximation without RT data).
-     */
-    private function processOneWayPairFallback(Flight $outbound, Flight $return, RapidApiFlightProvider $provider): array
-    {
-        $updated = 0;
-        $failed = 0;
-
-        foreach ([$outbound, $return] as $flight) {
-            $offers = $provider->search(
-                $flight->fromAirport->code,
-                $flight->toAirport->code,
-                $flight->departure_date->format('Y-m-d'),
-                1,
-                $flight->airline->code,
-            );
-
-            $best = $this->pickCheapestDaytime($offers);
-            if (! $best) {
-                $failed++;
-                continue;
-            }
-            $this->updateFlight($flight, $best);
-            $updated++;
+        // Update all outbound flights: time + number from API, price = half
+        foreach ($outboundFlights as $f) {
+            $f->update([
+                'flight_number' => $best->flightNumber,
+                'departure_time' => $best->departureAt->format('H:i:s'),
+                'arrival_time' => $best->arrivalAt->format('H:i:s'),
+                'arrival_date' => $best->arrivalAt->format('Y-m-d'),
+                'price_adult' => $halfPrice,
+            ]);
         }
 
-        return ['updated' => $updated, 'failed' => $failed];
+        // Update all return flights: only price (times/number unchanged)
+        foreach ($returnFlights as $f) {
+            $f->update(['price_adult' => $halfPrice]);
+        }
+
+        $count = $outboundFlights->count() + $returnFlights->count();
+        $this->info("    ✓ {$airlineCode} RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg, {$count} flight(s) updated)");
+
+        return ['updated' => $count, 'failed' => 0];
     }
 
     private function processOneWayGroup($groupFlights, RapidApiFlightProvider $provider): array
