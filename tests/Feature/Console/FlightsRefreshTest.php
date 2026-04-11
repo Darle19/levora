@@ -39,17 +39,21 @@ beforeEach(function () {
     $this->country = Country::factory()->create(['code' => 'TR']);
     $this->uzCountry = Country::factory()->create(['code' => 'UZ']);
     $this->frCountry = Country::factory()->create(['code' => 'FR']);
+    $this->azCountry = Country::factory()->create(['code' => 'AZ']);
 
     $this->istCity = City::factory()->create(['country_id' => $this->country->id, 'name_en' => 'Istanbul']);
     $this->tasCity = City::factory()->create(['country_id' => $this->uzCountry->id, 'name_en' => 'Tashkent']);
     $this->nceCity = City::factory()->create(['country_id' => $this->frCountry->id, 'name_en' => 'Nice']);
+    $this->gydCity = City::factory()->create(['country_id' => $this->azCountry->id, 'name_en' => 'Baku']);
 
     $this->istAirport = Airport::factory()->create(['code' => 'IST', 'city_id' => $this->istCity->id]);
     $this->nceAirport = Airport::factory()->create(['code' => 'NCE', 'city_id' => $this->nceCity->id]);
     $this->tasAirport = Airport::factory()->create(['code' => 'TAS', 'city_id' => $this->tasCity->id]);
+    $this->gydAirport = Airport::factory()->create(['code' => 'GYD', 'city_id' => $this->gydCity->id]);
 
     $this->tkAirline = Airline::factory()->create(['code' => 'TK', 'name' => 'Turkish Airlines']);
     $this->c2Airline = Airline::factory()->create(['code' => 'C2', 'name' => 'Centrum Air']);
+    $this->j2Airline = Airline::factory()->create(['code' => 'J2', 'name' => 'Azerbaijan Airlines']);
 
     $this->usd = Currency::factory()->create(['code' => 'USD']);
 });
@@ -237,4 +241,80 @@ it('excludes entire RT group from OW processing even with duplicate flights', fu
     // Flight number on outbound should be updated
     expect($out1->fresh()->flight_number)->toBe('1813');
     expect($out2->fresh()->flight_number)->toBe('1813');
+});
+
+it('updates J2 flight with cheapest daytime option (number, time, price)', function () {
+    $date = '2026-05-04';
+
+    // Existing DB flight: J2 76 at 12:00, $180
+    $flight = Flight::factory()->create([
+        'airline_id' => $this->j2Airline->id,
+        'from_airport_id' => $this->istAirport->id,
+        'to_airport_id' => $this->gydAirport->id,
+        'origin_city_id' => $this->istCity->id,
+        'destination_city_id' => $this->gydCity->id,
+        'flight_number' => '76',
+        'departure_date' => $date,
+        'departure_time' => '12:00:00',
+        'arrival_time' => '15:50:00',
+        'price_adult' => 180.00,
+        'is_active' => true,
+    ]);
+
+    // Mock provider to return multiple J2 options — cheapest daytime = J2 8104 @ 14:00 $150
+    $mockProvider = Mockery::mock(RapidApiFlightProvider::class);
+    $mockProvider->shouldReceive('search')
+        ->once()
+        ->with('IST', 'GYD', $date, 1, 'J2')
+        ->andReturn([
+            makeFlightOffer('J2', '76', "{$date}T12:00:00", "{$date}T15:50:00", 18000),
+            makeFlightOffer('J2', '8104', "{$date}T14:00:00", "{$date}T17:50:00", 15000),
+            makeFlightOffer('J2', '78', "{$date}T22:50:00", "{$date}T02:40:00", 12000), // night, excluded
+        ]);
+    $mockProvider->shouldNotReceive('searchRoundTripOutbound');
+
+    $this->app->instance(RapidApiFlightProvider::class, $mockProvider);
+
+    $this->artisan('flights:refresh', ['--days' => 60])->assertSuccessful();
+
+    $fresh = $flight->fresh();
+
+    // Should pick J2 8104 (cheapest DAYTIME, not J2 78 which is night)
+    expect($fresh->flight_number)->toBe('8104');
+    expect($fresh->departure_time)->toBe('14:00:00');
+    expect($fresh->arrival_time)->toBe('17:50:00');
+    expect((float) $fresh->price_adult)->toBe(150.0);
+});
+
+it('skips night flights even if cheaper', function () {
+    $date = '2026-05-04';
+
+    $flight = Flight::factory()->create([
+        'airline_id' => $this->j2Airline->id,
+        'from_airport_id' => $this->istAirport->id,
+        'to_airport_id' => $this->gydAirport->id,
+        'origin_city_id' => $this->istCity->id,
+        'destination_city_id' => $this->gydCity->id,
+        'flight_number' => '76',
+        'departure_date' => $date,
+        'departure_time' => '12:00:00',
+        'arrival_time' => '15:50:00',
+        'price_adult' => 200.00,
+        'is_active' => true,
+    ]);
+
+    $mockProvider = Mockery::mock(RapidApiFlightProvider::class);
+    $mockProvider->shouldReceive('search')
+        ->once()
+        ->andReturn([
+            makeFlightOffer('J2', '78', "{$date}T22:50:00", "{$date}T02:40:00", 5000),  // $50 but night
+            makeFlightOffer('J2', '76', "{$date}T12:00:00", "{$date}T15:50:00", 18000), // $180 daytime
+        ]);
+
+    $this->app->instance(RapidApiFlightProvider::class, $mockProvider);
+    $this->artisan('flights:refresh', ['--days' => 60])->assertSuccessful();
+
+    $fresh = $flight->fresh();
+    expect($fresh->flight_number)->toBe('76');
+    expect((float) $fresh->price_adult)->toBe(180.0);
 });
