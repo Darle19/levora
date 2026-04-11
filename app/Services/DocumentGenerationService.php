@@ -45,11 +45,6 @@ class DocumentGenerationService
         // Tourist Voucher — always
         $this->generateTouristVoucher($booking, $data);
 
-        // Hotel Voucher — one per hotel stay
-        foreach ($data['hotels'] as $i => $hotelStay) {
-            $this->generateHotelVoucher($booking, $data, $hotelStay, $i);
-        }
-
         // eTicket — one per tourist (FlightPath only)
         if ($data['type'] === 'flight_path' && $data['flights']->isNotEmpty()) {
             foreach ($booking->tourists as $tourist) {

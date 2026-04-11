@@ -100,15 +100,22 @@ class DocumentDataResolver
             ];
         })->values()->toArray();
 
-        // All additional services (mandatory) attached to the booking's cities
-        $cityIds = $fp->stays->pluck('city_id')->unique()->toArray();
-        $allServices = AdditionalService::where('is_active', true)
-            ->where('is_mandatory', true)
-            ->where(function ($q) use ($cityIds) {
-                $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
-            })
-            ->with('city')
-            ->get();
+        // Use services attached to the booking (pivot), fallback to city-based mandatory services
+        $booking->loadMissing('additionalServices.city');
+        $attached = $booking->additionalServices;
+
+        if ($attached->isNotEmpty()) {
+            $allServices = $attached;
+        } else {
+            $cityIds = $fp->stays->pluck('city_id')->unique()->toArray();
+            $allServices = AdditionalService::where('is_active', true)
+                ->where('is_mandatory', true)
+                ->where(function ($q) use ($cityIds) {
+                    $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
+                })
+                ->with('city')
+                ->get();
+        }
 
         $transfers = $allServices
             ->where('service_type', 'transfer')
