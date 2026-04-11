@@ -55,7 +55,7 @@
 <h2>Flights</h2>
 <table>
     <thead>
-        <tr><th>Date</th><th>Flight #</th><th>Departure</th><th>Arrival</th><th>Class</th><th>Seats</th></tr>
+        <tr><th>Date</th><th>Flight #</th><th>Departure</th><th>Arrival</th><th>Class</th><th>Baggage</th><th>Seats</th></tr>
     </thead>
     <tbody>
         @foreach($flights as $f)
@@ -65,6 +65,7 @@
             <td>{{ $f->departure_airport }} ({{ $f->departure_city }}), {{ $f->departure_time }}</td>
             <td>{{ $f->arrival_airport }} ({{ $f->arrival_city }}), {{ $f->arrival_time }}</td>
             <td>{{ $f->class_code }}</td>
+            <td>{{ $f->baggage }}</td>
             <td>{{ $f->seats }}</td>
         </tr>
         @endforeach
@@ -89,6 +90,25 @@
             <td>{{ $h->room_type }}</td>
             <td>{{ $h->meal }}</td>
             <td>{{ $h->rooms }}</td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+@endif
+
+{{-- ADDITIONAL SERVICES --}}
+@if(isset($additional_services) && $additional_services->isNotEmpty())
+<h2>Additional Services</h2>
+<table>
+    <thead>
+        <tr><th>Service</th><th>City</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+        @foreach($additional_services as $svc)
+        <tr>
+            <td>{{ $svc->name }}</td>
+            <td>{{ $svc->city }}</td>
+            <td>{{ $svc->description }}</td>
         </tr>
         @endforeach
     </tbody>

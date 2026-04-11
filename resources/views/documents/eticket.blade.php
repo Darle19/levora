@@ -69,7 +69,6 @@
 <h2>Подробности платежа</h2>
 <table class="info-table">
     <tr><td>Форма оплаты</td><td><strong>НАЛИЧНЫЕ</strong></td></tr>
-    <tr><td>Передаточные надписи в билете</td><td>PF{{ $tourist->passport_number }}/NON REF</td></tr>
     <tr><td>Тариф</td><td>Включён</td></tr>
     <tr><td>Налоги / пошлины / сборы</td><td>Включены</td></tr>
     <tr><td>Общая стоимость</td><td>Включена в стоимость тура</td></tr>

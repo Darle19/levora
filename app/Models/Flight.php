@@ -32,6 +32,7 @@ class Flight extends Model
         'soft_block_release_days',
         'available_seats',
         'class_type',
+        'baggage',
         'is_active',
     ];
 

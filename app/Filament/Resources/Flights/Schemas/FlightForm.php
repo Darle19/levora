@@ -49,6 +49,10 @@ class FlightForm
                 TextInput::make('class_type')
                     ->required()
                     ->default('economy'),
+                TextInput::make('baggage')
+                    ->label('Baggage')
+                    ->default('1PC 20 kg')
+                    ->placeholder('1PC 20 kg'),
                 Toggle::make('is_active')
                     ->required(),
             ]);

@@ -76,7 +76,7 @@ class DocumentDataResolver
                 'class_type' => ucfirst($f->class_type ?? 'economy'),
                 'class_code' => strtoupper(substr($f->class_type ?? 'economy', 0, 1)),
                 'seats' => $booking->tourists->count(),
-                'baggage' => '1PC 20 kg',
+                'baggage' => $f->baggage ?? '1PC 20 kg',
                 'direction' => $leg->direction,
             ];
         });
@@ -100,22 +100,35 @@ class DocumentDataResolver
             ];
         })->values()->toArray();
 
-        // Transfers from additional services
+        // All additional services (mandatory) attached to the booking's cities
         $cityIds = $fp->stays->pluck('city_id')->unique()->toArray();
-        $transfers = AdditionalService::where('is_active', true)
-            ->where('service_type', 'transfer')
+        $allServices = AdditionalService::where('is_active', true)
             ->where('is_mandatory', true)
             ->where(function ($q) use ($cityIds) {
                 $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
             })
-            ->get()
+            ->with('city')
+            ->get();
+
+        $transfers = $allServices
+            ->where('service_type', 'transfer')
             ->map(function ($svc) use ($fp) {
                 return (object) [
                     'date' => $fp->departure_date->format('d.m.Y'),
                     'type' => $svc->name_en,
                     'direction' => $svc->city->name_en ?? 'Transfer',
                 ];
-            });
+            })->values();
+
+        $additionalServices = $allServices
+            ->whereNotIn('service_type', ['transfer', 'insurance'])
+            ->map(function ($svc) {
+                return (object) [
+                    'name' => $svc->name_en,
+                    'city' => $svc->city->name_en ?? '—',
+                    'description' => $svc->description ?? '',
+                ];
+            })->values();
 
         // Insurances
         $insurances = AdditionalService::where('is_active', true)
@@ -152,6 +165,7 @@ class DocumentDataResolver
             'flights' => $flights,
             'hotels' => $hotels,
             'transfers' => $transfers,
+            'additional_services' => $additionalServices,
             'insurances' => $insurances,
             'city_contacts' => $cityContacts,
             'departure_date' => $fp->departure_date,
@@ -204,6 +218,7 @@ class DocumentDataResolver
             'flights' => collect(),
             'hotels' => $hotels,
             'transfers' => collect(),
+            'additional_services' => collect(),
             'insurances' => collect(),
             'city_contacts' => $cityContacts,
             'departure_date' => $checkIn,
@@ -221,6 +236,7 @@ class DocumentDataResolver
             'flights' => collect(),
             'hotels' => [],
             'transfers' => collect(),
+            'additional_services' => collect(),
             'insurances' => collect(),
             'city_contacts' => collect(),
             'departure_date' => null,
