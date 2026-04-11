@@ -61,11 +61,13 @@ class RapidApiFlightProvider implements FlightProviderInterface
     }
 
     /**
-     * Round-trip flight search. Returns outbound and return offers separately.
+     * Round-trip flight search. Returns outbound offers; each offer's priceCents is the FULL round-trip total.
+     * The API returns outbound options with RT total price; return_legs is typically empty.
+     * To get return offers, call again with origin/destination swapped.
      *
-     * @return array{outbound: FlightOffer[], return: FlightOffer[]}
+     * @return FlightOffer[] Outbound offers with RT total price
      */
-    public function searchRoundTrip(
+    public function searchRoundTripOutbound(
         string $originIata,
         string $destinationIata,
         string $departureDate,
@@ -87,35 +89,50 @@ class RapidApiFlightProvider implements FlightProviderInterface
         ]);
 
         if (! $data) {
-            return ['outbound' => [], 'return' => []];
+            return [];
         }
 
-        // Round-trip API may return combined itineraries — parse outbound and return legs
-        $flights = $data['flights'] ?? [];
-        $outbound = [];
-        $return = [];
+        $offers = [];
+        foreach ($data['flights'] ?? [] as $i => $flight) {
+            // Prefer outbound_legs over legs (more reliable in RT response)
+            $legs = $flight['outbound_legs'] ?? $flight['legs'] ?? [];
+            $leg = $legs[0] ?? null;
+            if (! $leg) {
+                continue;
+            }
 
-        foreach ($flights as $i => $flight) {
-            $legs = $flight['legs'] ?? [];
+            // Strict airline filter — API returns other airlines even when filtered
+            if ($airlineCode && isset($leg['airline']) && strtoupper($leg['airline']) !== strtoupper($airlineCode)) {
+                continue;
+            }
+
             $totalPrice = (float) ($flight['price'] ?? 0);
             $currency = $flight['currency'] ?? 'USD';
-            // Split price evenly between outbound and return as approximation
-            $halfPrice = (int) round($totalPrice * 100 / 2);
 
-            if (isset($legs[0])) {
-                $outbound[] = $this->legToOffer(
-                    $legs[0], $originIata, $destinationIata, $departureDate,
-                    $halfPrice, $currency, "rt-out-{$i}", $flight
-                );
-            }
-            if (isset($legs[1])) {
-                $return[] = $this->legToOffer(
-                    $legs[1], $destinationIata, $originIata, $returnDate,
-                    $halfPrice, $currency, "rt-ret-{$i}", $flight
-                );
-            }
+            $offers[] = $this->legToOffer(
+                $leg, $originIata, $destinationIata, $departureDate,
+                (int) round($totalPrice * 100), $currency, "rt-{$i}", $flight
+            );
         }
 
+        return $offers;
+    }
+
+    /**
+     * Legacy wrapper — kept for backwards compatibility.
+     *
+     * @return array{outbound: FlightOffer[], return: FlightOffer[]}
+     */
+    public function searchRoundTrip(
+        string $originIata,
+        string $destinationIata,
+        string $departureDate,
+        string $returnDate,
+        int $passengerCount = 1,
+        ?string $airlineCode = null,
+    ): array {
+        $outbound = $this->searchRoundTripOutbound($originIata, $destinationIata, $departureDate, $returnDate, $passengerCount, $airlineCode);
+        $return = $this->searchRoundTripOutbound($destinationIata, $originIata, $returnDate, $departureDate, $passengerCount, $airlineCode);
         return ['outbound' => $outbound, 'return' => $return];
     }
 

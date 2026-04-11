@@ -136,29 +136,39 @@ class RefreshFlightData extends Command
 
         $this->line("  RT: {$origin}↔{$destination} {$depDate}/{$retDate} [{$airlineCode}]...");
 
-        $result = $provider->searchRoundTrip($origin, $destination, $depDate, $retDate, 1, $airlineCode);
+        // Single RT call: returns outbound options, each with RT total price
+        $offers = $provider->searchRoundTripOutbound($origin, $destination, $depDate, $retDate, 1, $airlineCode);
 
-        $outboundOffers = $result['outbound'] ?? [];
-        $returnOffers = $result['return'] ?? [];
-
-        if (empty($outboundOffers) || empty($returnOffers)) {
-            // Round-trip API often returns empty — fallback to two one-way calls
+        if (empty($offers)) {
             $this->warn("    RT API empty, falling back to one-way pair.");
             return $this->processOneWayPairFallback($outbound, $return, $provider);
         }
 
-        $bestOutbound = $this->pickCheapestDaytime($outboundOffers);
-        $bestReturn = $this->pickCheapestDaytime($returnOffers);
-
-        if (! $bestOutbound || ! $bestReturn) {
+        $best = $this->pickCheapestDaytime($offers);
+        if (! $best) {
             $this->warn("    No daytime flights in RT result.");
             return ['updated' => 0, 'failed' => 2];
         }
 
-        // RT price is already split per leg by provider (half each)
-        $this->updateFlight($outbound, $bestOutbound);
-        $this->updateFlight($return, $bestReturn);
-        $this->info("    ✓ {$airlineCode} RT: outbound \${$bestOutbound->priceCents}/100 + return \${$bestReturn->priceCents}/100");
+        // $best->priceCents is the RT total (full round trip for 1 adult).
+        // Split evenly: half on outbound, half on return.
+        $rtTotalCents = $best->priceCents;
+        $halfCents = (int) round($rtTotalCents / 2);
+        $halfPrice = $halfCents / 100;
+
+        // Update outbound: time + number from API, price = half
+        $outbound->update([
+            'flight_number' => $best->flightNumber,
+            'departure_time' => $best->departureAt->format('H:i:s'),
+            'arrival_time' => $best->arrivalAt->format('H:i:s'),
+            'arrival_date' => $best->arrivalAt->format('Y-m-d'),
+            'price_adult' => $halfPrice,
+        ]);
+
+        // Update return: only price (times/number kept as-is since RT response has no return leg data)
+        $return->update(['price_adult' => $halfPrice]);
+
+        $this->info("    ✓ {$airlineCode} RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg)");
 
         return ['updated' => 2, 'failed' => 0];
     }
