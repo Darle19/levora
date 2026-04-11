@@ -73,6 +73,8 @@ class RefreshFlightData extends Command
         });
 
         $this->info("Refreshing " . count($processed) . " flights in " . count($rtPairs) . " RT pair(s) + " . $remaining->count() . " flights in " . $groups->count() . " one-way call(s)...");
+        $this->line("  [debug] processed IDs: " . implode(',', $processed));
+        $this->line("  [debug] remaining IDs: " . $remaining->pluck('id')->implode(','));
 
         foreach ($groups as $groupFlights) {
             $result = $this->processOneWayGroup($groupFlights, $provider);
