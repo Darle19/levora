@@ -100,22 +100,21 @@ class DocumentDataResolver
             ];
         })->values()->toArray();
 
-        // Use services attached to the booking (pivot), fallback to city-based mandatory services
+        // Merge: services explicitly attached to the booking + mandatory services for the tour cities
         $booking->loadMissing('additionalServices.city');
         $attached = $booking->additionalServices;
         $cityIds = $fp->stays->pluck('city_id')->unique()->toArray();
 
-        if ($attached->isNotEmpty()) {
-            $allServices = $attached;
-        } else {
-            $allServices = AdditionalService::where('is_active', true)
-                ->where('is_mandatory', true)
-                ->where(function ($q) use ($cityIds) {
-                    $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
-                })
-                ->with('city')
-                ->get();
-        }
+        $mandatoryServices = AdditionalService::where('is_active', true)
+            ->where('is_mandatory', true)
+            ->where(function ($q) use ($cityIds) {
+                $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
+            })
+            ->with('city')
+            ->get();
+
+        // Merge and deduplicate by service ID
+        $allServices = $attached->merge($mandatoryServices)->unique('id')->values();
 
         $transfers = $allServices
             ->where('service_type', 'transfer')
