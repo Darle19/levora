@@ -103,11 +103,11 @@ class DocumentDataResolver
         // Use services attached to the booking (pivot), fallback to city-based mandatory services
         $booking->loadMissing('additionalServices.city');
         $attached = $booking->additionalServices;
+        $cityIds = $fp->stays->pluck('city_id')->unique()->toArray();
 
         if ($attached->isNotEmpty()) {
             $allServices = $attached;
         } else {
-            $cityIds = $fp->stays->pluck('city_id')->unique()->toArray();
             $allServices = AdditionalService::where('is_active', true)
                 ->where('is_mandatory', true)
                 ->where(function ($q) use ($cityIds) {
