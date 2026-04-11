@@ -131,6 +131,37 @@ class BookingForm
                             ->columnSpanFull(),
                     ]),
 
+                Section::make('Additional Services')
+                    ->schema([
+                        Select::make('additional_services')
+                            ->label('Services')
+                            ->multiple()
+                            ->relationship('additionalServices', 'name_en')
+                            ->getOptionLabelFromRecordUsing(fn ($record) =>
+                                $record->name_en . ' — ' . ($record->city?->name_en ?? 'Global') . ' ($' . $record->price . ')'
+                            )
+                            ->preload()
+                            ->searchable()
+                            ->saveRelationshipsUsing(function ($component, $state, Booking $record) {
+                                $state = $state ?? [];
+                                $touristCount = $record->tourists->count() ?: 1;
+                                $attachments = [];
+                                foreach ($state as $serviceId) {
+                                    $svc = \App\Models\AdditionalService::find($serviceId);
+                                    if (! $svc) {
+                                        continue;
+                                    }
+                                    $quantity = $svc->is_per_person ? $touristCount : 1;
+                                    $attachments[$serviceId] = [
+                                        'price' => (float) $svc->price * $quantity,
+                                        'quantity' => $quantity,
+                                    ];
+                                }
+                                $record->additionalServices()->sync($attachments);
+                            })
+                            ->columnSpanFull(),
+                    ]),
+
                 Section::make('Contact & Notes')
                     ->schema([
                         Placeholder::make('order_info')

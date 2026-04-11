@@ -16,6 +16,37 @@ class EditBooking extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('regenerateDocuments')
+                ->label('Regenerate Documents')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Regenerate Documents')
+                ->modalDescription('This will delete all existing documents and create fresh ones based on current booking data.')
+                ->action(function () {
+                    $booking = $this->record;
+                    $order = $booking->order;
+
+                    // Delete existing documents
+                    $booking->documents()->delete();
+
+                    // Regenerate
+                    try {
+                        app(DocumentGenerationService::class)->generateAllForOrder($order);
+                        $count = $booking->fresh()->documents->count();
+                        Notification::make()
+                            ->title("Regenerated {$count} document(s)")
+                            ->success()
+                            ->send();
+                    } catch (\Throwable $e) {
+                        Notification::make()
+                            ->title('Failed to regenerate')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
+
             Action::make('checkInsurance')
                 ->label('Check Insurance & Generate')
                 ->icon('heroicon-o-shield-check')
