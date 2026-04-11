@@ -14,14 +14,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function makeFlightOffer(string $airline, string $flightNumber, string $depDateTime, string $arrDateTime, int $priceCents): FlightOffer
+function makeFlightOffer(string $airline, string $flightNumber, string $depDateTime, string $arrDateTime, int $priceCents, string $origin = 'XXX', string $dest = 'YYY'): FlightOffer
 {
     return new FlightOffer(
         id: "test-{$airline}-{$flightNumber}",
         airlineCode: $airline,
         flightNumber: $flightNumber,
-        originIata: 'XXX',
-        destinationIata: 'YYY',
+        originIata: $origin,
+        destinationIata: $dest,
         departureAt: new DateTimeImmutable($depDateTime),
         arrivalAt: new DateTimeImmutable($arrDateTime),
         priceCents: $priceCents,
@@ -284,6 +284,55 @@ it('updates J2 flight with cheapest daytime option (number, time, price)', funct
     expect($fresh->departure_time)->toBe('14:00:00');
     expect($fresh->arrival_time)->toBe('17:50:00');
     expect((float) $fresh->price_adult)->toBe(150.0);
+});
+
+it('searches multiple airports per city and picks cheapest across all airports', function () {
+    $date = '2026-05-08';
+
+    // Istanbul has TWO airports: IST and SAW
+    $sawAirport = Airport::factory()->create(['code' => 'SAW', 'city_id' => $this->istCity->id, 'is_active' => true]);
+
+    // DB flight: J2 76 IST→GYD at $208
+    $flight = Flight::factory()->create([
+        'airline_id' => $this->j2Airline->id,
+        'from_airport_id' => $this->istAirport->id,
+        'to_airport_id' => $this->gydAirport->id,
+        'origin_city_id' => $this->istCity->id,
+        'destination_city_id' => $this->gydCity->id,
+        'flight_number' => '76',
+        'departure_date' => $date,
+        'departure_time' => '12:00:00',
+        'arrival_time' => '15:50:00',
+        'price_adult' => 208.00,
+        'is_active' => true,
+    ]);
+
+    // Mock: IST→GYD returns J2 76 at $208, SAW→GYD returns J2 8104 at $157 (cheaper)
+    $mockProvider = Mockery::mock(RapidApiFlightProvider::class);
+    $mockProvider->shouldReceive('search')
+        ->with('IST', 'GYD', $date, 1, 'J2')
+        ->andReturn([
+            makeFlightOffer('J2', '76', "{$date}T12:00:00", "{$date}T15:50:00", 20800, 'IST', 'GYD'),
+        ]);
+    $mockProvider->shouldReceive('search')
+        ->with('SAW', 'GYD', $date, 1, 'J2')
+        ->andReturn([
+            makeFlightOffer('J2', '8104', "{$date}T10:40:00", "{$date}T14:30:00", 15700, 'SAW', 'GYD'),
+            makeFlightOffer('J2', '8106', "{$date}T15:55:00", "{$date}T19:45:00", 15700, 'SAW', 'GYD'),
+        ]);
+    $mockProvider->shouldNotReceive('searchRoundTripOutbound');
+
+    $this->app->instance(RapidApiFlightProvider::class, $mockProvider);
+    $this->artisan('flights:refresh', ['--days' => 60])->assertSuccessful();
+
+    // Note: SAW factory will overwrite existing SAW airport, need to refetch
+    $sawAirport = Airport::where('code', 'SAW')->first();
+
+    $fresh = $flight->fresh();
+    expect($fresh->flight_number)->toBe('8104');
+    expect((float) $fresh->price_adult)->toBe(157.0);
+    expect($fresh->departure_time)->toBe('10:40:00');
+    expect($fresh->from_airport_id)->toBe($sawAirport->id); // updated to SAW
 });
 
 it('skips night flights even if cheaper', function () {

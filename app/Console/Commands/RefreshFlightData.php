@@ -26,7 +26,7 @@ class RefreshFlightData extends Command
         $from = now();
         $to = now()->addDays($days);
 
-        $flights = Flight::with(['airline', 'fromAirport', 'toAirport'])
+        $flights = Flight::with(['airline', 'fromAirport.city.airports', 'toAirport.city.airports'])
             ->where('is_active', true)
             ->whereBetween('departure_date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
             ->whereHas('airline', function ($q) {
@@ -47,8 +47,8 @@ class RefreshFlightData extends Command
         $updated = 0;
         $failed = 0;
 
-        // Group flights by route+date+airline (shared between RT and OW logic)
-        $groupKey = fn (Flight $f) => $f->fromAirport->code . '-' . $f->toAirport->code . '-' . $f->departure_date->format('Y-m-d') . '-' . $f->airline->code;
+        // Group flights by city+date+airline (so IST and SAW for Istanbul are in one group)
+        $groupKey = fn (Flight $f) => $f->origin_city_id . '-' . $f->destination_city_id . '-' . $f->departure_date->format('Y-m-d') . '-' . $f->airline_id;
         $allGroups = $flights->groupBy($groupKey);
 
         // Build set of group keys that are part of RT pairs
@@ -144,43 +144,64 @@ class RefreshFlightData extends Command
 
     /**
      * Process a round-trip group pair: apply RT pricing to ALL flights in both groups.
+     * Searches all airport combinations for the origin and destination cities.
      */
     private function processRoundTripGroup($outboundFlights, $returnFlights, RapidApiFlightProvider $provider): array
     {
         $sampleOut = $outboundFlights->first();
         $sampleRet = $returnFlights->first();
-        $origin = $sampleOut->fromAirport->code;
-        $destination = $sampleOut->toAirport->code;
         $depDate = $sampleOut->departure_date->format('Y-m-d');
         $retDate = $sampleRet->departure_date->format('Y-m-d');
         $airlineCode = $sampleOut->airline->code;
 
-        $this->line("  RT: {$origin}↔{$destination} {$depDate}/{$retDate} [{$airlineCode}]...");
+        $originAirports = $sampleOut->fromAirport->city->airports->where('is_active', true)->pluck('code')->all();
+        $destAirports = $sampleOut->toAirport->city->airports->where('is_active', true)->pluck('code')->all();
 
-        // Single RT call: returns outbound options, each with RT total price
-        $offers = $provider->searchRoundTripOutbound($origin, $destination, $depDate, $retDate, 1, $airlineCode);
+        if (empty($originAirports)) $originAirports = [$sampleOut->fromAirport->code];
+        if (empty($destAirports)) $destAirports = [$sampleOut->toAirport->code];
 
-        if (empty($offers)) {
+        $originCity = $sampleOut->fromAirport->city->name_en ?? implode('/', $originAirports);
+        $destCity = $sampleOut->toAirport->city->name_en ?? implode('/', $destAirports);
+
+        $this->line("  RT: {$originCity}↔{$destCity} {$depDate}/{$retDate} [{$airlineCode}]...");
+
+        // Search all origin→dest airport combinations (RT API returns RT total price)
+        $allOffers = [];
+        foreach ($originAirports as $origCode) {
+            foreach ($destAirports as $destCode) {
+                $offers = $provider->searchRoundTripOutbound($origCode, $destCode, $depDate, $retDate, 1, $airlineCode);
+                foreach ($offers as $o) {
+                    $allOffers[] = $o;
+                }
+                usleep(300_000);
+            }
+        }
+
+        if (empty($allOffers)) {
             $this->warn("    RT API empty, falling back to one-way.");
             $r1 = $this->processOneWayGroup($outboundFlights, $provider);
             $r2 = $this->processOneWayGroup($returnFlights, $provider);
             return ['updated' => $r1['updated'] + $r2['updated'], 'failed' => $r1['failed'] + $r2['failed']];
         }
 
-        $best = $this->pickCheapestDaytime($offers);
+        $best = $this->pickCheapestDaytime($allOffers);
         if (! $best) {
             $this->warn("    No daytime flights in RT result.");
             return ['updated' => 0, 'failed' => $outboundFlights->count() + $returnFlights->count()];
         }
 
         // $best->priceCents is the RT total (full round trip for 1 adult).
-        // Split evenly: half on outbound, half on return.
         $rtTotalCents = $best->priceCents;
         $halfPrice = round($rtTotalCents / 2 / 100, 2);
 
-        // Update all outbound flights: time + number from API, price = half
+        $fromAirport = \App\Models\Airport::where('code', $best->originIata)->first();
+        $toAirport = \App\Models\Airport::where('code', $best->destinationIata)->first();
+
+        // Update all outbound flights with best offer
         foreach ($outboundFlights as $f) {
             $f->update([
+                'from_airport_id' => $fromAirport?->id ?? $f->from_airport_id,
+                'to_airport_id' => $toAirport?->id ?? $f->to_airport_id,
                 'flight_number' => $best->flightNumber,
                 'departure_time' => $best->departureAt->format('H:i:s'),
                 'arrival_time' => $best->arrivalAt->format('H:i:s'),
@@ -189,13 +210,17 @@ class RefreshFlightData extends Command
             ]);
         }
 
-        // Update all return flights: only price (times/number unchanged)
+        // Update all return flights with mirrored airports (return = best reversed)
         foreach ($returnFlights as $f) {
-            $f->update(['price_adult' => $halfPrice]);
+            $f->update([
+                'from_airport_id' => $toAirport?->id ?? $f->from_airport_id,
+                'to_airport_id' => $fromAirport?->id ?? $f->to_airport_id,
+                'price_adult' => $halfPrice,
+            ]);
         }
 
         $count = $outboundFlights->count() + $returnFlights->count();
-        $this->info("    ✓ {$airlineCode} RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg, {$count} flight(s) updated)");
+        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg, {$count} flight(s) updated)");
 
         return ['updated' => $count, 'failed' => 0];
     }
@@ -203,31 +228,66 @@ class RefreshFlightData extends Command
     private function processOneWayGroup($groupFlights, RapidApiFlightProvider $provider): array
     {
         $sample = $groupFlights->first();
-        $origin = $sample->fromAirport->code;
-        $destination = $sample->toAirport->code;
         $date = $sample->departure_date->format('Y-m-d');
         $airlineCode = $sample->airline->code;
 
-        $this->line("  OW: {$origin}→{$destination} {$date} [{$airlineCode}]...");
+        // Get all active airports for the origin and destination cities
+        $originAirports = $sample->fromAirport->city->airports->where('is_active', true)->pluck('code')->all();
+        $destAirports = $sample->toAirport->city->airports->where('is_active', true)->pluck('code')->all();
 
-        $offers = $provider->search($origin, $destination, $date, 1, $airlineCode);
+        if (empty($originAirports)) {
+            $originAirports = [$sample->fromAirport->code];
+        }
+        if (empty($destAirports)) {
+            $destAirports = [$sample->toAirport->code];
+        }
 
-        if (empty($offers)) {
+        $originCity = $sample->fromAirport->city->name_en ?? implode('/', $originAirports);
+        $destCity = $sample->toAirport->city->name_en ?? implode('/', $destAirports);
+
+        $this->line("  OW: {$originCity} [" . implode(',', $originAirports) . "]→{$destCity} [" . implode(',', $destAirports) . "] {$date} [{$airlineCode}]...");
+
+        // Search all airport combinations
+        $allOffers = [];
+        foreach ($originAirports as $origCode) {
+            foreach ($destAirports as $destCode) {
+                $offers = $provider->search($origCode, $destCode, $date, 1, $airlineCode);
+                foreach ($offers as $o) {
+                    $allOffers[] = $o;
+                }
+                usleep(300_000);
+            }
+        }
+
+        if (empty($allOffers)) {
             $this->warn("    No results from API.");
             return ['updated' => 0, 'failed' => $groupFlights->count()];
         }
 
-        $best = $this->pickCheapestDaytime($offers);
+        $best = $this->pickCheapestDaytime($allOffers);
         if (! $best) {
             $this->warn("    No daytime flights (" . self::DEP_TIME_MIN . "–" . self::DEP_TIME_MAX . ").");
             return ['updated' => 0, 'failed' => $groupFlights->count()];
         }
 
+        // Find airport models by code for updating from_airport_id / to_airport_id
+        $fromAirport = \App\Models\Airport::where('code', $best->originIata)->first();
+        $toAirport = \App\Models\Airport::where('code', $best->destinationIata)->first();
+
+        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} {$best->departureAt->format('H:i')} \$" . ($best->priceCents / 100));
+
         $updated = 0;
         foreach ($groupFlights as $flight) {
-            if ($this->updateFlight($flight, $best)) {
-                $updated++;
-            }
+            $flight->update([
+                'from_airport_id' => $fromAirport?->id ?? $flight->from_airport_id,
+                'to_airport_id' => $toAirport?->id ?? $flight->to_airport_id,
+                'flight_number' => $best->flightNumber,
+                'departure_time' => $best->departureAt->format('H:i:s'),
+                'arrival_time' => $best->arrivalAt->format('H:i:s'),
+                'arrival_date' => $best->arrivalAt->format('Y-m-d'),
+                'price_adult' => $best->priceCents / 100,
+            ]);
+            $updated++;
         }
 
         return ['updated' => $updated, 'failed' => 0];
