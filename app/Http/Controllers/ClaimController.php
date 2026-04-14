@@ -29,7 +29,7 @@ class ClaimController extends Controller
         $order->load([
             'user', 'agency', 'currency', 'payments.currency',
             'bookings.tourists', 'bookings.documents.tourist', 'bookings.currency',
-            'bookings.additionalServices',
+            'bookings.additionalServices', 'bookings.hotels.category', 'bookings.hotels.city',
         ]);
 
         $paymentPercentage = $order->getPaymentPercentage();
@@ -50,14 +50,14 @@ class ClaimController extends Controller
             ])->find($booking->bookable_id);
 
             if ($flightPath) {
+                // Use actually booked hotels from booking_hotels pivot
+                $bookedHotels = $booking->hotels->keyBy('city_id');
+
                 foreach ($flightPath->stays as $stay) {
-                    $hotel = Hotel::where('city_id', $stay->city_id)
-                        ->where('is_active', true)
-                        ->with('category')
-                        ->first();
+                    $stayHotel = $bookedHotels->get($stay->city_id);
                     $stayHotels[] = [
                         'stay' => $stay,
-                        'hotel' => $hotel,
+                        'hotel' => $stayHotel,
                         'nights' => $stay->nights,
                     ];
                 }
