@@ -61,8 +61,10 @@ class DocumentGenerationService
 
     /**
      * Register insurance policy in NeoInsurance API.
-     * Saves PTN + payment links to booking document metadata.
-     * PDF is NOT generated — admin pays first, then uses "Check & Generate" button.
+     *
+     * save-polis returns one of two response shapes:
+     *  - Payment required: {order_id, contract_id, url (Click pay link), payme_url}
+     *  - No-payment access: {order_id, url (view_api link), police_number}
      */
     private function registerInsurancePolicy(Booking $booking): void
     {
@@ -72,18 +74,27 @@ class DocumentGenerationService
             return;
         }
 
-        // travel-neo/save-polis returns: order_id, contract_id, url (Click), payme_url
+        $hasPoliceNumber = ! empty($neoResult['police_number']);
+        $isPaymentFlow = ! empty($neoResult['contract_id']) || ! empty($neoResult['payme_url']);
+
+        $metadata = [
+            'neo_order_id' => $neoResult['order_id'],
+            'police_number' => $neoResult['police_number'] ?? null,
+            'neo_view_url' => $neoResult['url'] ?? null,
+            'status' => $hasPoliceNumber ? 'issued' : 'pending_payment',
+        ];
+
+        if ($isPaymentFlow) {
+            $metadata['neo_contract_id'] = $neoResult['contract_id'] ?? null;
+            $metadata['neo_click_url'] = $neoResult['url'] ?? null;
+            $metadata['neo_payme_url'] = $neoResult['payme_url'] ?? null;
+        }
+
         BookingDocument::create([
             'booking_id' => $booking->id,
             'type' => 'insurance',
             'file_path' => '',
-            'metadata' => [
-                'neo_order_id' => $neoResult['order_id'],
-                'neo_contract_id' => $neoResult['contract_id'] ?? null,
-                'neo_click_url' => $neoResult['url'] ?? null,
-                'neo_payme_url' => $neoResult['payme_url'] ?? null,
-                'status' => 'pending_payment',
-            ],
+            'metadata' => $metadata,
         ]);
     }
 
