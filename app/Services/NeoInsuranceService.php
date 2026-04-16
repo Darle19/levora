@@ -27,6 +27,14 @@ class NeoInsuranceService
     private string $password;
     private bool $configured;
 
+    private const DEFAULT_PROGRAM_ID = 3; // Premium
+    private const TRAVEL_DEFAULTS = [
+        'purpose_id' => 1,
+        'kop_martali' => false,
+        'is_family' => false,
+        'has_covid' => false,
+    ];
+
     /** Available risk types for the booking page. */
     public const RISK_TYPES = [
         'accident' => ['name_en' => 'Accident Insurance', 'name_ru' => 'Страхование от несчастного случая'],
@@ -136,14 +144,7 @@ class NeoInsuranceService
             return null;
         }
 
-        $riskFlags = [
-            'accident' => in_array('accident', $risks) ? 1 : 0,
-            'luggage' => in_array('luggage', $risks) ? 1 : 0,
-            'cancel_travel' => in_array('cancel_travel', $risks) ? 1 : 0,
-            'person_respon' => in_array('person_respon', $risks) ? 1 : 0,
-            'delay_travel' => in_array('delay_travel', $risks) ? 1 : 0,
-        ];
-
+        $riskFlags = self::buildRiskFlags($risks);
         if (array_sum($riskFlags) === 0) {
             return null;
         }
@@ -168,53 +169,43 @@ class NeoInsuranceService
             fn (Tourist $t) => $t->birth_date?->format('d-m-Y') ?? '01-01-1990'
         )->all();
 
-        $calcResponse = $this->post('/api/travel-neo/calculator-total', [
+        $calcResponse = $this->post('/api/travel-neo/calculator-total', array_merge(self::TRAVEL_DEFAULTS, [
             'begin_date' => $dates['begin'],
             'end_date' => $dates['end'],
             'countries' => $countryCodes,
-            'purpose_id' => 1,
-            'kop_martali' => false,
-            'is_family' => false,
-            'has_covid' => false,
             'travelers' => $travelerBirthDates,
             'risklar' => $riskFlags,
-        ]);
+        ]));
 
         if (! $calcResponse || ! ($calcResponse['result'] ?? false)) {
             Log::error('NeoInsurance calculator failed', ['booking_id' => $booking->id]);
             return null;
         }
 
-        // Pick Premium (program_id=3), fallback to last
         $programs = $calcResponse['response'] ?? [];
-        $program = collect($programs)->firstWhere('program_id', 3) ?? collect($programs)->last();
+        $program = collect($programs)->firstWhere('program_id', self::DEFAULT_PROGRAM_ID) ?? collect($programs)->last();
         if (! $program) {
             return null;
         }
 
-        // Step 2: save-polis
-        $beginTs = strtotime(str_replace('-', '/', $dates['begin']));
-        $endTs = strtotime(str_replace('-', '/', $dates['end']));
-        $days = max(1, (int) round(($endTs - $beginTs) / 86400));
+        $begin = \Carbon\Carbon::createFromFormat('d-m-Y', $dates['begin']);
+        $end = \Carbon\Carbon::createFromFormat('d-m-Y', $dates['end']);
+        $days = max(1, $begin->diffInDays($end));
 
         $sugurtalovchi = $this->buildPolicyholder($firstTourist, $booking->order->user?->phone);
         $travelers = $booking->tourists->map(fn (Tourist $t) => $this->buildTraveler($t))->values()->all();
 
-        $response = $this->post('/api/travel-neo/save-polis', [
+        $response = $this->post('/api/travel-neo/save-polis', array_merge(self::TRAVEL_DEFAULTS, [
             'begin_date' => $dates['begin'],
             'end_date' => $dates['end'],
             'days' => $days,
             'summa_all' => $program['prem_uzs'],
             'countries' => $countryCodes,
             'program_id' => (string) $program['program_id'],
-            'purpose_id' => 1,
-            'kop_martali' => false,
-            'is_family' => false,
-            'has_covid' => false,
             'sugurtalovchi' => $sugurtalovchi,
             'travelers' => $travelers,
             'risklar' => $riskFlags,
-        ]);
+        ]));
 
         if (! $response || ! ($response['result'] ?? false)) {
             Log::error('NeoInsurance save-polis failed', [
@@ -339,6 +330,16 @@ class NeoInsuranceService
             'address' => 'Tashkent, Uzbekistan',
             'phone' => '+998919777735',
         ];
+    }
+
+    /** Convert selected risk names to API flags array. */
+    public static function buildRiskFlags(array $selectedRisks): array
+    {
+        $flags = [];
+        foreach (array_keys(self::RISK_TYPES) as $key) {
+            $flags[$key] = in_array($key, $selectedRisks) ? 1 : 0;
+        }
+        return $flags;
     }
 
     // ── HTTP helpers ──
