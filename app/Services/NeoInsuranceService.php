@@ -118,17 +118,12 @@ class NeoInsuranceService
             return null;
         }
 
-        $begin = \Carbon\Carbon::createFromFormat('d-m-Y', $dates['begin']);
-        $end = \Carbon\Carbon::createFromFormat('d-m-Y', $dates['end']);
-        $days = max(1, $begin->diffInDays($end));
-
         $sugurtalovchi = $this->buildPolicyholder($firstTourist, $booking->order->user?->phone);
         $travelers = $booking->tourists->map(fn (Tourist $t) => $this->buildTraveler($t))->values()->all();
 
         $response = $this->post('/api/travel-neo/save-polis', array_merge(self::TRAVEL_DEFAULTS, [
             'begin_date' => $dates['begin'],
             'end_date' => $dates['end'],
-            'days' => $days,
             'summa_all' => $program['prem_uzs'],
             'countries' => $countryCodes,
             'program_id' => (string) $program['program_id'],
@@ -233,32 +228,30 @@ class NeoInsuranceService
     private function buildPolicyholder(Tourist $tourist, ?string $phone): array
     {
         return [
-            'type' => 2, // foreign citizen (0 = UZ citizen, needs pinfl)
+            'type' => 0, // UZ citizen
+            'passportSeries' => $tourist->passport_series ?? substr($tourist->passport_number ?? 'AA', 0, 2),
+            'passportNumber' => $tourist->passport_number ?? '0000000',
+            'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '01-01-1990',
+            'phone' => $phone ?? '998919777735',
+            'pinfl' => '11111111111111',
             'last_name' => strtoupper($tourist->last_name),
             'first_name' => strtoupper($tourist->first_name),
             'middle_name' => strtoupper($tourist->middle_name ?? $tourist->first_name),
+            'address' => 'UZB',
             'gender' => $tourist->gender === 'female' ? 2 : 1,
-            'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '01-01-1990',
-            'passportSeries' => $tourist->passport_series ?? substr($tourist->passport_number ?? 'AA', 0, 2),
-            'passportNumber' => $tourist->passport_number ?? '0000000',
-            'address' => 'Tashkent, Uzbekistan',
-            'phone' => $phone ?? '+998919777735',
-            'country_id' => 182, // Uzbekistan
         ];
     }
 
     private function buildTraveler(Tourist $tourist): array
     {
         return [
+            'passportSeries' => $tourist->passport_series ?? substr($tourist->passport_number ?? 'AA', 0, 2),
+            'passportNumber' => $tourist->passport_number ?? '0000000',
+            'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '01-01-1990',
+            'pinfl' => '11111111111111',
             'last_name' => strtoupper($tourist->last_name),
             'first_name' => strtoupper($tourist->first_name),
-            'middle_name' => strtoupper($tourist->middle_name ?? $tourist->first_name),
             'gender' => $tourist->gender === 'female' ? 2 : 1,
-            'birthday' => $tourist->birth_date?->format('d-m-Y') ?? '01-01-1990',
-            'passport' => ($tourist->passport_series ?? '') . ($tourist->passport_number ?? ''),
-            'pinfl' => '00000000000000',
-            'address' => 'Tashkent, Uzbekistan',
-            'phone' => '+998919777735',
         ];
     }
 
