@@ -119,10 +119,13 @@ class NeoInsuranceService
     }
 
     /**
-     * Create insurance policy for a booking via travel-risk-neo/save.
+     * Create insurance policy for a booking via travel-neo/save-polis.
      *
-     * Called at document generation time (30% payment).
-     * Returns {order_id, click, payme} on success, null on failure.
+     * Flow:
+     * 1. Call /api/travel-neo/calculator-total → get prem_uzs
+     * 2. Call /api/travel-neo/save-polis with summa_all = prem_uzs
+     *
+     * Returns {order_id, contract_id, url, payme_url} on success, null on failure.
      */
     public function createPolicyForBooking(Booking $booking): ?array
     {
@@ -133,7 +136,6 @@ class NeoInsuranceService
             return null;
         }
 
-        // Build risk flags — at least one must be selected
         $riskFlags = [
             'accident' => in_array('accident', $risks) ? 1 : 0,
             'luggage' => in_array('luggage', $risks) ? 1 : 0,
@@ -161,10 +163,12 @@ class NeoInsuranceService
             return null;
         }
 
-        $sugurtalovchi = $this->buildPolicyholder($firstTourist, $booking->order->user?->phone);
-        $travelers = $booking->tourists->map(fn (Tourist $t) => $this->buildTraveler($t))->values()->all();
+        // Step 1: Calculate premium
+        $travelerBirthDates = $booking->tourists->map(
+            fn (Tourist $t) => $t->birth_date?->format('d-m-Y') ?? '01-01-1990'
+        )->all();
 
-        $payload = [
+        $calcResponse = $this->post('/api/travel-neo/calculator-total', [
             'begin_date' => $dates['begin'],
             'end_date' => $dates['end'],
             'countries' => $countryCodes,
@@ -172,15 +176,48 @@ class NeoInsuranceService
             'kop_martali' => false,
             'is_family' => false,
             'has_covid' => false,
+            'travelers' => $travelerBirthDates,
             'risklar' => $riskFlags,
+        ]);
+
+        if (! $calcResponse || ! ($calcResponse['result'] ?? false)) {
+            Log::error('NeoInsurance calculator failed', ['booking_id' => $booking->id]);
+            return null;
+        }
+
+        // Pick Premium (program_id=3), fallback to last
+        $programs = $calcResponse['response'] ?? [];
+        $program = collect($programs)->firstWhere('program_id', 3) ?? collect($programs)->last();
+        if (! $program) {
+            return null;
+        }
+
+        // Step 2: save-polis
+        $beginTs = strtotime(str_replace('-', '/', $dates['begin']));
+        $endTs = strtotime(str_replace('-', '/', $dates['end']));
+        $days = max(1, (int) round(($endTs - $beginTs) / 86400));
+
+        $sugurtalovchi = $this->buildPolicyholder($firstTourist, $booking->order->user?->phone);
+        $travelers = $booking->tourists->map(fn (Tourist $t) => $this->buildTraveler($t))->values()->all();
+
+        $response = $this->post('/api/travel-neo/save-polis', [
+            'begin_date' => $dates['begin'],
+            'end_date' => $dates['end'],
+            'days' => $days,
+            'summa_all' => $program['prem_uzs'],
+            'countries' => $countryCodes,
+            'program_id' => (string) $program['program_id'],
+            'purpose_id' => 1,
+            'kop_martali' => false,
+            'is_family' => false,
+            'has_covid' => false,
             'sugurtalovchi' => $sugurtalovchi,
             'travelers' => $travelers,
-        ];
-
-        $response = $this->post('/api/travel-risk-neo/save', $payload);
+            'risklar' => $riskFlags,
+        ]);
 
         if (! $response || ! ($response['result'] ?? false)) {
-            Log::error('NeoInsurance policy creation failed', [
+            Log::error('NeoInsurance save-polis failed', [
                 'booking_id' => $booking->id,
                 'message' => $response['message'] ?? 'Unknown error',
             ]);
@@ -188,11 +225,10 @@ class NeoInsuranceService
         }
 
         $result = $response['response'] ?? [];
-        $orderId = $result['order_id'] ?? null;
 
         Log::info('NeoInsurance policy created', [
             'booking_id' => $booking->id,
-            'neo_order_id' => $orderId,
+            'neo_order_id' => $result['order_id'] ?? null,
         ]);
 
         return $result ?: null;
@@ -200,15 +236,28 @@ class NeoInsuranceService
 
     /**
      * Check policy payment status via travel-neo/checkPolis.
-     * Returns API response with error_code: 1 = not paid, 0 = paid.
+     *
+     * Response when paid:
+     *   {error: false, check: true, url: "...", polis_seria: "ENT", polis_number: "0000112"}
+     * Response when not paid:
+     *   {result: true, response: {error_code: 1, message: "To'lov qilinmagan hali"}}
      */
     public function checkPolicyStatus(int $neoOrderId): ?array
     {
-        $response = $this->post('/api/travel-neo/checkPolis', [
-            'order_id' => $neoOrderId,
-        ]);
+        return $this->post('/api/travel-neo/checkPolis', ['order_id' => $neoOrderId]);
+    }
 
-        return $response;
+    /**
+     * Determine if a policy is paid based on checkPolis response.
+     */
+    public function isPolicyPaid(array $checkResponse): bool
+    {
+        // Paid response has check: true and polis_number
+        if (! empty($checkResponse['check']) && ! empty($checkResponse['polis_number'])) {
+            return true;
+        }
+        // Unpaid response has response.error_code === 1
+        return false;
     }
 
     private function resolveTravelDates(Booking $booking): ?array

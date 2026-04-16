@@ -72,15 +72,16 @@ class DocumentGenerationService
             return;
         }
 
-        // Store a placeholder document with payment links (no file yet)
+        // travel-neo/save-polis returns: order_id, contract_id, url (Click), payme_url
         BookingDocument::create([
             'booking_id' => $booking->id,
             'type' => 'insurance',
             'file_path' => '',
             'metadata' => [
                 'neo_order_id' => $neoResult['order_id'],
-                'neo_click_url' => $neoResult['click'] ?? null,
-                'neo_payme_url' => $neoResult['payme'] ?? null,
+                'neo_contract_id' => $neoResult['contract_id'] ?? null,
+                'neo_click_url' => $neoResult['url'] ?? null,
+                'neo_payme_url' => $neoResult['payme_url'] ?? null,
                 'status' => 'pending_payment',
             ],
         ]);
@@ -133,10 +134,7 @@ class DocumentGenerationService
             return 'Failed to check policy status.';
         }
 
-        $errorCode = $checkResult['response']['error_code'] ?? null;
-
-        // error_code 1 = not paid, 0 = paid (or null = paid)
-        if ($errorCode === 1) {
+        if (! $this->neoInsurance->isPolicyPaid($checkResult)) {
             return 'Insurance not yet paid. Please pay via Click/Payme links first.';
         }
 
@@ -149,6 +147,9 @@ class DocumentGenerationService
 
         // Delete placeholder document
         $metadata = $insuranceDoc->metadata;
+        $metadata['polis_seria'] = $checkResult['polis_seria'] ?? null;
+        $metadata['polis_number'] = $checkResult['polis_number'] ?? null;
+        $metadata['neo_view_url'] = $checkResult['url'] ?? null;
         $insuranceDoc->delete();
 
         // Generate insurance PDF for each tourist
@@ -156,6 +157,8 @@ class DocumentGenerationService
             $policyData = array_merge($data, [
                 'tourist' => $tourist,
                 'neo_order_id' => $neoOrderId,
+                'polis_seria' => $checkResult['polis_seria'] ?? null,
+                'polis_number' => $checkResult['polis_number'] ?? null,
                 'insurance_risks' => $booking->insurance_risks,
             ]);
 
@@ -186,19 +189,6 @@ class DocumentGenerationService
         ]);
     }
 
-    private function generateHotelVoucher(Booking $booking, array $data, object $hotelStay, int $index): void
-    {
-        $pdf = Pdf::loadView('documents.hotel-voucher', array_merge($data, [
-            'hotelStay' => $hotelStay,
-        ]));
-        $path = $this->storePdf($pdf, $booking->order->id, "hotel_voucher_{$booking->id}_{$index}");
-
-        BookingDocument::create([
-            'booking_id' => $booking->id,
-            'type' => 'hotel_voucher',
-            'file_path' => $path,
-        ]);
-    }
 
     private function generateETicket(Booking $booking, array $data, Tourist $tourist): void
     {
