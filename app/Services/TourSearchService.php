@@ -122,6 +122,11 @@ class TourSearchService
             }
         }
 
+        // Country filter — match flight paths whose destination (last) city is in the selected country
+        if (! empty($filters['country_id'])) {
+            $query->whereHas('stays.city', fn ($q) => $q->where('country_id', $filters['country_id']));
+        }
+
         // Date range
         if (! empty($filters['date_from'])) {
             $query->where('departure_date', '>=', $filters['date_from']);
