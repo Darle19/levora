@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\Tourist;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -55,75 +54,6 @@ class NeoInsuranceService
     public function isConfigured(): bool
     {
         return $this->configured;
-    }
-
-    /**
-     * Get risk options from API (cached 24h).
-     */
-    public function getRiskData(): ?array
-    {
-        if (! $this->configured) {
-            return null;
-        }
-
-        return Cache::remember('neoinsurance_risk_data', 86400, function () {
-            $response = $this->get('/api/travel-risk-neo/get-data');
-            return $response['response'] ?? null;
-        });
-    }
-
-    /**
-     * Get country list from travel-neo endpoint (cached 24h).
-     */
-    public function getCountries(): array
-    {
-        if (! $this->configured) {
-            return [];
-        }
-
-        return Cache::remember('neoinsurance_countries', 86400, function () {
-            $response = $this->get('/api/travel-neo/get-data');
-            return $response['response']['country'] ?? [];
-        });
-    }
-
-    /**
-     * Calculate risk insurance premium.
-     *
-     * @return array|null {amount, amount_valyuta, forign_amount, forign_amount_valyuta}
-     */
-    public function calculateRiskPremium(
-        string $beginDate,
-        string $endDate,
-        array $countryCodes,
-        array $travelerBirthDates,
-        array $risks = [],
-    ): ?array {
-        $payload = [
-            'begin_date' => $beginDate,
-            'end_date' => $endDate,
-            'countries' => $countryCodes,
-            'purpose_id' => 1,
-            'kop_martali' => false,
-            'is_family' => false,
-            'has_covid' => false,
-            'travelers' => $travelerBirthDates,
-            'risklar' => array_merge([
-                'accident' => 0,
-                'luggage' => 0,
-                'cancel_travel' => 0,
-                'person_respon' => 0,
-                'delay_travel' => 0,
-            ], $risks),
-        ];
-
-        $response = $this->post('/api/travel-risk-neo/calculator', $payload);
-
-        if (! $response || ! ($response['result'] ?? false)) {
-            return null;
-        }
-
-        return $response['response'] ?? null;
     }
 
     /**
