@@ -52,10 +52,9 @@ class DocumentGenerationService
             }
         }
 
-        // Insurance — register policy in NeoInsurance (get PTN + payment links)
-        // but do NOT generate PDF yet — admin must pay first, then click "Generate"
+        // Insurance — register policy in NeoInsurance; generate PDF immediately if police_number returned
         if (! empty($booking->insurance_risks) && $this->neoInsurance->isConfigured()) {
-            $this->registerInsurancePolicy($booking);
+            $this->registerInsurancePolicy($booking, $data);
         }
     }
 
@@ -66,7 +65,7 @@ class DocumentGenerationService
      *  - Payment required: {order_id, contract_id, url (Click pay link), payme_url}
      *  - No-payment access: {order_id, url (view_api link), police_number}
      */
-    private function registerInsurancePolicy(Booking $booking): void
+    private function registerInsurancePolicy(Booking $booking, array $data): void
     {
         $neoResult = $this->neoInsurance->createPolicyForBooking($booking);
         if (! $neoResult || empty($neoResult['order_id'])) {
@@ -74,27 +73,52 @@ class DocumentGenerationService
             return;
         }
 
-        $hasPoliceNumber = ! empty($neoResult['police_number']);
+        $policeNumber = $neoResult['police_number'] ?? null;
         $isPaymentFlow = ! empty($neoResult['contract_id']) || ! empty($neoResult['payme_url']);
 
-        $metadata = [
-            'neo_order_id' => $neoResult['order_id'],
-            'police_number' => $neoResult['police_number'] ?? null,
-            'neo_view_url' => $neoResult['url'] ?? null,
-            'status' => $hasPoliceNumber ? 'issued' : 'pending_payment',
-        ];
+        // If police_number was issued immediately, generate PDFs per tourist right away
+        if ($policeNumber && ! $isPaymentFlow) {
+            $metadata = [
+                'neo_order_id' => $neoResult['order_id'],
+                'police_number' => $policeNumber,
+                'neo_view_url' => $neoResult['url'] ?? null,
+                'status' => 'issued',
+            ];
 
-        if ($isPaymentFlow) {
-            $metadata['neo_contract_id'] = $neoResult['contract_id'] ?? null;
-            $metadata['neo_click_url'] = $neoResult['url'] ?? null;
-            $metadata['neo_payme_url'] = $neoResult['payme_url'] ?? null;
+            foreach ($booking->tourists as $tourist) {
+                $policyData = array_merge($data, [
+                    'tourist' => $tourist,
+                    'neo_order_id' => $neoResult['order_id'],
+                    'police_number' => $policeNumber,
+                    'insurance_risks' => $booking->insurance_risks,
+                ]);
+
+                $pdf = Pdf::loadView('documents.insurance-policy', $policyData);
+                $path = $this->storePdf($pdf, $booking->order->id, "insurance_{$booking->id}_{$tourist->id}");
+
+                BookingDocument::create([
+                    'booking_id' => $booking->id,
+                    'type' => 'insurance',
+                    'tourist_id' => $tourist->id,
+                    'file_path' => $path,
+                    'metadata' => $metadata,
+                ]);
+            }
+            return;
         }
 
+        // Payment flow: create placeholder with Click/Payme links
         BookingDocument::create([
             'booking_id' => $booking->id,
             'type' => 'insurance',
             'file_path' => '',
-            'metadata' => $metadata,
+            'metadata' => [
+                'neo_order_id' => $neoResult['order_id'],
+                'neo_contract_id' => $neoResult['contract_id'] ?? null,
+                'neo_click_url' => $neoResult['url'] ?? null,
+                'neo_payme_url' => $neoResult['payme_url'] ?? null,
+                'status' => 'pending_payment',
+            ],
         ]);
     }
 
