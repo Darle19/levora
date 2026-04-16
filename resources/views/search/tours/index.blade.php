@@ -176,10 +176,10 @@
                     <div class="form-field">
                         <span class="form-label">{{ __('messages.search.tour_route') ?? 'Tour Route' }}:</span>
                         <span class="form-input">
-                            <select name="tour_route">
+                            <select name="tour_route" id="tour_route">
                                 <option value="">----</option>
                                 @foreach($tourRoutes as $route)
-                                    <option value="{{ $route['slug'] }}">{{ $route['label'] }}</option>
+                                    <option value="{{ $route['slug'] }}" data-country-id="{{ $route['filters']['country_id'] ?? '' }}">{{ $route['label'] }}</option>
                                 @endforeach
                             </select>
                         </span>
@@ -565,9 +565,24 @@
         }, 50);
     });
 
-    // Country → Cities (show cities that have hotels)
+    // Filter tour_route options to those matching selected country (empty country = show all).
+    function filterTourRoutesByCountry(countryId) {
+        const routeSelect = document.getElementById('tour_route');
+        if (!routeSelect) return;
+        let selectedStillVisible = false;
+        Array.from(routeSelect.options).forEach(opt => {
+            if (!opt.value) { opt.hidden = false; return; } // keep placeholder
+            const matches = !countryId || String(opt.dataset.countryId) === String(countryId);
+            opt.hidden = !matches;
+            if (matches && opt.value === routeSelect.value) selectedStillVisible = true;
+        });
+        if (!selectedStillVisible) routeSelect.value = '';
+    }
+
+    // Country → Cities (show cities that have hotels) + filter tour_route options
     document.getElementById('country_id').addEventListener('change', function() {
         const countryId = this.value;
+        filterTourRoutesByCountry(countryId);
         const rc = document.getElementById('resortsContainer');
         if (!countryId) {
             rc.innerHTML = '<label style="color:#999;text-align:center;padding:20px 0;">{{ __("messages.search.select_destination") }}</label>';
@@ -582,6 +597,9 @@
         document.querySelectorAll('.resort-checkbox').forEach(cb => cb.addEventListener('change', updateHotelsByCity));
         updateResortsAllCheckbox();
     });
+
+    // Apply initial filter on page load if country was pre-selected (e.g. from query string)
+    filterTourRoutesByCountry(document.getElementById('country_id').value);
 
     // Cities → Hotels
     function updateHotelsByCity() {
