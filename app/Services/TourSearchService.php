@@ -22,13 +22,16 @@ use Illuminate\Support\Facades\Cache;
  */
 class TourSearchService
 {
+    /** In-memory memo so buildRoutes() isn't rebuilt twice per request. */
+    private ?array $routesMemo = null;
+
     public function getFilterOptions(): array
     {
         return Cache::remember('tour_filter_options', 1800, fn () => [
             'countries' => Country::where('is_active', true)->orderBy('order')->get(),
             'cities' => City::where('is_active', true)->orderBy('order')->get(),
             'departureCities' => City::where('is_active', true)->where('is_departure', true)->orderBy('name_en')->get(),
-            'tourRoutes' => $this->buildRoutes(),
+            'tourRoutes' => $this->getRoutes(),
             'mealTypes' => MealType::where('is_active', true)->get(),
             'hotelCategories' => HotelCategory::where('is_active', true)->orderBy('stars')->get(),
             'currencies' => Currency::where('is_active', true)->get(),
@@ -46,6 +49,12 @@ class TourSearchService
                 ->toArray(),
             'dateSeats' => $this->buildDateSeats(),
         ]);
+    }
+
+    /** Return cached (per-request) route data, building on first access. */
+    private function getRoutes(): array
+    {
+        return $this->routesMemo ??= $this->buildRoutes();
     }
 
     /**
@@ -117,8 +126,7 @@ class TourSearchService
         // Route filter
         if (! empty($filters['tour_route'])) {
             $routeSlug = $filters['tour_route'];
-            $allRoutes = $this->buildRoutes();
-            $matched = collect($allRoutes)->firstWhere('slug', $routeSlug);
+            $matched = collect($this->getRoutes())->firstWhere('slug', $routeSlug);
             if ($matched) {
                 $query->where('route_name', $matched['label']);
             }
@@ -155,16 +163,24 @@ class TourSearchService
 
         $adults = (int) ($filters['adults'] ?? 2);
 
+        // Batch-load all hotels for cities referenced by flight path stays (avoids N+1 in the loop below)
+        $stayCityIds = $flightPaths->pluck('stays.*.city_id')->flatten()->filter()->unique()->values()->all();
+        $hotelsByCityId = [];
+        if (! empty($stayCityIds)) {
+            $hotelsByCityId = Hotel::whereIn('city_id', $stayCityIds)
+                ->where('is_active', true)
+                ->when(! empty($hotelFilter), fn ($q) => $q->whereIn('id', $hotelFilter))
+                ->with('category')
+                ->get()
+                ->groupBy('city_id');
+        }
+
         // Build combos: flight_path × hotels
         $results = [];
         foreach ($flightPaths as $fp) {
             $hotelsByCityStay = [];
             foreach ($fp->stays as $stay) {
-                $cityHotels = Hotel::where('city_id', $stay->city_id)
-                    ->where('is_active', true)
-                    ->when(! empty($hotelFilter), fn ($q) => $q->whereIn('id', $hotelFilter))
-                    ->with('category')
-                    ->get();
+                $cityHotels = $hotelsByCityId[$stay->city_id] ?? collect();
                 $hotelsByCityStay[$stay->stay_order] = [
                     'city' => $stay->city,
                     'nights' => $stay->nights,

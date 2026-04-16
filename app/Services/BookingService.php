@@ -103,8 +103,7 @@ class BookingService
             $usdId = Currency::where('code', 'USD')->value('id');
 
             // Create order
-            $order = Order::create([
-                'order_number' => (string) (Order::max('id') + 1),
+            $order = $this->createOrderWithSequentialNumber([
                 'agency_id' => $agencyId,
                 'user_id' => $userId,
                 'status' => 'pending',
@@ -172,8 +171,7 @@ class BookingService
 
             $usdId = Currency::where('code', 'USD')->value('id');
 
-            $order = Order::create([
-                'order_number' => (string) (Order::max('id') + 1),
+            $order = $this->createOrderWithSequentialNumber([
                 'agency_id' => $agencyId,
                 'user_id' => $userId,
                 'status' => 'pending',
@@ -376,8 +374,7 @@ class BookingService
             $notes .= ($notes ? "\n" : '').'Special: '.implode(', ', $validated['special_requests']);
         }
 
-        return Order::create([
-            'order_number' => (string) (Order::max('id') + 1),
+        return $this->createOrderWithSequentialNumber([
             'agency_id' => $agencyId,
             'user_id' => $userId,
             'status' => 'pending',
@@ -385,6 +382,19 @@ class BookingService
             'currency_id' => $tour->currency_id,
             'notes' => $notes ?: null,
         ]);
+    }
+
+    /**
+     * Create an Order whose order_number equals its auto-increment id.
+     * Avoids the race condition of `Order::max('id') + 1` where two concurrent
+     * bookings could read the same max and produce duplicate order_numbers.
+     * Back-compatible: format stays a numeric string matching id.
+     */
+    private function createOrderWithSequentialNumber(array $attrs): Order
+    {
+        $order = Order::create(array_merge($attrs, ['order_number' => '']));
+        $order->update(['order_number' => (string) $order->id]);
+        return $order;
     }
 
     private function createBookingRecord(Order $order, Tour $tour, ?int $roomTypeId, string $totalPrice): Booking
