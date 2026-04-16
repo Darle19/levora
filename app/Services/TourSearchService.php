@@ -66,9 +66,10 @@ class TourSearchService
             $cityIds = $firstPath->stays->pluck('city_id')->filter()->values()->toArray();
             $departureCityId = $firstPath->departure_city_id;
 
-            // Last city determines country
-            $lastCity = $firstPath->stays->sortByDesc('stay_order')->first()?->city;
-            $countryId = $lastCity?->country_id;
+            // All countries visited in this route (tour may span multiple countries)
+            $countryIds = $firstPath->stays->pluck('city.country_id')->filter()->unique()->values()->toArray();
+            // Primary country (used for auto-filling country dropdown when route is picked) = last stay
+            $countryId = $firstPath->stays->sortByDesc('stay_order')->first()?->city?->country_id;
 
             $dateFrom = $pathGroup->min('departure_date')?->format('Y-m-d');
             $dateTo = $pathGroup->max('departure_date')?->format('Y-m-d');
@@ -87,6 +88,7 @@ class TourSearchService
                 'label' => $routeName,
                 'filters' => [
                     'country_id' => $countryId,
+                    'country_ids' => $countryIds,
                     'departure_city_id' => $departureCityId,
                     'city_ids' => $cityIds,
                     'hotel_ids' => Hotel::whereIn('city_id', $cityIds)->where('is_active', true)->pluck('id')->toArray(),

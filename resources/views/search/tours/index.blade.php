@@ -179,7 +179,7 @@
                             <select name="tour_route" id="tour_route">
                                 <option value="">----</option>
                                 @foreach($tourRoutes as $route)
-                                    <option value="{{ $route['slug'] }}" data-country-id="{{ $route['filters']['country_id'] ?? '' }}">{{ $route['label'] }}</option>
+                                    <option value="{{ $route['slug'] }}" data-country-ids="{{ implode(',', $route['filters']['country_ids'] ?? []) }}">{{ $route['label'] }}</option>
                                 @endforeach
                             </select>
                         </span>
@@ -565,14 +565,17 @@
         }, 50);
     });
 
-    // Filter tour_route options to those matching selected country (empty country = show all).
+    // Filter tour_route options to those whose countries include the selected country
+    // (a tour may span multiple countries, e.g. Istanbul + Nice = Turkey + France).
+    // Empty country = show all routes.
     function filterTourRoutesByCountry(countryId) {
         const routeSelect = document.getElementById('tour_route');
         if (!routeSelect) return;
         let selectedStillVisible = false;
         Array.from(routeSelect.options).forEach(opt => {
             if (!opt.value) { opt.hidden = false; return; } // keep placeholder
-            const matches = !countryId || String(opt.dataset.countryId) === String(countryId);
+            const ids = (opt.dataset.countryIds || '').split(',').filter(Boolean);
+            const matches = !countryId || ids.includes(String(countryId));
             opt.hidden = !matches;
             if (matches && opt.value === routeSelect.value) selectedStillVisible = true;
         });
