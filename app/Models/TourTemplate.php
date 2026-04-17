@@ -20,6 +20,8 @@ class TourTemplate extends Model
         'status',
         'base_currency',
         'margin_percent',
+        'generation_status',
+        'generation_summary',
     ];
 
     protected function casts(): array
@@ -29,6 +31,7 @@ class TourTemplate extends Model
             'total_nights' => 'integer',
             'margin_percent' => 'integer',
             'status' => TourTemplateStatus::class,
+            'generation_summary' => 'array',
         ];
     }
 

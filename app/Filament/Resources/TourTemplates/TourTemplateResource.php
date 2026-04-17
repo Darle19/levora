@@ -23,12 +23,12 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use App\Jobs\GenerateFlightPathsJob;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Artisan;
 
 class TourTemplateResource extends Resource
 {
@@ -214,26 +214,51 @@ class TourTemplateResource extends Resource
                     ->label('Generated')
                     ->counts('flightPaths')
                     ->sortable(),
+                TextColumn::make('generation_status')
+                    ->label('Gen status')
+                    ->badge()
+                    ->color(fn (?string $state) => match ($state) {
+                        'queued' => 'gray',
+                        'running' => 'warning',
+                        'done' => 'success',
+                        'failed' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(function (?string $state, $record) {
+                        if (! $state) {
+                            return '—';
+                        }
+                        $sum = $record->generation_summary ?? [];
+                        if ($state === 'done') {
+                            return sprintf('done (%d new, %d skip)', $sum['created'] ?? 0, $sum['skipped'] ?? 0);
+                        }
+                        if ($state === 'failed') {
+                            return 'failed';
+                        }
+                        return $state;
+                    }),
                 IconColumn::make('is_active')
                     ->boolean()
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->poll('5s')
             ->recordActions([
                 EditAction::make(),
                 Action::make('generate_paths')
                     ->label('Generate Paths')
                     ->icon(Heroicon::OutlinedPlayCircle)
                     ->requiresConfirmation()
-                    ->modalHeading('Generate FlightPaths')
-                    ->modalDescription('Creates one FlightPath per valid airline combo across the next 90 days. Idempotent — skips existing paths.')
+                    ->modalHeading('Queue FlightPath generation')
+                    ->modalDescription('Dispatches a background job. The page will auto-refresh; status shows queued → running → done. Idempotent.')
+                    ->disabled(fn ($record) => $record->generation_status === 'running' || $record->generation_status === 'queued')
                     ->action(function ($record) {
-                        Artisan::call('tours:generate-paths', ['--template' => $record->id]);
-                        $output = Artisan::output();
+                        $record->update(['generation_status' => 'queued', 'generation_summary' => null]);
+                        GenerateFlightPathsJob::dispatch($record);
                         Notification::make()
                             ->success()
-                            ->title('Paths generated')
-                            ->body(trim(preg_replace('/\s+/', ' ', $output)))
+                            ->title('Generation queued')
+                            ->body('Background job dispatched. Status column will update as it runs.')
                             ->send();
                     }),
             ])

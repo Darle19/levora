@@ -38,6 +38,74 @@ class FlightPathGenerator
     }
 
     /**
+     * Generate FlightPaths for every candidate base date in the window.
+     *
+     * Candidate base dates = dates on which at least one flight matches the
+     * template's first leg (day_offset=0). Other legs are checked inside
+     * generate(); a base date with no valid combo ends up reported in
+     * $summary['reasons'].
+     *
+     * @return array{dates:int,created:int,skipped:int,reasons:array<string,string>}
+     */
+    public function generateForWindow(TourTemplate $template, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $baseDates = $this->candidateBaseDates($template, $from, $to);
+
+        $created = 0;
+        $skipped = 0;
+        $reasons = [];
+        foreach ($baseDates as $baseDate) {
+            $r = $this->generate($template, $baseDate);
+            $created += $r['created'];
+            $skipped += $r['skipped'];
+            if (! empty($r['reason']) && $r['created'] === 0 && $r['skipped'] === 0) {
+                $reasons[$baseDate->toDateString()] = $r['reason'];
+            }
+        }
+
+        return ['dates' => count($baseDates), 'created' => $created, 'skipped' => $skipped, 'reasons' => $reasons];
+    }
+
+    /**
+     * @return array<int,CarbonImmutable>
+     */
+    private function candidateBaseDates(TourTemplate $template, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $firstLeg = $template->legs()->orderBy('leg_order')->with('airlines')->first();
+        if (! $firstLeg) {
+            return [];
+        }
+
+        $airlineIds = $firstLeg->airlines->pluck('id')->all();
+        if (empty($airlineIds)) {
+            return [];
+        }
+
+        // For rapidapi-sourced legs we can't pre-list base dates (the API
+        // decides) — fall back to "every date in window" so the generator
+        // itself is the one calling the API. For local_db legs we stay fast.
+        if ($firstLeg->flight_source === 'rapidapi') {
+            $dates = [];
+            for ($d = $from; $d <= $to; $d = $d->addDay()) {
+                $dates[] = $d;
+            }
+            return $dates;
+        }
+
+        return Flight::query()
+            ->where('is_active', true)
+            ->whereIn('airline_id', $airlineIds)
+            ->whereBetween('departure_date', [$from->toDateString(), $to->toDateString()])
+            ->whereHas('fromAirport', fn ($q) => $q->where('city_id', $firstLeg->departure_city_id))
+            ->whereHas('toAirport', fn ($q) => $q->where('city_id', $firstLeg->arrival_city_id))
+            ->pluck('departure_date')
+            ->map(fn ($d) => CarbonImmutable::parse($d))
+            ->unique(fn ($d) => $d->toDateString())
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array{created:int,skipped:int,reason?:string}
      */
     public function generate(TourTemplate $template, CarbonImmutable $baseDate): array

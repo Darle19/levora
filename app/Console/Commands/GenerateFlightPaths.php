@@ -44,65 +44,18 @@ class GenerateFlightPaths extends Command
 
         $rows = [];
         foreach ($templates as $template) {
-            $created = 0;
-            $skipped = 0;
-            $reasons = [];
-
-            $baseDates = $this->candidateBaseDates($template, $from, $to);
-            foreach ($baseDates as $baseDate) {
-                $result = $generator->generate($template, $baseDate);
-                $created += $result['created'];
-                $skipped += $result['skipped'];
-                if (! empty($result['reason']) && $result['created'] === 0 && $result['skipped'] === 0) {
-                    $reasons[$baseDate->toDateString()] = $result['reason'];
-                }
-            }
-
+            $result = $generator->generateForWindow($template, $from, $to);
             $rows[] = [
                 $template->id,
                 $template->route_name,
-                count($baseDates),
-                $created,
-                $skipped,
-                empty($reasons) ? '' : count($reasons) . ' dates w/o combos',
+                $result['dates'],
+                $result['created'],
+                $result['skipped'],
+                empty($result['reasons']) ? '' : count($result['reasons']) . ' dates w/o combos',
             ];
         }
 
         $this->table(['Template', 'Route', 'Dates', 'Created', 'Skipped', 'Notes'], $rows);
         return self::SUCCESS;
-    }
-
-    /**
-     * Base dates = any date in [$from, $to] on which at least one flight matches the
-     * template's first leg (day_offset=0). Other legs are checked during generation.
-     * Returns CarbonImmutable[].
-     *
-     * @return array<int,CarbonImmutable>
-     */
-    private function candidateBaseDates(TourTemplate $template, CarbonImmutable $from, CarbonImmutable $to): array
-    {
-        $firstLeg = $template->legs->sortBy('leg_order')->first();
-        if (! $firstLeg) {
-            return [];
-        }
-
-        $airlineIds = $firstLeg->airlines->pluck('id')->all();
-        if (empty($airlineIds)) {
-            return [];
-        }
-
-        $dates = \App\Models\Flight::query()
-            ->where('is_active', true)
-            ->whereIn('airline_id', $airlineIds)
-            ->whereBetween('departure_date', [$from->toDateString(), $to->toDateString()])
-            ->whereHas('fromAirport', fn ($q) => $q->where('city_id', $firstLeg->departure_city_id))
-            ->whereHas('toAirport', fn ($q) => $q->where('city_id', $firstLeg->arrival_city_id))
-            ->pluck('departure_date')
-            ->map(fn ($d) => CarbonImmutable::parse($d))
-            ->unique(fn ($d) => $d->toDateString())
-            ->values()
-            ->all();
-
-        return $dates;
     }
 }
