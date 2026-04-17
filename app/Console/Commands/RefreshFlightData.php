@@ -28,6 +28,10 @@ class RefreshFlightData extends Command
         $from = now();
         $to = now()->addDays($days);
 
+        // Start-of-run log so we can see in laravel.log whether the command even launched
+        // (previously only the completion line was logged, so silent mid-run crashes were invisible).
+        Log::info('flights:refresh started', ['days' => $days, 'window' => [$from->toDateTimeString(), $to->toDateTimeString()]]);
+
         $flights = Flight::with(['airline', 'fromAirport.city.airports', 'toAirport.city.airports'])
             ->where('is_active', true)
             ->whereBetween('departure_date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
