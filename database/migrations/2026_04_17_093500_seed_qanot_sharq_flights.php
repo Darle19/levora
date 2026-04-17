@@ -6,6 +6,7 @@ use App\Models\Currency;
 use App\Models\Flight;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Seed Qanot Sharq airline + TAS→IST weekly flights (Apr 27 → Jun 29, 2026).
@@ -40,32 +41,41 @@ return new class extends Migration
             '2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29',
         ];
 
+        // Insert via raw DB to avoid Eloquent's date cast rewriting 'YYYY-MM-DD' as
+        // 'YYYY-MM-DD 00:00:00'; the rest of the schema stores plain date strings,
+        // and the inconsistency breaks equality lookups (see FlightPathGenerator).
         foreach ($dates as $date) {
-            Flight::updateOrCreate(
-                [
-                    'airline_id' => $airline->id,
-                    'flight_number' => 'HH 7501',
-                    'departure_date' => $date,
-                ],
-                [
-                    'from_airport_id' => $tas->id,
-                    'to_airport_id' => $ist->id,
-                    'origin_city_id' => $tas->city_id,
-                    'destination_city_id' => $ist->city_id,
-                    'departure_time' => '10:00:00',
-                    'arrival_date' => $date,
-                    'arrival_time' => '13:00:00',
-                    'price_adult' => 350,
-                    'price_child' => 350,
-                    'price_infant' => 0,
-                    'currency_id' => $usd->id,
-                    'available_seats' => 20,
-                    'class_type' => 'economy',
-                    'soft_block_price' => 350,
-                    'soft_block_release_days' => 14,
-                    'is_active' => true,
-                ]
-            );
+            $exists = DB::table('flights')
+                ->where('airline_id', $airline->id)
+                ->where('flight_number', 'HH 7501')
+                ->where('departure_date', $date)
+                ->exists();
+            if ($exists) {
+                continue;
+            }
+            DB::table('flights')->insert([
+                'airline_id' => $airline->id,
+                'flight_number' => 'HH 7501',
+                'departure_date' => $date,
+                'from_airport_id' => $tas->id,
+                'to_airport_id' => $ist->id,
+                'origin_city_id' => $tas->city_id,
+                'destination_city_id' => $ist->city_id,
+                'departure_time' => '10:00:00',
+                'arrival_date' => $date,
+                'arrival_time' => '13:00:00',
+                'price_adult' => 350,
+                'price_child' => 350,
+                'price_infant' => 0,
+                'currency_id' => $usd->id,
+                'available_seats' => 20,
+                'class_type' => 'economy',
+                'soft_block_price' => 350,
+                'soft_block_release_days' => 14,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     }
 
@@ -76,15 +86,13 @@ return new class extends Migration
             return;
         }
 
-        Flight::where('airline_id', $airline->id)
-            ->whereIn('departure_date', [
-                '2026-04-27', '2026-05-04', '2026-05-11', '2026-05-18', '2026-05-25',
-                '2026-06-01', '2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29',
-            ])
+        DB::table('flights')
+            ->where('airline_id', $airline->id)
+            ->where('flight_number', 'HH 7501')
             ->delete();
 
         // Only delete the airline if no flights remain for it.
-        if (Flight::where('airline_id', $airline->id)->doesntExist()) {
+        if (DB::table('flights')->where('airline_id', $airline->id)->doesntExist()) {
             $airline->delete();
         }
     }
