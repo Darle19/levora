@@ -33,6 +33,9 @@ class FlightPathGenerator
     /** Per-request cache: avoid hitting RapidAPI twice for the same (leg, date). */
     private array $apiFetched = [];
 
+    /** Diagnostics surfaced in the job summary: per-leg counts of API attempts and empty responses. */
+    private array $apiStats = ['calls' => 0, 'empty' => 0];
+
     public function __construct(private RapidApiFlightProvider $rapidApi)
     {
     }
@@ -63,7 +66,13 @@ class FlightPathGenerator
             }
         }
 
-        return ['dates' => count($baseDates), 'created' => $created, 'skipped' => $skipped, 'reasons' => $reasons];
+        return [
+            'dates' => count($baseDates),
+            'created' => $created,
+            'skipped' => $skipped,
+            'reasons' => $reasons,
+            'api' => $this->apiStats,
+        ];
     }
 
     /**
@@ -273,6 +282,7 @@ class FlightPathGenerator
         $defaultCurrencyId = Currency::where('code', 'USD')->value('id');
 
         foreach ($leg->airlines as $airline) {
+            $this->apiStats['calls']++;
             $offers = $this->rapidApi->search(
                 originIata: $depAirport->code,
                 destinationIata: $arrAirport->code,
@@ -280,7 +290,19 @@ class FlightPathGenerator
                 passengerCount: 1,
                 airlineCode: $airline->code,
             );
+            // Gentle throttle between calls; RapidAPI on our plan frequently
+            // times out when hammered. Cheap insurance against a whole job
+            // failing silently.
+            usleep(500_000);
+
             if (empty($offers)) {
+                $this->apiStats['empty']++;
+                Log::info('RapidAPI returned no offers', [
+                    'leg_id' => $leg->id,
+                    'route' => "{$depAirport->code}→{$arrAirport->code}",
+                    'date' => $date,
+                    'airline' => $airline->code,
+                ]);
                 continue;
             }
 

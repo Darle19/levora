@@ -213,7 +213,8 @@ class RapidApiFlightProvider implements FlightProviderInterface
                 'x-rapidapi-host' => self::HOST,
                 'x-rapidapi-key' => $this->apiKey,
             ])
-                ->timeout(30)
+                ->timeout(60)
+                ->retry(2, 2000, throw: false)
                 ->get($url, $params);
 
             if (! $response->successful()) {
