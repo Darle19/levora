@@ -182,11 +182,18 @@ class FlightPathGenerator
         return $combos;
     }
 
-    /** Detect a FlightPath under this template/date whose flight-id set matches exactly. */
+    /**
+     * Detect a FlightPath on this date whose flight-id set matches exactly.
+     *
+     * Deliberately not filtered by tour_template_id: a path that existed
+     * before the template system was introduced may have tour_template_id
+     * still null, yet already represent this exact combo. We also use
+     * whereDate() so the comparison works regardless of whether the stored
+     * date carries a time component.
+     */
     private function pathExists(TourTemplate $template, CarbonImmutable $baseDate, array $flightIdSet): bool
     {
-        $candidates = FlightPath::where('tour_template_id', $template->id)
-            ->where('departure_date', $baseDate->toDateString())
+        $candidates = FlightPath::whereDate('departure_date', $baseDate->toDateString())
             ->with('legs:id,flight_path_id,flight_id')
             ->get();
 
