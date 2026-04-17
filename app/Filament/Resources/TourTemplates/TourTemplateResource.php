@@ -23,9 +23,12 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Artisan;
 
 class TourTemplateResource extends Resource
 {
@@ -121,7 +124,7 @@ class TourTemplateResource extends Resource
                 ]),
 
             Section::make('Flight Legs')
-                ->description('Define flight segments. Day offset = days from base departure date. Use "Generate Flights" to search and create paths.')
+                ->description('Define flight segments. Day offset = days from base departure date. Each leg can accept multiple airlines; the generator emits one FlightPath per valid combo.')
                 ->columnSpanFull()
                 ->schema([
                     Repeater::make('legs')
@@ -135,11 +138,14 @@ class TourTemplateResource extends Resource
                                 ->label('To')
                                 ->options(City::where('is_active', true)->pluck('name_en', 'id'))
                                 ->required(),
-                            Select::make('airline_id')
-                                ->label('Airline')
+                            Select::make('airlines')
+                                ->label('Airlines')
+                                ->relationship('airlines', 'name')
                                 ->options(Airline::where('is_active', true)->pluck('name', 'id'))
-                                ->placeholder('Any')
-                                ->searchable(),
+                                ->multiple()
+                                ->preload()
+                                ->searchable()
+                                ->helperText('Pick every carrier that may operate this leg'),
                             TextInput::make('day_offset')
                                 ->label('Day +')
                                 ->numeric()
@@ -153,8 +159,26 @@ class TourTemplateResource extends Resource
                                 ])
                                 ->default('local_db')
                                 ->required(),
+                            Select::make('round_trip_pair_id')
+                                ->label('Pairs with leg')
+                                ->helperText('Force same airline on two linked legs (block seats). Pick the peer leg.')
+                                ->options(function ($livewire, $record) {
+                                    // $record here is the sibling leg (TourTemplateLeg) in edit-mode;
+                                    // fall back to the template's record on the Livewire page.
+                                    $template = $livewire->record ?? null;
+                                    if (! $template) {
+                                        return [];
+                                    }
+                                    $legs = $template->legs()->orderBy('leg_order')->get();
+                                    return $legs
+                                        ->when($record, fn ($c) => $c->where('id', '!=', $record->id))
+                                        ->mapWithKeys(fn ($l) => [$l->id => "Leg {$l->leg_order} ({$l->departureCity?->name_en} → {$l->arrivalCity?->name_en})"])
+                                        ->all();
+                                })
+                                ->placeholder('No pair')
+                                ->columnSpan(2),
                         ])
-                        ->columns(5)
+                        ->columns(6)
                         ->defaultItems(0)
                         ->maxItems(10)
                         ->reorderable()
@@ -197,6 +221,21 @@ class TourTemplateResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->recordActions([
                 EditAction::make(),
+                Action::make('generate_paths')
+                    ->label('Generate Paths')
+                    ->icon(Heroicon::OutlinedPlayCircle)
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate FlightPaths')
+                    ->modalDescription('Creates one FlightPath per valid airline combo across the next 90 days. Idempotent — skips existing paths.')
+                    ->action(function ($record) {
+                        Artisan::call('tours:generate-paths', ['--template' => $record->id]);
+                        $output = Artisan::output();
+                        Notification::make()
+                            ->success()
+                            ->title('Paths generated')
+                            ->body(trim(preg_replace('/\s+/', ' ', $output)))
+                            ->send();
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
