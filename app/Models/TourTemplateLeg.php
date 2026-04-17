@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TimeRange;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class TourTemplateLeg extends Model
@@ -52,6 +53,15 @@ class TourTemplateLeg extends Model
     public function airline(): BelongsTo
     {
         return $this->belongsTo(Airline::class);
+    }
+
+    /**
+     * Airlines allowed to serve this leg. A leg may be operated by any of
+     * these; the FlightPath generator emits one path per valid airline combo.
+     */
+    public function airlines(): BelongsToMany
+    {
+        return $this->belongsToMany(Airline::class, 'tour_template_leg_airlines');
     }
 
     public function flightSelection(): HasOne
