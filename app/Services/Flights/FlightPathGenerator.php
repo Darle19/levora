@@ -89,9 +89,7 @@ class FlightPathGenerator
                 $chosenFlights[$leg->leg_order] = $flight;
             }
 
-            $flightIdSet = collect($chosenFlights)->pluck('id')->sort()->values()->all();
-
-            if ($this->pathExists($template, $baseDate, $flightIdSet)) {
+            if ($this->pathExists($template, $baseDate, $chosenFlights)) {
                 $skipped++;
                 continue;
             }
@@ -183,26 +181,50 @@ class FlightPathGenerator
     }
 
     /**
-     * Detect a FlightPath on this date whose flight-id set matches exactly.
+     * Detect a FlightPath on this date whose airline+route signature matches.
      *
-     * Deliberately not filtered by tour_template_id: a path that existed
-     * before the template system was introduced may have tour_template_id
-     * still null, yet already represent this exact combo. We also use
-     * whereDate() so the comparison works regardless of whether the stored
-     * date carries a time component.
+     * Comparing by flight_id is too strict: the flights table can legitimately
+     * carry two rows for the same real-world segment (for example a RapidAPI
+     * refresh stored a new row with a prefixed flight_number). Those rows are
+     * distinct flight_ids but represent the same combo, so we match on the
+     * stable shape instead: (airline_id, from_airport_id, to_airport_id,
+     * departure_date) per leg, ordered by leg_order.
      */
-    private function pathExists(TourTemplate $template, CarbonImmutable $baseDate, array $flightIdSet): bool
+    private function pathExists(TourTemplate $template, CarbonImmutable $baseDate, array $legFlights): bool
     {
+        $wanted = $this->routeSignature($legFlights);
+
         $candidates = FlightPath::whereDate('departure_date', $baseDate->toDateString())
-            ->with('legs:id,flight_path_id,flight_id')
+            ->with(['legs' => fn ($q) => $q->orderBy('leg_order'), 'legs.flight:id,airline_id,from_airport_id,to_airport_id,departure_date'])
             ->get();
 
         foreach ($candidates as $fp) {
-            $existing = $fp->legs->pluck('flight_id')->sort()->values()->all();
-            if ($existing === $flightIdSet) {
+            $existing = $this->routeSignature(
+                $fp->legs->sortBy('leg_order')
+                    ->mapWithKeys(fn ($l) => [$l->leg_order => $l->flight])
+                    ->all()
+            );
+            if ($existing === $wanted) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** Stable hash of a FlightPath's airline+route sequence, independent of flight_id. */
+    private function routeSignature(array $legFlights): string
+    {
+        ksort($legFlights);
+        $parts = [];
+        foreach ($legFlights as $order => $flight) {
+            if (! $flight) {
+                continue;
+            }
+            $date = $flight->departure_date instanceof \Carbon\CarbonInterface
+                ? $flight->departure_date->toDateString()
+                : (string) $flight->departure_date;
+            $parts[] = "$order:{$flight->airline_id}:{$flight->from_airport_id}:{$flight->to_airport_id}:{$date}";
+        }
+        return implode('|', $parts);
     }
 }

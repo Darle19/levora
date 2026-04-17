@@ -27,17 +27,34 @@ class DedupeFlightPaths extends Command
     {
         $apply = (bool) $this->option('apply');
 
-        $paths = FlightPath::with('legs:id,flight_path_id,flight_id')
+        $paths = FlightPath::with([
+            'legs' => fn ($q) => $q->orderBy('leg_order'),
+            'legs.flight:id,airline_id,from_airport_id,to_airport_id,departure_date',
+        ])
             ->orderBy('departure_date')
             ->orderBy('id')
             ->get();
 
-        $seen = []; // key: "date|sorted_flight_ids" → first fp_id
+        $seen = []; // key: "date|airline+route signature" → first fp_id
         $duplicates = []; // [fp_id => original_fp_id]
 
+        // Two FlightPaths are duplicates when, leg-for-leg, they carry the
+        // same airline on the same segment on the same date. Comparing by
+        // flight_id misses cases where the flights table has two rows for
+        // the same real-world segment (e.g. RapidAPI stored a new row with
+        // a slightly different flight_number).
         foreach ($paths as $fp) {
-            $flightIds = $fp->legs->pluck('flight_id')->sort()->values()->all();
-            $key = $fp->departure_date->toDateString() . '|' . implode(',', $flightIds);
+            $sig = $fp->legs->map(function ($l) {
+                if (! $l->flight) {
+                    return 'null';
+                }
+                $date = $l->flight->departure_date instanceof \Carbon\CarbonInterface
+                    ? $l->flight->departure_date->toDateString()
+                    : (string) $l->flight->departure_date;
+                return $l->leg_order . ':' . $l->flight->airline_id . ':' . $l->flight->from_airport_id . ':' . $l->flight->to_airport_id . ':' . $date;
+            })->implode('|');
+
+            $key = $fp->departure_date->toDateString() . '|' . $sig;
 
             if (isset($seen[$key])) {
                 $duplicates[$fp->id] = $seen[$key];
