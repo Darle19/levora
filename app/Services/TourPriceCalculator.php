@@ -21,6 +21,41 @@ use Illuminate\Support\Collection;
 class TourPriceCalculator
 {
     /**
+     * Request-scoped cache so that a search run building 80+ combos
+     * doesn't hit Settings/AdditionalService for each one.
+     * Cleared automatically at the end of the PHP request.
+     */
+    private static ?array $pricingContext = null;
+
+    /**
+     * Load fees + mandatory services once per request.
+     * Services are fetched un-filtered; city filter is applied in-memory.
+     */
+    private static function pricingContext(): array
+    {
+        if (self::$pricingContext !== null) {
+            return self::$pricingContext;
+        }
+
+        $services = AdditionalService::where('is_active', true)
+            ->where('is_mandatory', true)
+            ->where('service_type', '!=', 'insurance')
+            ->get();
+
+        return self::$pricingContext = [
+            'hidden_fee' => (float) Setting::getValue('tour_hidden_fee', 60),
+            'agent_fee' => (float) Setting::getValue('tour_agent_fee', 50),
+            'services' => $services,
+        ];
+    }
+
+    /** Reset the per-request cache (intended for tests/long-running workers). */
+    public static function clearPricingContext(): void
+    {
+        self::$pricingContext = null;
+    }
+
+    /**
      * Calculate price per person for a flight path + hotels combination.
      *
      * @param FlightPath $flightPath  Loaded with legs.flight.airline, stays
@@ -45,21 +80,17 @@ class TourPriceCalculator
         $rooms = (int) ceil($adults / 2);
         $hotelPerPerson = ($rooms * $hotelRoomTotal) / max($adults, 1);
 
-        // Fees
-        $hiddenFee = (float) Setting::getValue('tour_hidden_fee', 60);
-        $agentFee = (float) Setting::getValue('tour_agent_fee', 50);
+        $ctx = self::pricingContext();
+        $hiddenFee = $ctx['hidden_fee'];
+        $agentFee = $ctx['agent_fee'];
 
-        // Mandatory services
+        // Mandatory services — filter cached collection by this path's cities (or city=null = global)
         $cityIds = $flightPath->stays->pluck('city_id')->unique();
         $stayNightsByCity = $flightPath->stays->pluck('nights', 'city_id');
 
-        $mandatoryServices = AdditionalService::where('is_active', true)
-            ->where('is_mandatory', true)
-            ->where('service_type', '!=', 'insurance')
-            ->where(function ($q) use ($cityIds) {
-                $q->whereIn('city_id', $cityIds)->orWhereNull('city_id');
-            })
-            ->get();
+        $mandatoryServices = $ctx['services']->filter(
+            fn ($svc) => $svc->city_id === null || $cityIds->contains($svc->city_id)
+        );
 
         $mandatoryCost = 0;
         $seenIds = [];

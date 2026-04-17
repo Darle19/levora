@@ -63,8 +63,15 @@ class TourSearchService
     private function buildRoutes(): array
     {
         $paths = FlightPath::where('is_available', true)
-            ->with('stays.city')
+            ->with(['stays.city', 'legs.flight:id,available_seats'])
             ->get();
+
+        // Batch-load all active hotels grouped by city_id (avoids N Hotel queries in the route loop).
+        $hotelIdsByCity = Hotel::where('is_active', true)
+            ->whereNotNull('city_id')
+            ->get(['id', 'city_id'])
+            ->groupBy('city_id')
+            ->map->pluck('id');
 
         $grouped = $paths->groupBy('route_name');
         $routes = [];
@@ -92,6 +99,11 @@ class TourSearchService
                 $routeDateSeats[$date] = $minSeats;
             }
 
+            $hotelIds = collect($cityIds)
+                ->flatMap(fn ($cid) => $hotelIdsByCity[$cid] ?? collect())
+                ->values()
+                ->all();
+
             $routes[] = [
                 'slug' => $slug,
                 'label' => $routeName,
@@ -100,7 +112,7 @@ class TourSearchService
                     'country_ids' => $countryIds,
                     'departure_city_id' => $departureCityId,
                     'city_ids' => $cityIds,
-                    'hotel_ids' => Hotel::whereIn('city_id', $cityIds)->where('is_active', true)->pluck('id')->toArray(),
+                    'hotel_ids' => $hotelIds,
                     'nights_from' => $nights,
                     'nights_to' => $nights,
                     'date_from' => $dateFrom,

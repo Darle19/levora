@@ -135,10 +135,10 @@ class GroupOffersRelationManager extends RelationManager
                         if (empty($state)) {
                             return '-';
                         }
-                        $tiers = is_string($state) ? json_decode($state, true) : $state;
+                        $tiers = is_string($state) ? (json_decode($state, true) ?? []) : ($state ?? []);
 
                         return collect($tiers)
-                            ->map(fn ($t) => $t['description'].': '.$t['rate'])
+                            ->map(fn ($t) => ($t['description'] ?? '').': '.($t['rate'] ?? ''))
                             ->join(' | ');
                     })
                     ->wrap(),

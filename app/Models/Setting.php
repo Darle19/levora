@@ -22,7 +22,7 @@ class Setting extends Model
             'integer' => (int) $setting->value,
             'decimal' => (float) $setting->value,
             'boolean' => filter_var($setting->value, FILTER_VALIDATE_BOOLEAN),
-            'json' => json_decode($setting->value, true),
+            'json' => json_decode($setting->value ?? '', true) ?? [],
             default => $setting->value,
         };
     }
