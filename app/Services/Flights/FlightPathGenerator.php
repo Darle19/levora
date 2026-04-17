@@ -2,6 +2,7 @@
 
 namespace App\Services\Flights;
 
+use App\Models\Currency;
 use App\Models\Flight;
 use App\Models\FlightPath;
 use App\Models\FlightPathLeg;
@@ -11,6 +12,7 @@ use App\Models\TourTemplateLeg;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Generate FlightPath rows from a TourTemplate for a given base departure date.
@@ -28,6 +30,13 @@ use Illuminate\Support\Facades\DB;
  */
 class FlightPathGenerator
 {
+    /** Per-request cache: avoid hitting RapidAPI twice for the same (leg, date). */
+    private array $apiFetched = [];
+
+    public function __construct(private RapidApiFlightProvider $rapidApi)
+    {
+    }
+
     /**
      * @return array{created:int,skipped:int,reason?:string}
      */
@@ -143,6 +152,10 @@ class FlightPathGenerator
             return collect();
         }
 
+        if ($leg->flight_source === 'rapidapi') {
+            $this->fetchFromRapidApi($leg, $date);
+        }
+
         // whereDate() rather than where(): the flights table contains a mix of
         // 'YYYY-MM-DD' and 'YYYY-MM-DD HH:MM:SS' strings in departure_date
         // (earlier seed migrations round-tripped through Eloquent's date cast).
@@ -155,6 +168,85 @@ class FlightPathGenerator
             ->whereHas('toAirport', fn ($q) => $q->where('city_id', $leg->arrival_city_id))
             ->get()
             ->groupBy('airline_id');
+    }
+
+    /**
+     * Query RapidAPI for each allowed airline on this leg and upsert results
+     * into the flights table. The generator then reads them back through the
+     * normal local query, so all downstream pricing/booking/display code
+     * continues to treat rapidapi-sourced flights identically to seeded ones.
+     *
+     * Uses DB::table() instead of Eloquent so that date columns stay stored
+     * as plain 'YYYY-MM-DD' strings (the rest of the table is date-only).
+     *
+     * Gracefully no-ops if the API is unreachable or the quota is exhausted —
+     * the caller just sees an empty result for that airline.
+     */
+    private function fetchFromRapidApi(TourTemplateLeg $leg, string $date): void
+    {
+        $cacheKey = "{$leg->id}|{$date}";
+        if (isset($this->apiFetched[$cacheKey])) {
+            return;
+        }
+        $this->apiFetched[$cacheKey] = true;
+
+        $leg->loadMissing(['departureCity.airports', 'arrivalCity.airports', 'airlines']);
+        $depAirport = $leg->departureCity?->airports?->firstWhere('is_active', true);
+        $arrAirport = $leg->arrivalCity?->airports?->firstWhere('is_active', true);
+        if (! $depAirport || ! $arrAirport) {
+            Log::warning('RapidAPI leg fetch skipped — missing airports', [
+                'leg_id' => $leg->id,
+                'departure_city_id' => $leg->departure_city_id,
+                'arrival_city_id' => $leg->arrival_city_id,
+            ]);
+            return;
+        }
+
+        $defaultCurrencyId = Currency::where('code', 'USD')->value('id');
+
+        foreach ($leg->airlines as $airline) {
+            $offers = $this->rapidApi->search(
+                originIata: $depAirport->code,
+                destinationIata: $arrAirport->code,
+                departureDate: $date,
+                passengerCount: 1,
+                airlineCode: $airline->code,
+            );
+            if (empty($offers)) {
+                continue;
+            }
+
+            foreach ($offers as $offer) {
+                $flightNumber = trim((string) $offer->flightNumber);
+                if ($flightNumber === '') {
+                    continue;
+                }
+
+                DB::table('flights')->updateOrInsert(
+                    [
+                        'airline_id' => $airline->id,
+                        'flight_number' => $flightNumber,
+                        'departure_date' => $date,
+                    ],
+                    [
+                        'from_airport_id' => $depAirport->id,
+                        'to_airport_id' => $arrAirport->id,
+                        'origin_city_id' => $depAirport->city_id,
+                        'destination_city_id' => $arrAirport->city_id,
+                        'departure_time' => $offer->departureAt->format('H:i:s'),
+                        'arrival_date' => $offer->arrivalAt->format('Y-m-d'),
+                        'arrival_time' => $offer->arrivalAt->format('H:i:s'),
+                        'price_adult' => round($offer->priceCents / 100, 2),
+                        'currency_id' => $defaultCurrencyId ?? 1,
+                        'available_seats' => max((int) $offer->seatsAvailable, 1),
+                        'class_type' => 'economy',
+                        'is_active' => true,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ],
+                );
+            }
+        }
     }
 
     /**
