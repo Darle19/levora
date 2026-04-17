@@ -143,9 +143,13 @@ class FlightPathGenerator
             return collect();
         }
 
+        // whereDate() rather than where(): the flights table contains a mix of
+        // 'YYYY-MM-DD' and 'YYYY-MM-DD HH:MM:SS' strings in departure_date
+        // (earlier seed migrations round-tripped through Eloquent's date cast).
+        // A plain text equality misses the datetime-suffix rows.
         return Flight::query()
             ->where('is_active', true)
-            ->where('departure_date', $date)
+            ->whereDate('departure_date', $date)
             ->whereIn('airline_id', $allowedAirlineIds)
             ->whereHas('fromAirport', fn ($q) => $q->where('city_id', $leg->departure_city_id))
             ->whereHas('toAirport', fn ($q) => $q->where('city_id', $leg->arrival_city_id))
