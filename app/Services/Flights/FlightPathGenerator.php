@@ -135,6 +135,19 @@ class FlightPathGenerator
             $flightsByLeg[$leg->id] = $byAirline;
         }
 
+        // Build a symmetric pair map first — the admin UI only requires the
+        // pair to be set on one leg, so leg A→B may be known without B→A.
+        // Reading both directions into one map avoids the bug where the
+        // unpaired side of the link got treated as a standalone group
+        // before its peer claimed it.
+        $pairMap = [];
+        foreach ($legs as $leg) {
+            if ($leg->round_trip_pair_id) {
+                $pairMap[$leg->id] = $leg->round_trip_pair_id;
+                $pairMap[$leg->round_trip_pair_id] = $leg->id;
+            }
+        }
+
         // Build constraint groups:
         //  - each round-trip pair becomes one group (airlines common to both legs)
         //  - each unpaired leg becomes its own group
@@ -144,8 +157,8 @@ class FlightPathGenerator
             if (isset($processed[$leg->id])) {
                 continue;
             }
-            if ($leg->round_trip_pair_id && isset($flightsByLeg[$leg->round_trip_pair_id])) {
-                $pairId = $leg->round_trip_pair_id;
+            $pairId = $pairMap[$leg->id] ?? null;
+            if ($pairId && isset($flightsByLeg[$pairId])) {
                 $common = $flightsByLeg[$leg->id]->keys()
                     ->intersect($flightsByLeg[$pairId]->keys())
                     ->values();

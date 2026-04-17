@@ -7,9 +7,11 @@ use App\Models\Flight;
 use App\Models\Hotel;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\TourTemplateLeg;
 use App\Observers\FlightObserver;
 use App\Observers\HotelObserver;
 use App\Observers\PaymentObserver;
+use App\Observers\TourTemplateLegObserver;
 use App\Policies\BookingPolicy;
 use App\Policies\OrderPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -51,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         Flight::observe(FlightObserver::class);
         Payment::observe(PaymentObserver::class);
         Booking::observe(\App\Observers\BookingObserver::class);
+        TourTemplateLeg::observe(TourTemplateLegObserver::class);
 
         Gate::policy(Booking::class, BookingPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
