@@ -144,8 +144,24 @@ class DocumentGenerationService
                 return 'No insurance risks selected.';
             }
 
-            // Try registering now
-            $this->registerInsurancePolicy($booking);
+            // Try registering now; registerInsurancePolicy needs the resolved
+            // booking data to build the policy PDF if NeoInsurance replies
+            // with police_number immediately (no-payment flow).
+            try {
+                $data = $this->dataResolver->resolve($booking);
+            } catch (\Exception $e) {
+                return 'Failed to resolve booking data: ' . $e->getMessage();
+            }
+
+            $this->registerInsurancePolicy($booking, $data);
+
+            $booking->refresh()->load('documents');
+
+            // No-payment flow: PDF was generated inline and saved as an 'issued' document
+            if ($booking->documents()->where('type', 'insurance')->whereJsonContains('metadata->status', 'issued')->exists()) {
+                return 'Policy issued and PDF generated.';
+            }
+
             $insuranceDoc = $booking->documents()
                 ->where('type', 'insurance')
                 ->whereJsonContains('metadata->status', 'pending_payment')
