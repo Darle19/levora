@@ -51,7 +51,10 @@ class EditBooking extends EditRecord
                 ->label('Check Insurance & Generate')
                 ->icon('heroicon-o-shield-check')
                 ->color('success')
-                ->visible(fn () => ! empty($this->record->insurance_risks))
+                ->disabled(fn () => empty($this->record->insurance_risks))
+                ->tooltip(fn () => empty($this->record->insurance_risks)
+                    ? 'Set insurance_risks on the booking before generating'
+                    : null)
                 ->requiresConfirmation()
                 ->modalHeading('Check Insurance Payment')
                 ->modalDescription('This will check if the NeoInsurance policy has been paid and generate the insurance PDF documents.')
