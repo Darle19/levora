@@ -152,6 +152,15 @@ class DocumentDataResolver
 
         $lastCity = $fp->stays->sortByDesc('stay_order')->first();
 
+        // All unique countries visited on the tour — the insurance policy must
+        // list every one (e.g. Istanbul + Baku → "Turkey, Azerbaijan").
+        $destinationCountries = $fp->stays
+            ->pluck('city.country.name_en')
+            ->filter()
+            ->unique()
+            ->values()
+            ->implode(', ');
+
         // City contacts (local agents)
         $cityContacts = $fp->stays->map(function ($stay) {
             $city = $stay->city;
@@ -177,7 +186,7 @@ class DocumentDataResolver
             'departure_date' => $fp->departure_date,
             'return_date' => $fp->departure_date->copy()->addDays($fp->nights),
             'total_nights' => $fp->nights,
-            'destination_country' => $lastCity?->city?->country?->name_en,
+            'destination_country' => $destinationCountries !== '' ? $destinationCountries : $lastCity?->city?->country?->name_en,
             'departure_city' => $fp->departureCity->name_en ?? '',
         ];
     }
