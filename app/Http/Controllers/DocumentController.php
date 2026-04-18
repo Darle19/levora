@@ -35,7 +35,14 @@ class DocumentController extends Controller
 
         $filename = $this->buildFilename($document);
 
-        return Storage::disk('local')->download($document->file_path, $filename);
+        // Prevent stale PDFs: Storage::download doesn't set any Cache-Control
+        // by default, so browsers happily serve yesterday's file back from the
+        // disk cache when ops regenerate documents.
+        return Storage::disk('local')->download($document->file_path, $filename, [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     private function buildFilename(BookingDocument $document): string
