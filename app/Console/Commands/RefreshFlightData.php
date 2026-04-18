@@ -15,10 +15,10 @@ class RefreshFlightData extends Command
     protected $signature = 'flights:refresh {--days=30 : Refresh flights within N days from now}';
     protected $description = 'Refresh flight times and prices from RapidAPI for upcoming flights';
 
-    // Block-seat carriers with fixed contract prices (Centrum, Qanot Sharq).
-    // Cron must not touch their price_adult or flight_number — the seeded
-    // value IS the source of truth.
-    private const SKIP_AIRLINES = ['C2', 'HH'];
+    // Flights with either a hard_block_price or soft_block_price set are
+    // block-seat contracts (fixed per-seat price agreed with the carrier).
+    // Cron skips them regardless of airline — the seeded row IS the source
+    // of truth and RapidAPI numbers would corrupt it.
     private const DEP_TIME_MIN = '04:00';
     private const DEP_TIME_MAX = '17:00';
 
@@ -38,7 +38,8 @@ class RefreshFlightData extends Command
         $flights = Flight::with(['airline', 'fromAirport.city.airports', 'toAirport.city.airports'])
             ->where('is_active', true)
             ->whereBetween('departure_date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
-            ->whereHas('airline', fn ($q) => $q->whereNotIn('code', self::SKIP_AIRLINES))
+            ->whereNull('hard_block_price')
+            ->whereNull('soft_block_price')
             ->orderBy('departure_date')
             ->get()
             ->keyBy('id');
