@@ -268,7 +268,21 @@ class DocumentGenerationService
     private function storePdf($pdf, int $orderId, string $filename): string
     {
         $path = "documents/{$orderId}/{$filename}.pdf";
-        Storage::disk('local')->put($path, $pdf->output());
+        $disk = Storage::disk('local');
+
+        // If an old copy of this file was written by a different OS user
+        // (e.g. a root tinker run), the current PHP process may not have
+        // write access to the file itself — only to its parent directory.
+        // unlink first, then write; then unlink succeeds via directory perms
+        // and put always lands on a fresh inode we own.
+        if ($disk->exists($path)) {
+            $disk->delete($path);
+        }
+
+        if (! $disk->put($path, $pdf->output())) {
+            throw new \RuntimeException("storePdf: could not write {$path}");
+        }
+
         return $path;
     }
 }
