@@ -11,11 +11,14 @@ use App\Models\City;
 use App\Models\TourTemplate;
 use BackedEnum;
 use UnitEnum;
+use App\Models\TourTemplate as TourTemplateModel;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Illuminate\Support\HtmlString;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -184,6 +187,65 @@ class TourTemplateResource extends Resource
                         ->reorderable()
                         ->orderColumn('leg_order')
                         ->addActionLabel('+ Add Leg'),
+                ]),
+
+            Section::make('Generated FlightPaths')
+                ->description('Snapshot of paths emitted by the last generator run. Click "Generate Paths" on the list page to build more.')
+                ->columnSpanFull()
+                ->schema([
+                    Placeholder::make('flight_paths_summary')
+                        ->label('')
+                        ->content(function (?TourTemplateModel $record): HtmlString {
+                            if (! $record) {
+                                return new HtmlString('<em style="color:#999">Save the template first.</em>');
+                            }
+
+                            $paths = $record->flightPaths()
+                                ->with(['legs.flight.airline', 'legs.flight.fromAirport', 'legs.flight.toAirport', 'currency'])
+                                ->orderBy('departure_date')
+                                ->orderBy('id')
+                                ->get();
+
+                            if ($paths->isEmpty()) {
+                                return new HtmlString('<em style="color:#999">No FlightPaths generated yet.</em>');
+                            }
+
+                            $html = '<table style="width:100%;font-size:12px;border-collapse:collapse">';
+                            $html .= '<thead><tr style="background:#f3f4f6;text-align:left">';
+                            $html .= '<th style="padding:6px 8px">FP</th>';
+                            $html .= '<th style="padding:6px 8px">Depart</th>';
+                            $html .= '<th style="padding:6px 8px">Legs</th>';
+                            $html .= '<th style="padding:6px 8px;text-align:right">Flight total</th>';
+                            $html .= '</tr></thead><tbody>';
+
+                            foreach ($paths as $fp) {
+                                $legs = $fp->legs->sortBy('leg_order')->map(function ($l) {
+                                    $f = $l->flight;
+                                    if (! $f) {
+                                        return '<span style="color:#c00">missing flight</span>';
+                                    }
+                                    return sprintf(
+                                        '%s %s %s→%s %s $%s',
+                                        e($f->airline->code ?? '?'),
+                                        e($f->flight_number),
+                                        e($f->fromAirport->code ?? '?'),
+                                        e($f->toAirport->code ?? '?'),
+                                        $f->departure_date?->format('d.m') ?? '',
+                                        number_format((float) $f->price_adult, 0)
+                                    );
+                                })->implode(' · ');
+
+                                $html .= '<tr style="border-top:1px solid #e5e7eb">';
+                                $html .= '<td style="padding:6px 8px;color:#6b7280">#' . $fp->id . '</td>';
+                                $html .= '<td style="padding:6px 8px;white-space:nowrap">' . e($fp->departure_date?->format('d.m.Y')) . '</td>';
+                                $html .= '<td style="padding:6px 8px">' . $legs . '</td>';
+                                $html .= '<td style="padding:6px 8px;text-align:right;font-weight:600">$' . number_format((float) $fp->total_price, 2) . '</td>';
+                                $html .= '</tr>';
+                            }
+                            $html .= '</tbody></table>';
+
+                            return new HtmlString($html);
+                        }),
                 ]),
         ]);
     }
