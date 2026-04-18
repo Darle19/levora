@@ -20,6 +20,8 @@ class TourTemplate extends Model
         'status',
         'base_currency',
         'margin_percent',
+        'agent_fee',
+        'hidden_fee',
         'generation_status',
         'generation_summary',
     ];
@@ -30,6 +32,8 @@ class TourTemplate extends Model
             'is_active' => 'boolean',
             'total_nights' => 'integer',
             'margin_percent' => 'integer',
+            'agent_fee' => 'decimal:2',
+            'hidden_fee' => 'decimal:2',
             'status' => TourTemplateStatus::class,
             'generation_summary' => 'array',
         ];

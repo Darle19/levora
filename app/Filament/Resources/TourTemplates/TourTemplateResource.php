@@ -67,6 +67,18 @@ class TourTemplateResource extends Resource
                     Toggle::make('is_active')
                         ->label('Active')
                         ->default(true),
+                    TextInput::make('agent_fee')
+                        ->label('Agent fee (USD)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->placeholder('leave empty to use global default')
+                        ->helperText('Per-tour override for the agent markup. Empty = fall back to global Setting.'),
+                    TextInput::make('hidden_fee')
+                        ->label('Hidden fee (USD)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->placeholder('leave empty to use global default')
+                        ->helperText('Per-tour override for the hidden fee. Empty = fall back to global Setting.'),
                 ])
                 ->columns(3),
 

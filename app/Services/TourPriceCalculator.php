@@ -81,8 +81,10 @@ class TourPriceCalculator
         $hotelPerPerson = ($rooms * $hotelRoomTotal) / max($adults, 1);
 
         $ctx = self::pricingContext();
-        $hiddenFee = $ctx['hidden_fee'];
-        $agentFee = $ctx['agent_fee'];
+        // Per-template overrides; fall back to global Setting when NULL.
+        $template = $flightPath->tourTemplate;
+        $hiddenFee = ($template?->hidden_fee !== null) ? (float) $template->hidden_fee : $ctx['hidden_fee'];
+        $agentFee = ($template?->agent_fee !== null) ? (float) $template->agent_fee : $ctx['agent_fee'];
 
         // Mandatory services — filter cached collection by this path's cities (or city=null = global)
         $cityIds = $flightPath->stays->pluck('city_id')->unique();
