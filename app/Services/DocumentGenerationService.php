@@ -144,6 +144,15 @@ class DocumentGenerationService
                 return 'No insurance risks selected.';
             }
 
+            // Already-issued insurance docs must be cleared before a fresh
+            // register, otherwise repeated clicks just pile up duplicates.
+            // We don't touch pending_payment docs — the earlier branch
+            // handles those (payment check + upgrade to issued).
+            $booking->documents()
+                ->where('type', 'insurance')
+                ->whereJsonContains('metadata->status', 'issued')
+                ->delete();
+
             // Try registering now; registerInsurancePolicy needs the resolved
             // booking data to build the policy PDF if NeoInsurance replies
             // with police_number immediately (no-payment flow).
