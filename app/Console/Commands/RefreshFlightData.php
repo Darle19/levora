@@ -168,24 +168,26 @@ class RefreshFlightData extends Command
         $fromAirport = $this->resolveAirport($best->originIata);
         $toAirport = $this->resolveAirport($best->destinationIata);
 
+        // Do not overwrite a real price with 0 — RapidAPI sometimes returns
+        // an empty price payload and we'd zero out the seeded value.
+        $priceUpdate = $halfPrice > 0 ? ['price_adult' => $halfPrice] : [];
+
         foreach ($outboundFlights as $f) {
-            $f->update([
+            $f->update(array_merge([
                 'from_airport_id' => $fromAirport?->id ?? $f->from_airport_id,
                 'to_airport_id' => $toAirport?->id ?? $f->to_airport_id,
                 'flight_number' => $best->flightNumber,
                 'departure_time' => $best->departureAt->format('H:i:s'),
                 'arrival_time' => $best->arrivalAt->format('H:i:s'),
                 'arrival_date' => $best->arrivalAt->format('Y-m-d'),
-                'price_adult' => $halfPrice,
-            ]);
+            ], $priceUpdate));
         }
 
         foreach ($returnFlights as $f) {
-            $f->update([
+            $f->update(array_merge([
                 'from_airport_id' => $toAirport?->id ?? $f->from_airport_id,
                 'to_airport_id' => $fromAirport?->id ?? $f->to_airport_id,
-                'price_adult' => $halfPrice,
-            ]);
+            ], $priceUpdate));
         }
 
         $count = $outboundFlights->count() + $returnFlights->count();
@@ -224,19 +226,23 @@ class RefreshFlightData extends Command
         $fromAirport = $this->resolveAirport($best->originIata);
         $toAirport = $this->resolveAirport($best->destinationIata);
 
-        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} {$best->departureAt->format('H:i')} \$" . ($best->priceCents / 100));
+        $newPrice = $best->priceCents / 100;
+        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} {$best->departureAt->format('H:i')} \$" . $newPrice);
+
+        // Do not overwrite a real price with 0 — RapidAPI occasionally drops
+        // the price field and we must not zero out the seeded value.
+        $priceUpdate = $newPrice > 0 ? ['price_adult' => $newPrice] : [];
 
         $updated = 0;
         foreach ($groupFlights as $flight) {
-            $flight->update([
+            $flight->update(array_merge([
                 'from_airport_id' => $fromAirport?->id ?? $flight->from_airport_id,
                 'to_airport_id' => $toAirport?->id ?? $flight->to_airport_id,
                 'flight_number' => $best->flightNumber,
                 'departure_time' => $best->departureAt->format('H:i:s'),
                 'arrival_time' => $best->arrivalAt->format('H:i:s'),
                 'arrival_date' => $best->arrivalAt->format('Y-m-d'),
-                'price_adult' => $best->priceCents / 100,
-            ]);
+            ], $priceUpdate));
             $updated++;
         }
 
