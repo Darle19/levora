@@ -15,7 +15,10 @@ class RefreshFlightData extends Command
     protected $signature = 'flights:refresh {--days=30 : Refresh flights within N days from now}';
     protected $description = 'Refresh flight times and prices from RapidAPI for upcoming flights';
 
-    private const SKIP_AIRLINES = ['C2'];
+    // Block-seat carriers with fixed contract prices (Centrum, Qanot Sharq).
+    // Cron must not touch their price_adult or flight_number — the seeded
+    // value IS the source of truth.
+    private const SKIP_AIRLINES = ['C2', 'HH'];
     private const DEP_TIME_MIN = '04:00';
     private const DEP_TIME_MAX = '17:00';
 
