@@ -275,7 +275,8 @@ class NeoInsuranceService
 
         try {
             $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(15)
+                ->timeout(60)
+                ->retry(2, 2000, throw: false)
                 ->get("{$this->baseUrl}{$endpoint}");
 
             if ($response->successful()) {
@@ -300,8 +301,12 @@ class NeoInsuranceService
         }
 
         try {
+            // save-polis in particular often takes 20-40s (premium calc +
+            // policy creation behind Cloudflare). 15s was too tight; a
+            // single retry covers transient 522/timeout responses.
             $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(15)
+                ->timeout(60)
+                ->retry(2, 2000, throw: false)
                 ->post("{$this->baseUrl}{$endpoint}", $data);
 
             if ($response->successful()) {
