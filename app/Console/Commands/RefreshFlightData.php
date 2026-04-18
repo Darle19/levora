@@ -195,7 +195,10 @@ class RefreshFlightData extends Command
         }
 
         $count = $outboundFlights->count() + $returnFlights->count();
-        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg, {$count} flight(s) updated)");
+        $priceNote = $halfPrice > 0
+            ? "RT total: \$" . ($rtTotalCents / 100) . " (split \$" . $halfPrice . " per leg)"
+            : "RT total: \$0 — API returned no price, existing prices kept";
+        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} {$priceNote}, {$count} flight(s) updated");
 
         return ['updated' => $count, 'failed' => 0];
     }
@@ -231,11 +234,15 @@ class RefreshFlightData extends Command
         $toAirport = $this->resolveAirport($best->destinationIata);
 
         $newPrice = $best->priceCents / 100;
-        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} {$best->departureAt->format('H:i')} \$" . $newPrice);
 
         // Do not overwrite a real price with 0 — RapidAPI occasionally drops
         // the price field and we must not zero out the seeded value.
         $priceUpdate = $newPrice > 0 ? ['price_adult' => $newPrice] : [];
+
+        $priceLabel = $newPrice > 0
+            ? ('$' . $newPrice)
+            : '$0 (API returned no price, existing price kept)';
+        $this->info("    ✓ {$airlineCode} {$best->flightNumber} {$best->originIata}→{$best->destinationIata} {$best->departureAt->format('H:i')} {$priceLabel}");
 
         $updated = 0;
         foreach ($groupFlights as $flight) {
