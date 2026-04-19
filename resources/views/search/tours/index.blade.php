@@ -403,25 +403,6 @@
                 </div>
             </div>
 
-            {{-- Flights Monitor Popup --}}
-            <div class="fm-overlay" id="fm-overlay" onclick="closeFM()"></div>
-            <div class="fm-popup" id="fm-popup">
-                <div class="fm-header">
-                    <h3>Flights Monitor</h3>
-                    <button class="fm-close" onclick="closeFM()">&times;</button>
-                </div>
-                <div class="fm-body">
-                    <div class="fm-tour-info" id="fm-tour-info"></div>
-                    <div class="fm-legend">
-                        <span><span class="fm-legend-dot" style="background:#28a745;"></span> many</span>
-                        <span><span class="fm-legend-dot" style="background:#ffc107;"></span> few</span>
-                        <span><span class="fm-legend-dot" style="background:#dc3545;"></span> no</span>
-                        <span><span class="fm-legend-dot" style="background:#adb5bd;"></span> on request</span>
-                    </div>
-                    <div id="fm-flights"></div>
-                </div>
-            </div>
-
             {{-- Loading Spinner --}}
             <div id="loading-spinner" style="display:none;">
                 <div class="panel" style="border-radius:0; margin-bottom:0; padding:30px; text-align:center;">
@@ -746,45 +727,9 @@
     document.addEventListener('click', function(e) {
         const row = e.target.closest('tr[data-href]');
         if (!row) return;
-        if (e.target.closest('a, button, .stats-btn, .book-btn, .view-link, .hotel-link')) return;
+        if (e.target.closest('a, button, .book-btn, .view-link, .hotel-link')) return;
         window.location = row.dataset.href;
     });
-
-    // Flights Monitor popup
-    window.openFM = function(el) {
-        event.stopPropagation();
-        const d = JSON.parse(el.dataset.fm);
-        document.getElementById('fm-tour-info').innerHTML =
-            '<div><div class="fm-label">Departure</div><div class="fm-val">' + d.date + '</div></div>' +
-            '<div><div class="fm-label">Hotel</div><div class="fm-val">' + d.hotel + '</div></div>' +
-            '<div><div class="fm-label">Nights</div><div class="fm-val">' + d.nights + '</div></div>' +
-            '<div><div class="fm-label">Price</div><div class="fm-val">' + d.price + '</div></div>';
-        var html = '';
-        (d.flights || []).forEach(function(f) {
-            var econSeat = f.seats > 5 ? 'green' : (f.seats > 0 ? 'yellow' : 'red');
-            var econLabel = f.seats > 5 ? 'MANY' : (f.seats > 0 ? 'FEW (' + f.seats + ')' : 'NO');
-            html += '<div class="fm-flight">' +
-                '<div class="fm-flight-header"><span>' + f.date + ' ' + f.from_city + ' &rarr; ' + f.to_city + '</span><span style="font-weight:400;color:#888;">' + f.direction + '</span></div>' +
-                '<div class="fm-flight-body">' +
-                '<div class="fm-flight-route"><span class="fm-airport-code">' + f.from + '</span><span class="fm-arrow">&rarr;</span><span class="fm-airport-code">' + f.to + '</span></div>' +
-                '<div class="fm-flight-details">' + f.airline + ' &bull; ' + f.flight_number + '<br>' + f.dep_time + ' ' + f.from + ' &mdash; ' + f.arr_time + ' ' + f.to + '</div>' +
-                '<div class="fm-seats-row">' +
-                '<div class="fm-seat-class"><span class="fm-seat-dot fm-seat-' + econSeat + '"></span><span>Econom</span><span class="fm-seat-label fm-seat-' + econSeat + '-text">' + econLabel + '</span></div>' +
-                '<div class="fm-seat-class"><span class="fm-seat-dot fm-seat-gray"></span><span>Business</span><span class="fm-seat-label fm-seat-gray-text">N/A</span></div>' +
-                '</div></div></div>';
-        });
-        if (!d.flights || !d.flights.length) {
-            html = '<div style="padding:10px;color:#888;text-align:center;">No flight data available</div>';
-        }
-        document.getElementById('fm-flights').innerHTML = html;
-        document.getElementById('fm-overlay').style.display = 'block';
-        document.getElementById('fm-popup').style.display = 'block';
-    };
-    window.closeFM = function() {
-        document.getElementById('fm-overlay').style.display = 'none';
-        document.getElementById('fm-popup').style.display = 'none';
-    };
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeFM(); });
 
     // Result table + pagination events
     function initResultEvents() {
